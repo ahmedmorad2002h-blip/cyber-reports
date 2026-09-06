@@ -15,7 +15,11 @@ GITHUB_REPO = os.environ.get("GITHUB_REPO")
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "active", "message": "Cyber Security GitHub Storage API is running."})
+    return jsonify({
+        "status": "active", 
+        "version": "v2.0-uuid", 
+        "message": "Cyber Security GitHub Storage API is running."
+    })
 
 @app.route("/submit-report", methods=["POST"])
 def submit_report():
@@ -24,7 +28,6 @@ def submit_report():
         if not data:
             return jsonify({"success": False, "error": "No data provided"}), 400
 
-        # توليد رقم تعريف فريد يدمج الوقت مع معرف عشوائي لمنع أي تضارب (409)
         timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
         random_suffix = uuid.uuid4().hex[:6].upper()
         report_id = f"CYBER-REC-{timestamp_str}-{random_suffix}"
