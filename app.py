@@ -35,6 +35,7 @@ def submit_report():
         data["report_id"] = report_id
         data["created_at"] = datetime.now().isoformat()
 
+        # الحفظ في مجلد cases الجديد
         file_path = f"cases/{report_id}.json"
         
         file_content = json.dumps(data, ensure_ascii=False, indent=4)
@@ -71,7 +72,8 @@ def submit_report():
 @app.route("/get-report/<report_id>", methods=["GET"])
 def get_report(report_id):
     try:
-        file_path = f"reports/{report_id}.json"
+        # القراءة من مجلد cases أيضاً لتتطابق مع مسار الحفظ
+        file_path = f"cases/{report_id}.json"
         url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_path}"
         headers = {
             "Authorization": f"Bearer {GITHUB_TOKEN}",
