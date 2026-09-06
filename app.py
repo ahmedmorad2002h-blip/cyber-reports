@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -10,11 +11,12 @@ app = Flask(__name__)
 CORS(app)
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-GITHUB_REPO = os.environ.get("GITHUB_REPO")  # صيغة المستودع مثال: username/repo-name
+GITHUB_REPO = os.environ.get("GITHUB_REPO")
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "active", "message": "Cyber Security GitHub Storage API is running."})
+
 @app.route("/submit-report", methods=["POST"])
 def submit_report():
     try:
@@ -22,12 +24,16 @@ def submit_report():
         if not data:
             return jsonify({"success": False, "error": "No data provided"}), 400
 
+        # توليد رقم تعريف فريد يدمج الوقت مع معرف عشوائي لمنع أي تضارب (409)
         timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
-        report_id = f"CYBER-REC-{timestamp_str}"
+        random_suffix = uuid.uuid4().hex[:6].upper()
+        report_id = f"CYBER-REC-{timestamp_str}-{random_suffix}"
+        
         data["report_id"] = report_id
         data["created_at"] = datetime.now().isoformat()
 
         file_path = f"reports/{report_id}.json"
+        
         file_content = json.dumps(data, ensure_ascii=False, indent=4)
         encoded_content = base64.b64encode(file_content.encode("utf-8")).decode("utf-8")
 
@@ -43,10 +49,6 @@ def submit_report():
         }
 
         response = requests.put(url, json=payload, headers=headers)
-        
-        # طباعة الرد في سجلات رندر لمعرفة السبب بدقة
-        print(f"GitHub Status Code: {response.status_code}")
-        print(f"GitHub Response Text: {response.text}")
 
         if response.status_code in [200, 201]:
             return jsonify({
@@ -61,9 +63,7 @@ def submit_report():
             }), response.status_code
 
     except Exception as e:
-        print(f"Server Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @app.route("/get-report/<report_id>", methods=["GET"])
 def get_report(report_id):
@@ -80,7 +80,6 @@ def get_report(report_id):
 
         if response.status_code == 200:
             file_data = response.json()
-            # فك ترميز محتوى الملف من Base64
             file_content = base64.b64decode(file_data["content"]).decode("utf-8")
             report_json = json.loads(file_content)
             return jsonify({"success": True, "data": report_json}), 200
