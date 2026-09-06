@@ -15,7 +15,6 @@ GITHUB_REPO = os.environ.get("GITHUB_REPO")  # صيغة المستودع مثا�
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "active", "message": "Cyber Security GitHub Storage API is running."})
-
 @app.route("/submit-report", methods=["POST"])
 def submit_report():
     try:
@@ -23,15 +22,12 @@ def submit_report():
         if not data:
             return jsonify({"success": False, "error": "No data provided"}), 400
 
-        # توليد رقم تعريف فريد للبلاغ
         timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
         report_id = f"CYBER-REC-{timestamp_str}"
         data["report_id"] = report_id
         data["created_at"] = datetime.now().isoformat()
 
         file_path = f"reports/{report_id}.json"
-        
-        # تحويل البيانات إلى JSON ثم ترميزها بنظام Base64 لإرسالها عبر جيت هاب API
         file_content = json.dumps(data, ensure_ascii=False, indent=4)
         encoded_content = base64.b64encode(file_content.encode("utf-8")).decode("utf-8")
 
@@ -47,6 +43,10 @@ def submit_report():
         }
 
         response = requests.put(url, json=payload, headers=headers)
+        
+        # طباعة الرد في سجلات رندر لمعرفة السبب بدقة
+        print(f"GitHub Status Code: {response.status_code}")
+        print(f"GitHub Response Text: {response.text}")
 
         if response.status_code in [200, 201]:
             return jsonify({
@@ -61,7 +61,9 @@ def submit_report():
             }), response.status_code
 
     except Exception as e:
+        print(f"Server Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route("/get-report/<report_id>", methods=["GET"])
 def get_report(report_id):
