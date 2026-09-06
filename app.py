@@ -35,7 +35,7 @@ def submit_report():
         data["report_id"] = report_id
         data["created_at"] = datetime.now().isoformat()
 
-        file_path = f"reports/{report_id}.json"
+        file_path = f"cases/{report_id}.json"
         
         file_content = json.dumps(data, ensure_ascii=False, indent=4)
         encoded_content = base64.b64encode(file_content.encode("utf-8")).decode("utf-8")
