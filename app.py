@@ -63,6 +63,31 @@ def submit_report():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route("/get-report/<report_id>", methods=["GET"])
+def get_report(report_id):
+    try:
+        file_path = f"reports/{report_id}.json"
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_path}"
+        headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            file_data = response.json()
+            # فك ترميز محتوى الملف من Base64
+            file_content = base64.b64decode(file_data["content"]).decode("utf-8")
+            report_json = json.loads(file_content)
+            return jsonify({"success": True, "data": report_json}), 200
+        else:
+            return jsonify({"success": False, "error": "Report not found"}), 404
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
