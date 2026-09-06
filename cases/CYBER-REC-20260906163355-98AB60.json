@@ -1,0 +1,27 @@
+{
+    "officer": "شرطي احمد جاسم محمد",
+    "source": "",
+    "platform": "Telegram",
+    "url": "https://www.tiktok.com/@zxz_565/video/7663607737086954759?is_from_webapp=1&sender_device=pc",
+    "accountName": "",
+    "datetime": "",
+    "description": "",
+    "threatType": "ابتزاز إلكتروني",
+    "technicalIndicators": {
+        "ip": "",
+        "domain": "",
+        "url": "",
+        "email": "",
+        "username": "",
+        "hash": "",
+        "ioc": "",
+        "other": ""
+    },
+    "evidenceFiles": [],
+    "evidenceImages": [],
+    "severity": "حرج / عالي الخطورة",
+    "recommendation": "",
+    "timestamp": "9/6/2026, 7:33:54 PM",
+    "report_id": "CYBER-REC-20260906163355-98AB60",
+    "created_at": "2026-09-06T16:33:55.773023"
+}
