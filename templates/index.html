@@ -6,34 +6,40 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- مكتبة Three.js للرسم ثلاثي الأبعاد -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <style>
         :root {
-            --bg-color: #010409;
-            --panel-bg: rgba(13, 20, 36, 0.96);
+            --bg-color: #030712;
+            --panel-bg: rgba(11, 18, 33, 0.98);
             --cyber-cyan: #00f2fe;
             --cyber-blue: #4facfe;
-            --cyber-purple: #a855f7;
-            --cyber-glow: rgba(0, 242, 254, 0.4);
-            --border-color: rgba(0, 242, 254, 0.35);
+            --cyber-purple: #c084fc;
+            --cyber-glow: rgba(0, 242, 254, 0.6);
+            --border-color: rgba(0, 242, 254, 0.6);
             --text-main: #ffffff;
-            --text-muted: #94a3b8;
+            --text-muted: #e2e8f0;
         }
 
-        @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(1000%); }
+        @keyframes neonPulse {
+            0% { 
+                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); 
+                border-color: rgba(0, 242, 254, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(0, 242, 254, 0.8), inset 0 0 25px rgba(0, 242, 254, 0.3); 
+                border-color: #00f2fe;
+            }
+            100% { 
+                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); 
+                border-color: rgba(0, 242, 254, 0.5);
+            }
         }
 
-        @keyframes cyberPulse {
-            0% { box-shadow: 0 0 15px rgba(0, 242, 254, 0.2), inset 0 0 15px rgba(0, 242, 254, 0.05); }
-            50% { box-shadow: 0 0 35px rgba(0, 242, 254, 0.5), inset 0 0 25px rgba(0, 242, 254, 0.15); }
-            100% { box-shadow: 0 0 15px rgba(0, 242, 254, 0.2), inset 0 0 15px rgba(0, 242, 254, 0.05); }
-        }
-
-        @keyframes borderFlicker {
-            0%, 100% { border-color: rgba(0, 242, 254, 0.4); }
-            50% { border-color: rgba(168, 85, 247, 0.7); }
+        @keyframes titleGlow {
+            0%, 100% { text-shadow: 0 0 10px rgba(0,242,254,0.5), 0 0 20px rgba(0,242,254,0.3); }
+            50% { text-shadow: 0 0 20px rgba(0,242,254,0.9), 0 0 40px rgba(192,132,252,0.6); }
         }
 
         body { 
@@ -42,73 +48,64 @@
             font-family: 'Cairo', sans-serif; 
             min-height: 100vh;
             background-image: 
-                radial-gradient(circle at 50% 0%, #0f172a 0%, #010409 75%),
-                linear-gradient(rgba(0, 242, 254, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 242, 254, 0.02) 1px, transparent 1px);
-            background-size: 100% 100%, 30px 30px, 30px 30px;
+                radial-gradient(circle at 50% 0%, #0f172a 0%, #030712 80%),
+                linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
             overflow-x: hidden;
-        }
-
-        /* تأثير خطوط المسح السيبرانية المتحركة */
-        body::after {
-            content: " ";
-            display: block;
-            position: fixed;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px;
-            z-index: 99999;
-            pointer-events: none;
-            opacity: 0.3;
         }
 
         .card { 
             background: var(--panel-bg); 
-            border: 1px solid var(--border-color); 
-            border-radius: 18px; 
+            border: 2px solid var(--border-color); 
+            border-radius: 20px; 
             padding: 35px; 
-            animation: cyberPulse 4s infinite ease-in-out, borderFlicker 6s infinite;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+            animation: neonPulse 3s infinite ease-in-out;
+            backdrop-filter: blur(25px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
         }
 
         .stat-card {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.8));
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.9));
+            border: 2px solid rgba(0, 242, 254, 0.5);
+            border-radius: 16px;
             padding: 22px;
             text-align: center;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .stat-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 30px var(--cyber-glow);
+            transform: translateY(-6px) scale(1.03);
+            box-shadow: 0 0 35px var(--cyber-cyan);
             border-color: var(--cyber-cyan);
         }
 
-        /* تحسين وضوح النصوص وحقول الإدخال بشكل كامل */
-        label, .form-label {
+        h1, h2, h3, h4, .navbar-brand {
+            animation: titleGlow 4s infinite ease-in-out;
             color: #ffffff !important;
-            font-weight: 700 !important;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-            letter-spacing: 0.3px;
+            font-weight: 900 !important;
+        }
+
+        p, span, label, .form-label, .text-muted {
+            color: #f1f5f9 !important;
+            font-weight: 600 !important;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
         }
 
         input, select, textarea { 
-            background: rgba(2, 6, 23, 0.95) !important; 
-            border: 1px solid rgba(0, 242, 254, 0.4) !important; 
+            background: rgba(2, 6, 23, 0.98) !important; 
+            border: 2px solid rgba(0, 242, 254, 0.5) !important; 
             color: #ffffff !important; 
             border-radius: 12px !important;
             padding: 12px 16px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
         }
         input::placeholder, textarea::placeholder {
-            color: #64748b !important;
+            color: #94a3b8 !important;
         }
         input:focus, select:focus, textarea:focus { 
             border-color: var(--cyber-cyan) !important; 
-            box-shadow: 0 0 20px var(--cyber-glow) !important; 
+            box-shadow: 0 0 25px var(--cyber-cyan) !important; 
             background: rgba(3, 7, 18, 1) !important;
             outline: none;
             color: #ffffff !important;
@@ -117,23 +114,23 @@
         select option {
             background-color: #0b1326;
             color: #ffffff;
-            padding: 10px;
+            padding: 12px;
         }
 
         .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 5px; }
         
         .sidebar {
-            position: fixed; top: 0; right: -360px; width: 360px; height: 100%;
-            background: rgba(5, 11, 24, 0.98); 
-            box-shadow: -15px 0 40px rgba(0,0,0,0.95); 
+            position: fixed; top: 0; right: -380px; width: 380px; height: 100%;
+            background: rgba(5, 11, 24, 0.99); 
+            box-shadow: -20px 0 50px rgba(0,0,0,0.98); 
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 1050; padding: 35px;
-            border-left: 2px solid var(--cyber-cyan);
+            border-left: 3px solid var(--cyber-cyan);
             overflow-y: auto;
         }
         .sidebar.active { right: 0; }
-        .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 242, 254, 0.3); padding-bottom: 18px; margin-bottom: 25px; }
-        .close-btn { background: none; border: none; font-size: 30px; color: var(--cyber-cyan); cursor: pointer; transition: transform 0.2s; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0, 242, 254, 0.4); padding-bottom: 18px; margin-bottom: 25px; }
+        .close-btn { background: none; border: none; font-size: 32px; color: var(--cyber-cyan); cursor: pointer; transition: transform 0.3s; }
         .close-btn:hover { transform: rotate(90deg); color: #fff; }
 
         .btn-cyber {
@@ -141,7 +138,7 @@
             border: none;
             color: #030712;
             font-weight: 900;
-            box-shadow: 0 0 25px rgba(0, 242, 254, 0.45);
+            box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 12px;
             letter-spacing: 0.5px;
@@ -149,89 +146,91 @@
         .btn-cyber:hover {
             background: linear-gradient(135deg, #005bc5, #00c6ff);
             color: #ffffff;
-            box-shadow: 0 0 35px rgba(0, 242, 254, 0.8);
-            transform: translateY(-2px);
+            box-shadow: 0 0 45px var(--cyber-cyan);
+            transform: translateY(-3px) scale(1.02);
         }
 
         .btn-outline-cyber {
             border: 2px solid var(--cyber-cyan);
             color: var(--cyber-cyan);
-            background: rgba(0, 242, 254, 0.06);
-            font-weight: 700;
+            background: rgba(0, 242, 254, 0.1);
+            font-weight: 800;
             border-radius: 12px;
             transition: all 0.3s;
         }
         .btn-outline-cyber:hover {
-            background: rgba(0, 242, 254, 0.25);
+            background: rgba(0, 242, 254, 0.3);
             color: #ffffff;
             border-color: #ffffff;
-            box-shadow: 0 0 20px var(--cyber-glow);
-            transform: translateY(-2px);
+            box-shadow: 0 0 25px var(--cyber-cyan);
+            transform: translateY(-3px);
         }
 
-        .badge-critical { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.6); font-weight: bold; }
-        .badge-medium { background: rgba(234, 179, 8, 0.25); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.6); font-weight: bold; }
-        .badge-low { background: rgba(59, 130, 246, 0.25); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.6); font-weight: bold; }
+        .badge-critical { background: rgba(239, 68, 68, 0.35); color: #fca5a5; border: 2px solid rgba(239, 68, 68, 0.8); font-weight: bold; }
+        .badge-medium { background: rgba(234, 179, 8, 0.35); color: #fde047; border: 2px solid rgba(234, 179, 8, 0.8); font-weight: bold; }
+        .badge-low { background: rgba(59, 130, 246, 0.35); color: #93c5fd; border: 2px solid rgba(59, 130, 246, 0.8); font-weight: bold; }
 
-        @media print {
-            body { background: #fff; color: #000; display: block; padding: 0; }
-            .no-print, .btn, .sidebar, nav, .stat-card { display: none !important; }
-            .card { background: #fff; border: none; box-shadow: none; padding: 0; width: 100%; max-width: 100%; animation: none; }
-            input, select, textarea { border: none !important; background: transparent !important; color: #000 !important; font-size: 13px !important; }
-            label { color: #111 !important; font-weight: bold; margin-top: 8px; text-shadow: none; }
-            #grp-evidence { display: none !important; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 25px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+        /* حاوية الكرة الأرضية السيبرانية */
+        #globe-container {
+            width: 100%;
+            height: 320px;
+            position: relative;
+            margin: 15px 0;
+            border-radius: 16px;
+            overflow: hidden;
+            background: radial-gradient(circle, rgba(11,18,33,0.8) 0%, rgba(3,7,18,0.95) 100%);
+            border: 1px solid rgba(0, 242, 254, 0.3);
         }
-        .print-header { display: none; }
+
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.3) !important;">
+    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important;">
         <div class="d-flex align-items-center">
-            <i class="fa-solid fa-shield-halved fa-lg me-3 animate-pulse" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 8px var(--cyber-cyan));"></i>
-            <span class="navbar-brand mb-0 h1 fw-black tracking-wide" style="letter-spacing: 1px; color: #fff;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.8rem;">[CYBER-OPS v2.6]</span></span>
+            <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 12px var(--cyber-cyan));"></i>
+            <span class="navbar-brand mb-0 h1 fw-black" style="letter-spacing: 1px; font-size: 1.2rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-OPS v2.6]</span></span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <span class="text-light small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.1); border: 1px solid rgba(0,242,254,0.3);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
-            <button class="btn btn-outline-cyber btn-sm px-3" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
-            <button class="btn btn-outline-cyber btn-sm px-3" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
+            <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
+            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
+            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
         </div>
     </nav>
 
     <!-- الشريط الجانبي للإدارة والحساب -->
     <div id="options-sidebar" class="sidebar">
         <div class="sidebar-header">
-            <h5 class="m-0 fw-bold" style="color: var(--cyber-cyan);"><i class="fas fa-sliders-h me-2"></i> الإعدادات والخيارات</h5>
+            <h5 class="m-0 fw-bold text-white" style="color: var(--cyber-cyan);"><i class="fas fa-sliders-h me-2"></i> الإعدادات والخيارات</h5>
             <button type="button" class="close-btn" onclick="toggleSidebar()">&times;</button>
         </div>
         <div class="sidebar-body">
-            <div class="mb-4 p-3 rounded text-center" style="background: rgba(0,242,254,0.05); border: 1px solid rgba(0,242,254,0.3);">
-                <div class="text-info fw-bold mb-1 fs-5">{{ session.get('fullname') }}</div>
-                <div class="text-muted small">الصلاحية: {% if session.get('is_admin') %}<span class="text-danger fw-bold">مشرف نظام (Admin)</span>{% else %}<span class="text-info">مستخدم مخول</span>{% endif %}</div>
+            <div class="mb-4 p-3 rounded text-center" style="background: rgba(0,242,254,0.08); border: 2px solid rgba(0,242,254,0.4);">
+                <div class="text-white fw-bold mb-1 fs-5" style="color: var(--cyber-cyan) !important;">{{ session.get('fullname') }}</div>
+                <div class="text-white small">الصلاحية: {% if session.get('is_admin') %}<span class="text-danger fw-bold">مشرف نظام (Admin)</span>{% else %}<span class="text-info fw-bold">مستخدم مخول</span>{% endif %}</div>
             </div>
 
             <ul class="list-unstyled">
                 <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-light d-block p-3 rounded transition-all" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(0,242,254,0.2);" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(0,242,254,0.4);" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
                         <i class="fas fa-key text-info me-2"></i> تغيير كلمة السر
                     </a>
                 </li>
                 {% if session.get('is_admin') %}
                 <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-light d-block p-3 rounded" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(234,179,8,0.4);" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(234,179,8,0.6);" data-bs-toggle="modal" data-bs-target="#addUserModal">
                         <i class="fas fa-user-plus text-warning me-2"></i> إضافة مستخدم جديد
                     </a>
                 </li>
                 <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-light d-block p-3 rounded" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(239,68,68,0.4);" data-bs-toggle="modal" data-bs-target="#manageUsersModal">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(239,68,68,0.6);" data-bs-toggle="modal" data-bs-target="#manageUsersModal">
                         <i class="fas fa-users-cog text-danger me-2"></i> إدارة المستخدمين المسجلين
                     </a>
                 </li>
                 {% endif %}
                 <li class="mt-4">
-                    <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger d-block p-3 rounded text-center fw-bold" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4);">
+                    <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger fw-bold d-block p-3 rounded text-center" style="background: rgba(239,68,68,0.15); border: 2px solid rgba(239,68,68,0.6);">
                         <i class="fas fa-sign-out-alt me-2"></i> تسجيل الخروج
                     </a>
                 </li>
@@ -244,37 +243,45 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'success' else 'info' }} text-center text-white fw-bold shadow-lg mb-4" style="border-radius: 12px; background: rgba(15,23,42,0.95); border: 1px solid var(--cyber-cyan);">{{ message }}</div>
+                    <div class="alert alert-{{ category if category != 'success' else 'info' }} text-center text-white fw-bold shadow-lg mb-4" style="border-radius: 12px; background: rgba(15,23,42,0.98); border: 2px solid var(--cyber-cyan);">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
         <!-- القائمة الرئيسية -->
         <div id="menu-section" class="card shadow-lg text-center">
-            <div class="mb-3 pt-2">
-                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 20px rgba(0, 242, 254, 0.8));"></i>
+            <div class="mb-2 pt-1">
+                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 25px rgba(0, 242, 254, 0.9));"></i>
             </div>
-            <h3 class="mb-2 fw-black text-white" style="text-shadow: 0 0 10px rgba(0,242,254,0.5);">منظومة مخرجات الرصد والتحقيقات السيبرانية</h3>
-            <p class="text-muted mb-4 fs-6">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار (شامل Dark Web)</p>
+            <h2 class="mb-1 fw-black text-white">منظومة مخرجات الرصد والتحقيقات السيبرانية</h2>
+            <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار (شامل Dark Web)</p>
             
+            <!-- الكرة الأرضية ثلاثية الأبعاد لمحاكاة الهجمات السيبرانية بين الدول -->
+            <div class="position-relative">
+                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem;">
+                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live 3D Map)
+                </div>
+                <div id="globe-container"></div>
+            </div>
+
             <!-- بطاقات الإحصائيات السريعة -->
             <div class="row g-3 mb-4">
                 <div class="col-4">
                     <div class="stat-card">
-                        <div class="text-muted small mb-1">إجمالي السجلات</div>
-                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan);">{{ stats.total }}</h3>
+                        <div class="text-white small mb-1 fw-bold">إجمالي السجلات</div>
+                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan); text-shadow: 0 0 10px var(--cyber-cyan);">{{ stats.total }}</h3>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-card">
-                        <div class="text-muted small mb-1">حالات حرجة</div>
-                        <h3 class="m-0 fw-bold text-danger" style="text-shadow: 0 0 10px rgba(239,68,68,0.5);">{{ stats.critical }}</h3>
+                        <div class="text-white small mb-1 fw-bold">حالات حرجة</div>
+                        <h3 class="m-0 fw-bold text-danger" style="text-shadow: 0 0 15px rgba(239,68,68,0.8);">{{ stats.critical }}</h3>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-card">
-                        <div class="text-muted small mb-1">نشاط الشهر الحالي</div>
-                        <h3 class="m-0 fw-bold text-warning" style="text-shadow: 0 0 10px rgba(234,179,8,0.5);">{{ stats.monthly }}</h3>
+                        <div class="text-white small mb-1 fw-bold">نشاط الشهر الحالي</div>
+                        <h3 class="m-0 fw-bold text-warning" style="text-shadow: 0 0 15px rgba(234,179,8,0.8);">{{ stats.monthly }}</h3>
                     </div>
                 </div>
             </div>
@@ -296,15 +303,9 @@
         <div id="form-section" class="card shadow-lg hidden">
             <form method="POST" action="{{ url_for('submit_report') }}" enctype="multipart/form-data">
                 
-                <div class="print-header">
-                    <h2>جمهورية العراق</h2>
-                    <h3>وزارة الداخلية / مديرية أمن وسلامة الوزارة</h3>
-                    <p>استمارة توثيق مخرجات الرصد الرسمية</p>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: rgba(0, 242, 254, 0.3) !important;">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: rgba(0, 242, 254, 0.4) !important;">
                     <h3 class="m-0 fw-bold text-white" style="font-size: 1.4rem;"><i class="fa-solid fa-shield-halved me-2" style="color: var(--cyber-cyan);"></i> استمارة مخرجات الرصد السيبراني المتقدم</h3>
-                    <button type="button" class="btn btn-outline-secondary btn-sm no-print text-white" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
                 </div>
 
                 <div class="row mb-3">
@@ -412,9 +413,9 @@
                     <textarea name="m_recommendation" rows="2" class="form-control" placeholder="اكتب الإجراءات اللاحقة المناسبة أو التوصية الفنية..."></textarea>
                 </div>
 
-                <div class="d-flex gap-2 no-print mt-4">
-                    <button type="submit" class="btn btn-cyber flex-grow-1 py-3 fs-6" onclick="setTimeout(()=>window.print(), 1000);">
-                        <i class="fas fa-save me-2"></i> حفظ البلاغ وطباعته رسمياً
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-cyber flex-grow-1 py-3 fs-6">
+                        <i class="fas fa-save me-2"></i> حفظ البلاغ وتوثيقه رسمياً
                     </button>
                 </div>
             </form>
@@ -424,10 +425,9 @@
         <div id="records-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;"><i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> السجلات المحفوظة ونظام منع التكرار</h3>
-                <button class="btn btn-outline-secondary btn-sm text-white" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
             </div>
             
-            <!-- حقل البحث السريع داخل السجلات -->
             <div class="mb-3">
                 <input type="text" id="record-search" class="form-control" placeholder="بحث سريع في السجلات (برقم البلاغ، المنصة مثل Dark Web، اسم القائم بالرصد، الرابط)..." onkeyup="filterRecords()">
             </div>
@@ -439,7 +439,7 @@
         <div id="monthly-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري الرسمي</h3>
-                <button class="btn btn-outline-secondary btn-sm text-white" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
             </div>
             <div id="monthly-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
@@ -449,9 +449,9 @@
     <!-- نافذة تغيير كلمة السر -->
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.98); border-color: var(--cyber-cyan) !important; border-radius: 16px;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
                 <form method="POST" action="{{ url_for('change_password') }}">
-                    <div class="modal-header border-bottom" style="border-color: rgba(0,242,254,0.3) !important;">
+                    <div class="modal-header border-bottom" style="border-color: rgba(0,242,254,0.4) !important;">
                         <h5 class="modal-title fw-bold text-white"><i class="fas fa-key me-2" style="color: var(--cyber-cyan);"></i> تغيير كلمة السر</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -469,21 +469,21 @@
                             <input type="password" name="confirm_password" class="form-control" required>
                         </div>
                     </div>
-                    <div class="modal-footer border-top" style="border-color: rgba(0,242,254,0.3) !important;">
+                    <div class="modal-footer border-top" style="border-color: rgba(0,242,254,0.4) !important;">
                         <button type="submit" class="btn btn-cyber">حفظ التغييرات</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إلغاء</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- نافذة إضافة مستخدم (للمشرف فقط) -->
+    <!-- نافذة إضافة مستخدم -->
     <div class="modal fade" id="addUserModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.98); border-color: #f59e0b !important; border-radius: 16px;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #f59e0b !important; border-radius: 16px;">
                 <form method="POST" action="{{ url_for('add_user') }}">
-                    <div class="modal-header border-bottom" style="border-color: rgba(245,158,11,0.3) !important;">
+                    <div class="modal-header border-bottom" style="border-color: rgba(245,158,11,0.4) !important;">
                         <h5 class="modal-title text-warning fw-bold"><i class="fas fa-user-plus me-2"></i> إضافة حساب مستخدم جديد</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -501,21 +501,21 @@
                             <input type="password" name="new_password" class="form-control" required>
                         </div>
                     </div>
-                    <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.3) !important;">
+                    <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.4) !important;">
                         <button type="submit" class="btn btn-warning text-dark fw-bold">إضافة الحساب رسمياً</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إلغاء</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- نافذة إدارة المستخدمين (للمشرف فقط) -->
+    <!-- نافذة إدارة المستخدمين -->
     {% if session.get('is_admin') %}
     <div class="modal fade" id="manageUsersModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.98); border-color: #ef4444 !important; border-radius: 16px;">
-                <div class="modal-header border-bottom" style="border-color: rgba(239,68,68,0.3) !important;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #ef4444 !important; border-radius: 16px;">
+                <div class="modal-header border-bottom" style="border-color: rgba(239,68,68,0.4) !important;">
                     <h5 class="modal-title text-danger fw-bold"><i class="fas fa-users-cog me-2"></i> إدارة المستخدمين المسجلين في النظام</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -539,13 +539,13 @@
                                         {% if udata.get('is_admin') %}
                                             <span class="badge bg-danger">مشرف (Admin)</span>
                                         {% else %}
-                                            <span class="badge bg-info text-dark">مستخدم مخول</span>
+                                            <span class="badge bg-info text-dark fw-bold">مستخدم مخول</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if uname != 'admin' %}
                                         <form action="{{ url_for('delete_user', username=uname) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم؟');">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i> حذف</button>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold"><i class="fas fa-trash-alt"></i> حذف</button>
                                         </form>
                                         {% else %}
                                         <span class="text-muted small">محمي</span>
@@ -557,8 +557,8 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top" style="border-color: rgba(239,68,68,0.3) !important;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                <div class="modal-footer border-top" style="border-color: rgba(239,68,68,0.4) !important;">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                 </div>
             </div>
         </div>
@@ -568,6 +568,143 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let allGlobalRecords = [];
+
+        // تشغيل الكرة الأرضية السيبرانية وثلاثية الأبعاد باستخدام Three.js
+        function initCyberGlobe() {
+            const container = document.getElementById('globe-container');
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 18;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // شبكة الكرة الأرضية السيبرانية
+            const globeRadius = 5;
+            const sphereGeometry = new THREE.SphereGeometry(globeRadius, 32, 32);
+            const sphereMaterial = new THREE.MeshBasicMaterial({
+                color: 0x0b1326,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.35
+            });
+            const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            scene.add(globe);
+
+            // هالة إضاءة محيطة بالكرة
+            const atmosGeometry = new THREE.SphereGeometry(globeRadius + 0.2, 32, 32);
+            const atmosMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00f2fe,
+                transparent: true,
+                opacity: 0.08,
+                wireframe: true
+            });
+            const atmosphere = new THREE.Mesh(atmosGeometry, atmosMaterial);
+            scene.add(atmosphere);
+
+            // نقاط عشوائية تمثل دول أو عُقد سيبرانية
+            const nodeCount = 35;
+            const nodePositions = [];
+            const nodeGroup = new THREE.Group();
+
+            for (let i = 0; i < nodeCount; i++) {
+                const phi = Math.acos(-1 + (2 * i) / nodeCount);
+                const theta = Math.sqrt(nodeCount * Math.PI) * phi;
+
+                const x = globeRadius * Math.cos(theta) * Math.sin(phi);
+                const y = globeRadius * Math.sin(theta) * Math.sin(phi);
+                const z = globeRadius * Math.cos(phi);
+
+                const vector = new THREE.Vector3(x, y, z);
+                nodePositions.push(vector);
+
+                const dotGeo = new THREE.SphereGeometry(0.08, 8, 8);
+                const dotMat = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0x00f2fe : 0xff3366 });
+                const dot = new THREE.Mesh(dotGeo, dotMat);
+                dot.position.copy(vector);
+                nodeGroup.add(dot);
+            }
+            scene.add(nodeGroup);
+
+            // خطوط الهجمات السيبرانية (Arcs) المتحركة بين العقد
+            const arcsGroup = new THREE.Group();
+            const arcLineMaterial = new THREE.LineBasicMaterial({
+                color: 0x00f2fe,
+                transparent: true,
+                opacity: 0.5
+            });
+
+            function createRandomArc() {
+                if (nodePositions.length < 2) return;
+                const startIdx = Math.floor(Math.random() * nodePositions.length);
+                let endIdx = Math.floor(Math.random() * nodePositions.length);
+                while (endIdx === startIdx) endIdx = Math.floor(Math.random() * nodePositions.length);
+
+                const p1 = nodePositions[startIdx];
+                const p2 = nodePositions[endIdx];
+
+                // نقطة منتصف مرفوعة للأعلى لعمل انحناء القوس خارج الكرة
+                const mid = p1.clone().add(p2).multiplyScalar(0.5);
+                mid.normalize().multiplyScalar(globeRadius + 2.5);
+
+                const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+                const points = curve.getPoints(50);
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+                // تغيير لون هجمات معينة للون الأحمر (حالات حرجة)
+                const isCritical = Math.random() > 0.6;
+                const mat = new THREE.LineBasicMaterial({
+                    color: isCritical ? 0xff4d4d : 0x00f2fe,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                const arcLine = new THREE.Line(geometry, mat);
+                arcsGroup.add(arcLine);
+
+                // إزالة الخط بعد مدة قصيرة لتتجدد الهجمات باستمرار
+                setTimeout(() => {
+                    arcsGroup.remove(arcLine);
+                    geometry.dispose();
+                    mat.dispose();
+                }, 2500);
+            }
+
+            scene.add(arcsGroup);
+
+            // حلقة تدوير وخلق هجمات جديدة دورياً
+            setInterval(() => {
+                for(let k=0; k<2; k++) createRandomArc();
+            }, 800);
+
+            // حركة دوران مستمرة للكرة
+            function animate() {
+                requestAnimationFrame(animate);
+                globe.rotation.y += 0.003;
+                atmosphere.rotation.y += 0.0035;
+                nodeGroup.rotation.y += 0.003;
+                arcsGroup.rotation.y += 0.003;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // التجاوب عند تغيير حجم النافذة
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // تشغيل الكرة عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', () => {
+            initCyberGlobe();
+        });
 
         function toggleSidebar() {
             document.getElementById('options-sidebar').classList.toggle('active');
@@ -579,6 +716,11 @@
             document.getElementById('records-section').classList.add('hidden');
             document.getElementById('monthly-section').classList.add('hidden');
             document.getElementById(sectionId).classList.remove('hidden');
+            
+            // إعادة ضبط حجم الـ WebGL لو رجعنا للرئيسية
+            if(sectionId === 'menu-section') {
+                setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
+            }
         }
 
         function loadRecords() {
@@ -594,16 +736,16 @@
         function renderRecordsList(records) {
             const container = document.getElementById('records-container');
             if(records.length === 0) {
-                container.innerHTML = '<p class="text-center text-muted py-4">لا توجد سجلات مطابقة أو محفوظة حتى الآن.</p>';
+                container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد سجلات مطابقة أو محفوظة حتى الآن.</p>';
                 return;
             }
             container.innerHTML = records.map(r => `
-                <div class="p-3 rounded mb-3 position-relative shadow-sm" style="background: rgba(2,6,23,0.9); border: 1px solid rgba(0,242,254,0.3);">
+                <div class="p-3 rounded mb-3 position-relative shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4);">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge ${r.severity && r.severity.includes('حرج') ? 'badge-critical' : 'badge-low'}">${r.severity || 'غير محدد'}</span>
-                            <span class="text-muted small">${r.timestamp}</span>
+                            <span class="text-white small fw-bold">${r.timestamp}</span>
                             {% if session.get('is_admin') %}
                             <form action="/delete-report/${r.report_id}" method="POST" class="d-inline ms-2" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف السجل"><i class="fas fa-trash-alt"></i></button>
@@ -611,9 +753,9 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="mb-1 text-white"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span> | <strong>التهديد:</strong> ${r.threatType}</div>
-                    <div class="text-info text-break small mb-2"><strong>الرابط المرصود:</strong> <a href="${r.url}" target="_blank" class="text-light text-decoration-underline">${r.url}</a></div>
-                    ${r.description ? `<div class="text-light small p-2 rounded mt-1" style="background: rgba(15,23,42,0.9); border: 1px solid rgba(255,255,255,0.1);"><strong>الوصف:</strong> ${r.description}</div>` : ''}
+                    <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span> | <strong>التهديد:</strong> ${r.threatType}</div>
+                    <div class="text-info text-break small mb-2 fw-bold"><strong>الرابط المرصود:</strong> <a href="${r.url}" target="_blank" class="text-cyan text-decoration-underline" style="color: var(--cyber-cyan);">${r.url}</a></div>
+                    ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${r.description}</div>` : ''}
                 </div>
             `).join('');
         }
@@ -638,14 +780,14 @@
                 .then(data => {
                     const container = document.getElementById('monthly-container');
                     if(data.monthly_reports.length === 0) {
-                        container.innerHTML = '<p class="text-center text-muted py-4">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
+                        container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
                         return;
                     }
                     container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
-                        <li class="list-group-item text-light border-secondary d-flex justify-content-between align-items-center py-3" style="background: rgba(2,6,23,0.9);">
+                        <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-3 fw-bold" style="background: rgba(2,6,23,0.95);">
                             <div>
                                 <span class="fw-bold" style="color: var(--cyber-cyan);">${r.report_id}</span> 
-                                <span class="mx-2 text-muted">|</span> <span class="text-white">${r.officer}</span> 
+                                <span class="mx-2 text-white">|</span> <span class="text-white">${r.officer}</span> 
                                 <span class="badge bg-secondary ms-2">${r.threatType}</span>
                                 <span class="badge bg-dark border border-info text-info ms-2">${r.platform}</span>
                             </div>
@@ -667,7 +809,7 @@
                     img.style.height = '75px';
                     img.style.objectFit = 'cover';
                     img.style.borderRadius = '8px';
-                    img.style.border = '1px solid var(--cyber-cyan)';
+                    img.style.border = '2px solid var(--cyber-cyan)';
                     preview.appendChild(img);
                 }
                 reader.readAsDataURL(file);
