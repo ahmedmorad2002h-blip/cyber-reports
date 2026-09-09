@@ -167,13 +167,14 @@
 
         #globe-container {
             width: 100%;
-            height: 320px;
+            height: 350px;
             position: relative;
             margin: 15px 0;
             border-radius: 16px;
             overflow: hidden;
-            background: radial-gradient(circle, rgba(11,18,33,0.8) 0%, rgba(3,7,18,0.95) 100%);
-            border: 1px solid rgba(0, 242, 254, 0.3);
+            background: radial-gradient(circle, rgba(11,18,33,0.8) 0%, rgba(3,7,18,0.98) 100%);
+            border: 1px solid rgba(0, 242, 254, 0.4);
+            box-shadow: inset 0 0 30px rgba(0, 242, 254, 0.2);
         }
 
         .hidden { display: none !important; }
@@ -331,7 +332,7 @@
             
             <div class="position-relative">
                 <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem;">
-                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live 3D Map)
+                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live 3D Cyber Globe)
                 </div>
                 <div id="globe-container"></div>
             </div>
@@ -778,32 +779,112 @@
             });
         }
 
+        // --- دالة أنيميشن الكرة الأرضية السيبرانية المتقدمة ---
         function initCyberGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
 
+            // تنظيف الحاوية لمنع التكرار
+            container.innerHTML = '';
+
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 18;
+            camera.position.z = 16;
 
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
 
-            const globeRadius = 5;
-            const globe = new THREE.Mesh(
-                new THREE.SphereGeometry(globeRadius, 32, 32),
-                new THREE.MeshBasicMaterial({ color: 0x0b1326, wireframe: true, transparent: true, opacity: 0.35 })
-            );
-            scene.add(globe);
+            const globeGroup = new THREE.Group();
+            scene.add(globeGroup);
 
+            // 1. الكرة الداخلية المضيئة
+            const innerGeo = new THREE.SphereGeometry(4.8, 32, 32);
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: 0x051937,
+                transparent: true,
+                opacity: 0.85
+            });
+            const innerGlobe = new THREE.Mesh(innerGeo, innerMat);
+            globeGroup.add(innerGlobe);
+
+            // 2. الشبكة الخارجية السيبرانية
+            const outerGeo = new THREE.SphereGeometry(5, 30, 30);
+            const outerMat = new THREE.MeshBasicMaterial({
+                color: 0x00f2fe,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.35
+            });
+            const outerGlobe = new THREE.Mesh(outerGeo, outerMat);
+            globeGroup.add(outerGlobe);
+
+            // 3. نقاط رادار ومواقع سيبرانية على سطح الكرة
+            const pointsGeo = new THREE.BufferGeometry();
+            const pointsCount = 120;
+            const posArray = new Float32Array(pointsCount * 3);
+
+            for (let i = 0; i < pointsCount * 3; i += 3) {
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                const r = 5.05;
+
+                posArray[i] = r * Math.sin(phi) * Math.cos(theta);
+                posArray[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+                posArray[i + 2] = r * Math.cos(phi);
+            }
+
+            pointsGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const pointsMat = new THREE.PointsMaterial({
+                size: 0.2,
+                color: 0xff3366,
+                transparent: true,
+                opacity: 0.9
+            });
+            const cyberPoints = new THREE.Points(pointsGeo, pointsMat);
+            globeGroup.add(cyberPoints);
+
+            // 4. حلقة مدارية خارجية
+            const ringGeo = new THREE.RingGeometry(6.2, 6.35, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x00f2fe,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.5
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2.5;
+            scene.add(ring);
+
+            // ميلان خفيف للكرة
+            globeGroup.rotation.z = 0.25;
+
+            // حلقة الدوران والأنيميشن
             function animate() {
                 requestAnimationFrame(animate);
-                globe.rotation.y += 0.003;
+
+                globeGroup.rotation.y += 0.004;
+                outerGlobe.rotation.y += 0.002;
+                ring.rotation.z -= 0.003;
+
+                // تأثير نبض للنقاط المضيئة
+                const time = Date.now() * 0.003;
+                pointsMat.size = 0.18 + Math.sin(time) * 0.05;
+
                 renderer.render(scene, camera);
             }
             animate();
+
+            // ضبط الحجم عند تغيير نافذة المتصفح
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
         }
 
         window.addEventListener('DOMContentLoaded', () => {
