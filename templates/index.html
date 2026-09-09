@@ -2,7 +2,6 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مديرية أمن وسلامة الوزارة - منصة الرصد والتحقيقات السيبرانية</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -366,12 +365,21 @@
                 <button class="btn btn-cyber py-3 fw-bold fs-6" onclick="showSection('form-section')">
                     <i class="fa-solid fa-file-shield me-2"></i> ملء استمارة مخرجات رصد جديدة
                 </button>
+
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadRecords()">
-                    <i class="fa-solid fa-database me-2"></i> السجلات المحفوظة ونظام منع التكرار
+                    <i class="fa-solid fa-database me-2"></i> 
+                    {% if session.get('is_admin') %}
+                        السجلات المحفوظة ونظام منع التكرار (كافة البلاغات)
+                    {% else %}
+                        سجل البلاغات الخاصة بي
+                    {% endif %}
                 </button>
+
+                {% if session.get('is_admin') %}
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadMonthlyLog()">
-                    <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي
+                    <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي (Admin Only)
                 </button>
+                {% endif %}
             </div>
         </div>
 
@@ -397,7 +405,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">الاسم الثلاثي:</label>
-                        <input type="text" name="user_full_name" class="form-control" placeholder="أدخل اسمك الثلاثي..." required>
+                        <input type="text" name="user_full_name" class="form-control" value="{{ session.get('fullname', '') }}" placeholder="أدخل اسمك الثلاثي..." required>
                     </div>
                 </div>
 
@@ -497,25 +505,46 @@
 
         <div id="records-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;"><i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> السجلات المحفوظة ونظام منع التكرار</h3>
+                <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;">
+                    <i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> 
+                    {% if session.get('is_admin') %}السجلات المحفوظة الشاملة{% else %}سجل البلاغات الخاصة بي{% endif %}
+                </h3>
                 <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
             </div>
             
             <div class="mb-3">
-                <input type="text" id="record-search" class="form-control" placeholder="بحث سريع في السجلات (برقم البلاغ، المنصة مثل Dark Web، اسم القائم بالرصد، الرابط)..." onkeyup="filterRecords()">
+                <input type="text" id="record-search" class="form-control" placeholder="بحث سريع في السجلات (برقم البلاغ، المنصة، اسم الحساب، الرابط)..." onkeyup="filterRecords()">
             </div>
 
             <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
+        {% if session.get('is_admin') %}
         <div id="monthly-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري الرسمي</h3>
+                <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري الرسمي الشامل</h3>
                 <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
             </div>
             <div id="monthly-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
+        {% endif %}
 
+    </div>
+
+    <!-- نافذة التنبيه الصوتي والبصري عند وصول بلاغ جديد -->
+    <div id="cyber-alert-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999; display: none;">
+        <div class="toast show text-white p-3 shadow-lg" style="background: rgba(3, 7, 18, 0.98); border: 2px solid #ef4444; border-radius: 14px; box-shadow: 0 0 30px rgba(239, 68, 68, 0.8) !important;">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-bell fa-bounce text-danger fs-3 me-3"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-danger">🚨 تنبيه سيبراني عاجل!</h6>
+                        <small class="fw-bold text-white" id="cyber-alert-msg">تم تسجيل بلاغ جديد في المنظومة الآن.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-3" onclick="document.getElementById('cyber-alert-toast').style.display='none'"></button>
+            </div>
+        </div>
     </div>
 
     <!-- نافذة عرض تفاصيل البلاغ والطباعة والمشاركة -->
@@ -603,19 +632,15 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">اسم المستخدم (للتسجيل)</label>
-                            <input type="text" name="new_username" class="form-control" required placeholder="مثال: officer_ahmed" autocomplete="username">
+                            <input type="text" name="new_username" class="form-control" required placeholder="مثال: officer_ahmed">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">الاسم الكامل</label>
-                            <input type="text" name="new_fullname" class="form-control" placeholder="مثال: أحمد جاسم">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">الرتبة / الصفة الوظيفية</label>
-                            <input type="text" name="new_rank" class="form-control" placeholder="مثال: مفوض / رئيس عرفاء">
+                            <label class="form-label">الاسم الكامل أو الرتبة والاسم</label>
+                            <input type="text" name="new_fullname" class="form-control" placeholder="مثال: مفوض أحمد جاسم">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">كلمة المرور المؤقتة</label>
-                            <input type="password" name="new_password" class="form-control" required autocomplete="new-password">
+                            <input type="password" name="new_password" class="form-control" required>
                         </div>
                     </div>
                     <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.4) !important;">
@@ -642,7 +667,6 @@
                                 <tr>
                                     <th>اسم المستخدم</th>
                                     <th>الاسم الكامل</th>
-                                    <th>الرتبة</th>
                                     <th>نوع الصلاحية</th>
                                     <th>الإجراء</th>
                                 </tr>
@@ -652,7 +676,6 @@
                                 <tr>
                                     <td><code>{{ uname }}</code></td>
                                     <td>{{ udata.get('fullname', 'غير محدد') }}</td>
-                                    <td>{{ udata.get('rank', '-') }}</td>
                                     <td>
                                         {% if udata.get('is_admin') %}
                                             <span class="badge bg-danger">مشرف (Admin)</span>
@@ -685,8 +708,97 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // المتغيرات الخاصة بالصلاحيات والمستخدم الحالي
+        const IS_ADMIN = {{ 'true' if session.get('is_admin') else 'false' }};
+        const CURRENT_USER_FULLNAME = "{{ session.get('fullname', '') }}";
+
         let allGlobalRecords = [];
         let currentSelectedReport = null;
+        let lastKnownTotalReports = null;
+
+        // --- دالة توليد صوت التنبيه السيبراني (Cyber Siren) ---
+        function playCyberAlertSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const osc1 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(880, audioCtx.currentTime);
+                osc1.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.25);
+                gain1.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                osc1.connect(gain1);
+                gain1.connect(audioCtx.destination);
+                osc1.start();
+                osc1.stop(audioCtx.currentTime + 0.25);
+
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                    gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.start();
+                    osc2.stop(audioCtx.currentTime + 0.3);
+                }, 150);
+
+            } catch (e) {
+                console.log("الصوت محجوب بواسطة متصفح المستخدم حتى التفاعل مع الصفحة:", e);
+            }
+        }
+
+        // --- دالة إظهار التنبيه البصري والصوتي ---
+        function triggerNewReportNotification(reportId) {
+            playCyberAlertSound();
+            
+            const toast = document.getElementById('cyber-alert-toast');
+            const msg = document.getElementById('cyber-alert-msg');
+            
+            if (msg) {
+                msg.innerText = `تم تسجيل بلاغ جديد برقم (${reportId}) الآن!`;
+            }
+            
+            if (toast) {
+                toast.style.display = 'block';
+            }
+            
+            setTimeout(() => {
+                if (toast) toast.style.display = 'none';
+            }, 7000);
+        }
+
+        // --- نظام المراقبة الحية (Check for New Reports Live) ---
+        function monitorNewReports() {
+            fetch('/get-records')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.records) {
+                        const currentCount = data.records.length;
+                        
+                        if (lastKnownTotalReports !== null && currentCount > lastKnownTotalReports) {
+                            const newestReport = data.records[0];
+                            // إشعار بالبلاغ الجديد إذا كان المشرف هو من يشاهد أو أن البلاغ مخصص للمستخدم الحالي
+                            if (IS_ADMIN || (newestReport.officer && newestReport.officer.includes(CURRENT_USER_FULLNAME))) {
+                                triggerNewReportNotification(newestReport.report_id);
+                            }
+                            
+                            const recordsSection = document.getElementById('records-section');
+                            if (recordsSection && !recordsSection.classList.contains('hidden')) {
+                                loadRecords();
+                            }
+                        }
+                        
+                        lastKnownTotalReports = currentCount;
+                    }
+                })
+                .catch(err => console.error("خطأ أثناء مراقبة البلاغات الجديدة:", err));
+        }
+
+        setInterval(monitorNewReports, 5000);
 
         function copyLink(url, btnElement) {
             if (!url) return;
@@ -824,6 +936,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
+            monitorNewReports();
 
             const urlParams = new URLSearchParams(window.location.search);
             const viewId = urlParams.get('view_id');
@@ -850,7 +963,10 @@
             document.getElementById('menu-section').classList.add('hidden');
             document.getElementById('form-section').classList.add('hidden');
             document.getElementById('records-section').classList.add('hidden');
-            document.getElementById('monthly-section').classList.add('hidden');
+            
+            const monthlySec = document.getElementById('monthly-section');
+            if (monthlySec) monthlySec.classList.add('hidden');
+
             document.getElementById(sectionId).classList.remove('hidden');
             
             if(sectionId === 'menu-section') {
@@ -858,12 +974,20 @@
             }
         }
 
+        // تحميل البلاغات وتصفيتها حسب صلاحة المستخدم (Admin يرى الكل، المستخدم يرى بلاغاته فقط)
         function loadRecords() {
             showSection('records-section');
             fetch('/get-records')
                 .then(res => res.json())
                 .then(data => {
-                    allGlobalRecords = data.records;
+                    let records = data.records || [];
+                    
+                    if (!IS_ADMIN) {
+                        // تصفية السجلات ليظهر فقط ما قام المستخدم الحالي بقديمه
+                        records = records.filter(r => r.officer && r.officer.includes(CURRENT_USER_FULLNAME));
+                    }
+                    
+                    allGlobalRecords = records;
                     renderRecordsList(allGlobalRecords);
                 });
         }
@@ -871,7 +995,7 @@
         function renderRecordsList(records) {
             const container = document.getElementById('records-container');
             if(records.length === 0) {
-                container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد سجلات مطابقة أو محفوظة حتى الآن.</p>';
+                container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد سجلات خاصة بك محفوظة حتى الآن.</p>';
                 return;
             }
             container.innerHTML = records.map(r => `
@@ -912,12 +1036,19 @@
             renderRecordsList(filtered);
         }
 
+        // تحميل سجل النشاط الشهري الكامل (متاح للـ Admin فقط)
         function loadMonthlyLog() {
+            if (!IS_ADMIN) {
+                alert('عذراً، الاطلاع على سجل النشاط الشهري الكامل مخصص لمدير النظام (Admin) فقط.');
+                return;
+            }
             showSection('monthly-section');
             fetch('/monthly-log')
                 .then(res => res.json())
                 .then(data => {
                     const container = document.getElementById('monthly-container');
+                    if(!container) return;
+                    
                     if(data.monthly_reports.length === 0) {
                         container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
                         return;
@@ -941,25 +1072,6 @@
             const bodyContainer = document.getElementById('report-content-body');
             const attachmentsContainer = document.getElementById('report-attachments-print-area');
 
-            const tech = report.tech_indicators || {};
-            let techDetailsHtml = '';
-            if (Object.values(tech).some(val => val && val.trim() !== '')) {
-                techDetailsHtml = `
-                    <div class="p-3 my-3 rounded" style="background: rgba(15,23,42,0.8); border: 1px solid var(--cyber-cyan);">
-                        <h6 class="fw-bold text-info mb-2"><i class="fas fa-microchip me-1"></i> المؤشرات الفنية المرصودة (Technical Indicators):</h6>
-                        <div class="row g-2 small">
-                            ${tech.ip ? `<div class="col-md-6"><strong>IP/Node:</strong> <code>${tech.ip}</code></div>` : ''}
-                            ${tech.domain ? `<div class="col-md-6"><strong>Domain/Onion:</strong> <code>${tech.domain}</code></div>` : ''}
-                            ${tech.hash ? `<div class="col-md-6"><strong>Hash:</strong> <code>${tech.hash}</code></div>` : ''}
-                            ${tech.email ? `<div class="col-md-6"><strong>Email:</strong> <code>${tech.email}</code></div>` : ''}
-                            ${tech.username ? `<div class="col-md-6"><strong>ID/User:</strong> <code>${tech.username}</code></div>` : ''}
-                            ${tech.ioc ? `<div class="col-md-6"><strong>IOCs:</strong> <code>${tech.ioc}</code></div>` : ''}
-                            ${tech.other ? `<div class="col-12"><strong>تفاصيل أخرى:</strong> ${tech.other}</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }
-
             bodyContainer.innerHTML = `
                 <div class="row mb-2"><div class="col-6"><strong>رقم البلاغ:</strong> ${report.report_id}</div><div class="col-6"><strong>تاريخ الرصد:</strong> ${report.timestamp}</div></div>
                 <div class="row mb-2"><div class="col-6"><strong>القائم بالرصد:</strong> ${report.officer}</div><div class="col-6"><strong>المنصة المستهدفة:</strong> ${report.platform}</div></div>
@@ -972,7 +1084,6 @@
                 </div>
                 <div class="row mb-2"><div class="col-6"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</div><div class="col-6"><strong>نوع التهديد:</strong> ${report.threatType}</div></div>
                 <div class="row mb-2"><div class="col-12"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</div></div>
-                ${techDetailsHtml}
                 <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
             `;
 
