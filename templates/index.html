@@ -182,57 +182,53 @@
 
         .hidden { display: none !important; }
 
-        /* تعديلات الطباعة لضمان خلوها من الفراغات والصفحات البيضاء وظهور الصور بوضوح */
+        /* تعديلات الطباعة المحسنة لضمان طباعة التقرير الكامل مع الصور بدون فراغات */
         @media print {
             body * {
                 display: none !important;
             }
-            #reportDetailModal, #reportDetailModal * {
+            #printable-report-area, #printable-report-area * {
                 display: block !important;
                 visibility: visible !important;
+                color: #000000 !important;
+                background: transparent !important;
             }
-            #reportDetailModal {
+            #printable-report-area {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
-                height: auto !important;
-                background: white !important;
-                z-index: 999999 !important;
-            }
-            .modal-dialog {
-                max-width: 100% !important;
-                width: 100% !important;
                 margin: 0 !important;
+                padding: 15px !important;
+                background: #ffffff !important;
             }
-            .modal-content {
-                border: none !important;
-                box-shadow: none !important;
-                background: white !important;
-                color: black !important;
-            }
-            #printable-report-area, #printable-report-area * {
-                visibility: visible !important;
-                color: black !important;
-                background: white !important;
-            }
-            #printable-report-area {
+            #printable-report-area table {
+                display: table !important;
                 width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
+                border-collapse: collapse !important;
             }
-            .no-print-section, .modal-header, .modal-footer, nav, .sidebar, .modal-backdrop {
-                display: none !important;
+            #printable-report-area tr {
+                display: table-row !important;
+            }
+            #printable-report-area td, #printable-report-area th {
+                display: table-cell !important;
+                border: 1px solid #333333 !important;
+                padding: 8px !important;
+                color: #000000 !important;
             }
             .page-break-page {
                 page-break-after: always !important;
                 break-after: page !important;
-                margin-top: 20px !important;
+                page-break-inside: avoid !important;
+                margin-top: 30px !important;
             }
             img {
                 max-width: 100% !important;
                 height: auto !important;
+                display: block !important;
+                margin: 15px auto !important;
                 page-break-inside: avoid !important;
+                border: 1px solid #333 !important;
             }
         }
     </style>
@@ -503,13 +499,13 @@
                     <!-- منطقة الطباعة المخصصة -->
                     <div id="printable-report-area">
                         <div class="text-center mb-4 pb-2 border-bottom">
-                            <h4 class="fw-bold">جمهورية العراق</h4>
-                            <h5 class="fw-bold">مديرية أمن وسلامة الوزارة</h5>
-                            <h6 class="fw-bold text-info">[استمارة رصد وتحقيق سيبراني معتمدة]</h6>
+                            <h4 class="fw-bold" style="color:#000;">جمهورية العراق</h4>
+                            <h5 class="fw-bold" style="color:#000;">مديرية أمن وسلامة الوزارة</h5>
+                            <h6 class="fw-bold" style="color:#000;">[استمارة رصد وتحقيق سيبراني معتمدة]</h6>
                         </div>
 
                         <div id="report-content-body" class="mb-4">
-                            <!-- سيتم تعبئة تفاصيل البلاغ هنا ديناميكياً -->
+                            <!-- سيتم تعبئة تفاصيل البلاغ هنا ديناميكياً على شكل جدول رسمي -->
                         </div>
 
                         <!-- الصور المرفقة: كل صورة في صفحة مستقلة مع تسمية مرفق 1، مرفق 2، إلخ -->
@@ -894,24 +890,41 @@
             const attachmentsContainer = document.getElementById('report-attachments-print-area');
 
             bodyContainer.innerHTML = `
-                <div class="row mb-2"><div class="col-6"><strong>رقم البلاغ:</strong> ${report.report_id}</div><div class="col-6"><strong>تاريخ الرصد:</strong> ${report.timestamp}</div></div>
-                <div class="row mb-2"><div class="col-6"><strong>القائم بالرصد:</strong> ${report.officer}</div><div class="col-6"><strong>المنصة المستهدفة:</strong> ${report.platform}</div></div>
-                <div class="row mb-2"><div class="col-12"><strong>رابط المبلغ عنه (Target URL):</strong> <a href="${report.url}" target="_blank">${report.url}</a></div></div>
-                <div class="row mb-2"><div class="col-6"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</div><div class="col-6"><strong>نوع التهديد:</strong> ${report.threatType}</div></div>
-                <div class="row mb-2"><div class="col-12"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</div></div>
-                <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; color: #000;">
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 10px; width: 50%;"><strong>رقم البلاغ:</strong> ${report.report_id}</td>
+                        <td style="border: 1px solid #333; padding: 10px; width: 50%;"><strong>تاريخ الرصد:</strong> ${report.timestamp}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 10px;"><strong>القائم بالرصد:</strong> ${report.officer}</td>
+                        <td style="border: 1px solid #333; padding: 10px;"><strong>المنصة المستهدفة:</strong> ${report.platform}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="border: 1px solid #333; padding: 10px;"><strong>رابط المبلغ عنه (Target URL):</strong> <a href="${report.url}" target="_blank">${report.url}</a></td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 10px;"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</td>
+                        <td style="border: 1px solid #333; padding: 10px;"><strong>نوع التهديد:</strong> ${report.threatType}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="border: 1px solid #333; padding: 10px;"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 10px;"><strong>مستوى الخطورة:</strong> ${report.severity}</td>
+                        <td style="border: 1px solid #333; padding: 10px;"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</td>
+                    </tr>
+                </table>
             `;
 
             let imagesList = report.evidence || []; 
-            
             let imagesHtml = '';
             if (imagesList.length > 0) {
                 imagesList.forEach((imgSrc, idx) => {
                     imagesHtml += `
-                        <div class="page-break-page text-center my-4">
+                        <div class="page-break-page text-center my-4" style="page-break-after: always; break-after: page;">
                             <h4 class="fw-bold mb-3" style="color: #000;">مرفق ${idx + 1}</h4>
-                            <img src="${imgSrc}" style="max-width: 100%; max-height: 600px; object-fit: contain; border: 2px solid #333; border-radius: 8px; display: block; margin: 0 auto;" alt="مرفق ${idx + 1}">
-                            <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
+                            <img src="${imgSrc}" style="max-width: 100%; max-height: 650px; object-fit: contain; border: 2px solid #333; border-radius: 8px; display: block; margin: 0 auto;" alt="مرفق ${idx + 1}">
+                            <div class="mt-3 text-muted small" style="color: #555;">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
                         </div>
                     `;
                 });
@@ -919,8 +932,8 @@
                 imagesHtml = `
                     <div class="page-break-page text-center my-4">
                         <h4 class="fw-bold mb-3" style="color: #000;">مرفق 1</h4>
-                        <p class="text-muted">لا توجد صور مرفقة مع هذا البلاغ أو أن الملفات لم تُحفظ كصور.</p>
-                        <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
+                        <p class="text-muted" style="color: #555;">لا توجد صور مرفقة مع هذا البلاغ.</p>
+                        <div class="mt-3 text-muted small" style="color: #555;">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
                     </div>
                 `;
             }
@@ -970,10 +983,9 @@
                 <style>
                     body { font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; color: #000; background: #fff; padding: 20px; }
                     h4, h5, h6 { color: #000; font-weight: bold; }
-                    img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #ccc; }
-                    .row { display: flex; flex-wrap: wrap; margin-bottom: 10px; }
-                    .col-6 { width: 50%; float: right; }
-                    .col-12 { width: 100%; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th, td { border: 1px solid #333; padding: 8px; text-align: right; }
+                    img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #ccc; page-break-after: always; }
                 </style>
                 </head>
                 <body>
