@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مديرية أمن وسلامة الوزارة - منصة الرصد والتحقيقات السيبرانية</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -602,15 +603,19 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">اسم المستخدم (للتسجيل)</label>
-                            <input type="text" name="new_username" class="form-control" required placeholder="مثال: officer_ahmed">
+                            <input type="text" name="new_username" class="form-control" required placeholder="مثال: officer_ahmed" autocomplete="username">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">الاسم الكامل أو الرتبة والاسم</label>
-                            <input type="text" name="new_fullname" class="form-control" placeholder="مثال: مفوض أحمد جاسم">
+                            <label class="form-label">الاسم الكامل</label>
+                            <input type="text" name="new_fullname" class="form-control" placeholder="مثال: أحمد جاسم">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">الرتبة / الصفة الوظيفية</label>
+                            <input type="text" name="new_rank" class="form-control" placeholder="مثال: مفوض / رئيس عرفاء">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">كلمة المرور المؤقتة</label>
-                            <input type="password" name="new_password" class="form-control" required>
+                            <input type="password" name="new_password" class="form-control" required autocomplete="new-password">
                         </div>
                     </div>
                     <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.4) !important;">
@@ -637,6 +642,7 @@
                                 <tr>
                                     <th>اسم المستخدم</th>
                                     <th>الاسم الكامل</th>
+                                    <th>الرتبة</th>
                                     <th>نوع الصلاحية</th>
                                     <th>الإجراء</th>
                                 </tr>
@@ -646,6 +652,7 @@
                                 <tr>
                                     <td><code>{{ uname }}</code></td>
                                     <td>{{ udata.get('fullname', 'غير محدد') }}</td>
+                                    <td>{{ udata.get('rank', '-') }}</td>
                                     <td>
                                         {% if udata.get('is_admin') %}
                                             <span class="badge bg-danger">مشرف (Admin)</span>
@@ -815,7 +822,6 @@
             });
         }
 
-        // عند فتح الصفحة يتم فحص ما إذا كان هناك رابط بلاغ مشارَك لفتحه أوتوماتيكياً
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
 
@@ -935,6 +941,25 @@
             const bodyContainer = document.getElementById('report-content-body');
             const attachmentsContainer = document.getElementById('report-attachments-print-area');
 
+            const tech = report.tech_indicators || {};
+            let techDetailsHtml = '';
+            if (Object.values(tech).some(val => val && val.trim() !== '')) {
+                techDetailsHtml = `
+                    <div class="p-3 my-3 rounded" style="background: rgba(15,23,42,0.8); border: 1px solid var(--cyber-cyan);">
+                        <h6 class="fw-bold text-info mb-2"><i class="fas fa-microchip me-1"></i> المؤشرات الفنية المرصودة (Technical Indicators):</h6>
+                        <div class="row g-2 small">
+                            ${tech.ip ? `<div class="col-md-6"><strong>IP/Node:</strong> <code>${tech.ip}</code></div>` : ''}
+                            ${tech.domain ? `<div class="col-md-6"><strong>Domain/Onion:</strong> <code>${tech.domain}</code></div>` : ''}
+                            ${tech.hash ? `<div class="col-md-6"><strong>Hash:</strong> <code>${tech.hash}</code></div>` : ''}
+                            ${tech.email ? `<div class="col-md-6"><strong>Email:</strong> <code>${tech.email}</code></div>` : ''}
+                            ${tech.username ? `<div class="col-md-6"><strong>ID/User:</strong> <code>${tech.username}</code></div>` : ''}
+                            ${tech.ioc ? `<div class="col-md-6"><strong>IOCs:</strong> <code>${tech.ioc}</code></div>` : ''}
+                            ${tech.other ? `<div class="col-12"><strong>تفاصيل أخرى:</strong> ${tech.other}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
             bodyContainer.innerHTML = `
                 <div class="row mb-2"><div class="col-6"><strong>رقم البلاغ:</strong> ${report.report_id}</div><div class="col-6"><strong>تاريخ الرصد:</strong> ${report.timestamp}</div></div>
                 <div class="row mb-2"><div class="col-6"><strong>القائم بالرصد:</strong> ${report.officer}</div><div class="col-6"><strong>المنصة المستهدفة:</strong> ${report.platform}</div></div>
@@ -947,6 +972,7 @@
                 </div>
                 <div class="row mb-2"><div class="col-6"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</div><div class="col-6"><strong>نوع التهديد:</strong> ${report.threatType}</div></div>
                 <div class="row mb-2"><div class="col-12"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</div></div>
+                ${techDetailsHtml}
                 <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
             `;
 
@@ -974,7 +1000,6 @@
             }
             attachmentsContainer.innerHTML = imagesHtml;
 
-            // إعداد زر المشاركة الذكي للمدير (ينشئ رابطاً شاملاً ومباشراً للبلاغ)
             const shareBtn = document.getElementById('share-report-btn');
             shareBtn.onclick = function() {
                 const shareUrl = `${window.location.origin}${window.location.pathname}?view_id=${report.report_id}`;
