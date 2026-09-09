@@ -1,70 +1,86 @@
 import os
 import json
+import sqlite3
+import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'cyber_security_ministry_secret_key_secure_2026'
 
-UPLOAD_FOLDER = 'static/uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+DB_FILE = 'database.db'
 
-USERS_FILE = 'users.json'
-REPORTS_FILE = 'reports.json'
+def get_db():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    if not os.path.exists(USERS_FILE):
-        default_users = {
-            "admin": {
-                "password": generate_password_hash("admin123"),
-                "is_admin": True,
-                "fullname": "مدير النظام الرئيسي",
-                "rank": "مدير فني"
-            }
-        }
-        with open(USERS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(default_users, f, ensure_ascii=False, indent=4)
-            
-    if not os.path.exists(REPORTS_FILE):
-        with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump([], f, ensure_ascii=False, indent=4)
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # جدول المستخدمين
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL,
+            is_admin INTEGER NOT NULL,
+            fullname TEXT,
+            rank TEXT
+        )
+    ''')
+    
+    # جدول البلاغات
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reports (
+            report_id TEXT PRIMARY KEY,
+            officer TEXT,
+            source TEXT,
+            platform TEXT,
+            url TEXT,
+            accountName TEXT,
+            datetime TEXT,
+            description TEXT,
+            threatType TEXT,
+            severity TEXT,
+            recommendation TEXT,
+            timestamp TEXT,
+            evidence TEXT,
+            tech_indicators TEXT
+        )
+    ''')
+    
+    # التحقق من وجود حساب المشرف الأساسي
+    cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
+    if not cursor.fetchone():
+        hashed_pw = generate_password_hash("admin123")
+        cursor.execute('''
+            INSERT INTO users (username, password, is_admin, fullname, rank)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('admin', hashed_pw, 1, 'مدير النظام الرئيسي', 'مدير فني'))
+        
+    conn.commit()
+    conn.close()
 
 init_db()
-
-def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
-
-def save_users(users):
-    with open(USERS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(users, f, ensure_ascii=False, indent=4)
-
-def load_reports():
-    if os.path.exists(REPORTS_FILE):
-        with open(REPORTS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return []
-
-def save_reports(reports):
-    with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(reports, f, ensure_ascii=False, indent=4)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        users = load_users()
         
-        if username in users and check_password_hash(users[username]['password'], password):
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user['password'], password):
             session['user'] = username
-            session['is_admin'] = users[username].get('is_admin', False)
-            session['fullname'] = users[username].get('fullname', username)
+            session['is_admin'] = bool(user['is_admin'])
+            session['fullname'] = user['fullname'] or username
             return redirect(url_for('index'))
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
     return render_template('login.html')
@@ -79,7 +95,30 @@ def index():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    reports = load_reports()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM reports')
+    rows = cursor.fetchall()
+    
+    reports = []
+    for r in rows:
+        reports.append({
+            "report_id": r['report_id'],
+            "officer": r['officer'],
+            "source": r['source'],
+            "platform": r['platform'],
+            "url": r['url'],
+            "accountName": r['accountName'],
+            "datetime": r['datetime'],
+            "description": r['description'],
+            "threatType": r['threatType'],
+            "severity": r['severity'],
+            "recommendation": r['recommendation'],
+            "timestamp": r['timestamp'],
+            "evidence": json.loads(r['evidence']) if r['evidence'] else [],
+            "tech_indicators": json.loads(r['tech_indicators']) if r['tech_indicators'] else {}
+        })
+    
     total_reports = len(reports)
     critical_reports = sum(1 for r in reports if 'حرج' in r.get('severity', ''))
     monthly_count = sum(1 for r in reports if r.get('timestamp', '').startswith(datetime.now().strftime('%Y-%m')))
@@ -90,7 +129,17 @@ def index():
         'monthly': monthly_count
     }
     
-    users = load_users() if session.get('is_admin') else {}
+    users = {}
+    if session.get('is_admin'):
+        cursor.execute('SELECT username, is_admin, fullname, rank FROM users')
+        for u in cursor.fetchall():
+            users[u['username']] = {
+                "is_admin": bool(u['is_admin']),
+                "fullname": u['fullname'],
+                "rank": u['rank']
+            }
+    conn.close()
+    
     return render_template('index.html', stats=stats, users=users)
 
 @app.route('/submit-report', methods=['POST'])
@@ -98,46 +147,63 @@ def submit_report():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    reports = load_reports()
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
+    # معالجة الصور وتحويلها مباشرة إلى Base64 لتجنب الحذف على الاستضافات السحابية
     files = request.files.getlist('evidence_files')
-    filenames = []
+    evidence_base64 = []
     for file in files:
         if file and file.filename:
-            filename = secure_filename(file.filename)
-            unique_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-            filenames.append(unique_name)
+            file_bytes = file.read()
+            encoded = base64.b64encode(file_bytes).decode('utf-8')
+            filename = file.filename.lower()
+            mime_type = 'image/jpeg'
+            if filename.endswith('.png'):
+                mime_type = 'image/png'
+            elif filename.endswith('.gif'):
+                mime_type = 'image/gif'
+            elif filename.endswith('.webp'):
+                mime_type = 'image/webp'
+            data_url = f"data:{mime_type};base64,{encoded}"
+            evidence_base64.append(data_url)
 
-    new_report = {
-        "report_id": report_id,
-        "officer": f"{request.form.get('user_rank')} {request.form.get('user_full_name')}",
-        "source": request.form.get('m_source'),
-        "platform": request.form.get('m_platform'),
-        "url": request.form.get('m_url'),
-        "accountName": request.form.get('m_account_name'),
-        "datetime": request.form.get('m_datetime'),
-        "description": request.form.get('m_description'),
-        "threatType": request.form.get('m_threat_type'),
-        "severity": request.form.get('m_severity'),
-        "recommendation": request.form.get('m_recommendation'),
-        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "evidence": filenames,
-        "tech_indicators": {
-            "ip": request.form.get('tech_ip'),
-            "domain": request.form.get('tech_domain'),
-            "url": request.form.get('tech_url_ind'),
-            "email": request.form.get('tech_email'),
-            "username": request.form.get('tech_username'),
-            "hash": request.form.get('tech_hash'),
-            "ioc": request.form.get('tech_ioc'),
-            "other": request.form.get('tech_other')
-        }
+    officer_val = f"{request.form.get('user_rank', '')} {request.form.get('user_full_name', '')}".strip()
+    source_val = request.form.get('m_source')
+    platform_val = request.form.get('m_platform')
+    url_val = request.form.get('m_url')
+    account_name = request.form.get('m_account_name')
+    dt_val = request.form.get('m_datetime')
+    desc_val = request.form.get('m_description')
+    threat_type = request.form.get('m_threat_type')
+    severity = request.form.get('m_severity')
+    recommendation = request.form.get('m_recommendation')
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    tech_indicators = {
+        "ip": request.form.get('tech_ip'),
+        "domain": request.form.get('tech_domain'),
+        "url": request.form.get('tech_url_ind'),
+        "email": request.form.get('tech_email'),
+        "username": request.form.get('tech_username'),
+        "hash": request.form.get('tech_hash'),
+        "ioc": request.form.get('tech_ioc'),
+        "other": request.form.get('tech_other')
     }
     
-    reports.insert(0, new_report)
-    save_reports(reports)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO reports (report_id, officer, source, platform, url, accountName, datetime, description, threatType, severity, recommendation, timestamp, evidence, tech_indicators)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        report_id, officer_val, source_val, platform_val, url_val, account_name, 
+        dt_val, desc_val, threat_type, severity, recommendation, timestamp, 
+        json.dumps(evidence_base64, ensure_ascii=False), 
+        json.dumps(tech_indicators, ensure_ascii=False)
+    ))
+    conn.commit()
+    conn.close()
+    
     flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح', 'success')
     return redirect(url_for('index'))
 
@@ -145,16 +211,64 @@ def submit_report():
 def get_records():
     if 'user' not in session:
         return jsonify({'records': []})
-    reports = load_reports()
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM reports')
+    rows = cursor.fetchall()
+    
+    reports = []
+    for r in rows:
+        reports.append({
+            "report_id": r['report_id'],
+            "officer": r['officer'],
+            "source": r['source'],
+            "platform": r['platform'],
+            "url": r['url'],
+            "accountName": r['accountName'],
+            "datetime": r['datetime'],
+            "description": r['description'],
+            "threatType": r['threatType'],
+            "severity": r['severity'],
+            "recommendation": r['recommendation'],
+            "timestamp": r['timestamp'],
+            "evidence": json.loads(r['evidence']) if r['evidence'] else [],
+            "tech_indicators": json.loads(r['tech_indicators']) if r['tech_indicators'] else {}
+        })
+    conn.close()
     return jsonify({'records': reports})
 
 @app.route('/monthly-log')
 def monthly_log():
     if 'user' not in session:
         return jsonify({'monthly_reports': []})
-    reports = load_reports()
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM reports')
+    rows = cursor.fetchall()
+    conn.close()
+    
     current_month = datetime.now().strftime('%Y-%m')
-    filtered = [r for r in reports if r.get('timestamp', '').startswith(current_month)]
+    filtered = []
+    for r in rows:
+        if r['timestamp'] and r['timestamp'].startswith(current_month):
+            filtered.append({
+                "report_id": r['report_id'],
+                "officer": r['officer'],
+                "source": r['source'],
+                "platform": r['platform'],
+                "url": r['url'],
+                "accountName": r['accountName'],
+                "datetime": r['datetime'],
+                "description": r['description'],
+                "threatType": r['threatType'],
+                "severity": r['severity'],
+                "recommendation": r['recommendation'],
+                "timestamp": r['timestamp'],
+                "evidence": json.loads(r['evidence']) if r['evidence'] else [],
+                "tech_indicators": json.loads(r['tech_indicators']) if r['tech_indicators'] else {}
+            })
     return jsonify({'monthly_reports': filtered})
 
 @app.route('/change-password', methods=['POST'])
@@ -170,16 +284,21 @@ def change_password():
         flash('كلمتا المرور الجديدتان غير متطابقتين.', 'danger')
         return redirect(url_for('index'))
         
-    users = load_users()
     username = session['user']
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT password FROM users WHERE username = ?', (username,))
+    user = cursor.fetchone()
     
-    if check_password_hash(users[username]['password'], current_pass):
-        users[username]['password'] = generate_password_hash(new_pass)
-        save_users(users)
+    if user and check_password_hash(user['password'], current_pass):
+        new_hashed = generate_password_hash(new_pass)
+        cursor.execute('UPDATE users SET password = ? WHERE username = ?', (new_hashed, username))
+        conn.commit()
         flash('تم تغيير كلمة المرور بنجاح.', 'success')
     else:
         flash('كلمة المرور الحالية غير صحيحة.', 'danger')
         
+    conn.close()
     return redirect(url_for('index'))
 
 @app.route('/add-user', methods=['POST'])
@@ -193,19 +312,21 @@ def add_user():
     fullname = request.form.get('new_fullname', '')
     rank = request.form.get('new_rank', '')
     
-    users = load_users()
-    if new_username in users:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE username = ?', (new_username,))
+    if cursor.fetchone():
         flash('اسم المستخدم موجود مسبقاً.', 'danger')
     else:
-        users[new_username] = {
-            "password": generate_password_hash(new_password),
-            "is_admin": False,
-            "fullname": fullname,
-            "rank": rank
-        }
-        save_users(users)
+        hashed_pw = generate_password_hash(new_password)
+        cursor.execute('''
+            INSERT INTO users (username, password, is_admin, fullname, rank)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (new_username, hashed_pw, 0, fullname, rank))
+        conn.commit()
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
         
+    conn.close()
     return redirect(url_for('index'))
 
 @app.route('/delete-user/<username>', methods=['POST'])
@@ -218,14 +339,13 @@ def delete_user(username):
         flash('لا يمكن حذف حساب المشرف الرئيسي.', 'danger')
         return redirect(url_for('index'))
         
-    users = load_users()
-    if username in users:
-        del users[username]
-        save_users(users)
-        flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
-    else:
-        flash('المستخدم غير موجود.', 'danger')
-        
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM users WHERE username = ?', (username,))
+    conn.commit()
+    conn.close()
+    
+    flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
     return redirect(url_for('index'))
 
 @app.route('/delete-report/<report_id>', methods=['POST'])
@@ -234,15 +354,13 @@ def delete_report(report_id):
         flash('غير مسموح لك بحذف السجلات.', 'danger')
         return redirect(url_for('index'))
         
-    reports = load_reports()
-    updated_reports = [r for r in reports if r.get('report_id') != report_id]
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM reports WHERE report_id = ?', (report_id,))
+    conn.commit()
+    conn.close()
     
-    if len(updated_reports) < len(reports):
-        save_reports(updated_reports)
-        flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
-    else:
-        flash('السجل غير موجود.', 'danger')
-        
+    flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
