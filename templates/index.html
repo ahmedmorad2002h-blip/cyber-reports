@@ -182,7 +182,6 @@
 
         .hidden { display: none !important; }
 
-        /* ==================== إعدادات الطباعة المتقدمة والشاملة ==================== */
         @media print {
             @page {
                 size: A4 portrait;
@@ -205,7 +204,6 @@
                 visibility: hidden !important;
             }
 
-            /* إلغاء القيود الخاصة بالـ Bootstrap Modal للطباعة متعددة الصفحات */
             .modal, .modal-dialog, .modal-content, .modal-body {
                 position: static !important;
                 overflow: visible !important;
@@ -242,7 +240,6 @@
                 display: none !important;
             }
 
-            /* تقسيم الصفحات بشكل إجباري ومستقل لكل صورة/مرفق */
             .page-break-page {
                 display: block !important;
                 page-break-before: always !important;
@@ -530,7 +527,6 @@
                 </div>
                 <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
                     
-                    <!-- منطقة الطباعة المخصصة -->
                     <div id="printable-report-area">
                         <div class="text-center mb-4 pb-2 border-bottom">
                             <h4 class="fw-bold">جمهورية العراق</h4>
@@ -538,14 +534,9 @@
                             <h6 class="fw-bold text-info">[استمارة رصد وتحقيق سيبراني معتمدة]</h6>
                         </div>
 
-                        <div id="report-content-body" class="mb-4">
-                            <!-- سيتم تعبئة تفاصيل البلاغ هنا ديناميكياً -->
-                        </div>
+                        <div id="report-content-body" class="mb-4"></div>
 
-                        <!-- الصور المرفقة: كل صورة في صفحة مستقلة مع تسمية مرفق 1، مرفق 2، إلخ -->
-                        <div id="report-attachments-print-area">
-                            <!-- سيتم تعبئة المرفقات هنا -->
-                        </div>
+                        <div id="report-attachments-print-area"></div>
                     </div>
 
                 </div>
@@ -560,7 +551,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-warning text-dark fw-bold" id="share-report-btn">
-                            <i class="fas fa-share-alt me-1"></i> مشاركة البلاغ للمدير
+                            <i class="fas fa-share-alt me-1"></i> نسخ رابط البلاغ الكامل للمدير
                         </button>
                         <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                     </div>
@@ -690,7 +681,6 @@
         let allGlobalRecords = [];
         let currentSelectedReport = null;
 
-        // دالة نسخ الرابط المضافة
         function copyLink(url, btnElement) {
             if (!url) return;
             navigator.clipboard.writeText(url).then(() => {
@@ -825,8 +815,25 @@
             });
         }
 
+        // عند فتح الصفحة يتم فحص ما إذا كان هناك رابط بلاغ مشارَك لفتحه أوتوماتيكياً
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewId = urlParams.get('view_id');
+            if (viewId) {
+                fetch('/get-records')
+                    .then(res => res.json())
+                    .then(data => {
+                        const targetReport = data.records.find(r => r.report_id === viewId);
+                        if (targetReport) {
+                            openReportModal(targetReport);
+                        } else {
+                            alert('لم يتم العثور على البلاغ المطلوب أو قد يكون تم حذفه.');
+                        }
+                    })
+                    .catch(err => console.error('خطأ في جلب بيانات البلاغ:', err));
+            }
         });
 
         function toggleSidebar() {
@@ -923,7 +930,6 @@
                 });
         }
 
-        // فتح نافذة تفاصيل البلاغ وتعبئة المحتوى والمرفقات للطباعة أو المشاركة
         function openReportModal(report) {
             currentSelectedReport = report;
             const bodyContainer = document.getElementById('report-content-body');
@@ -944,7 +950,6 @@
                 <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
             `;
 
-            // قراءة الصور من مصفوفة evidence الصحيحة لضمان ظهورها في الطباعة والصفحات المستقلة
             let imagesList = report.evidence || []; 
             
             let imagesHtml = '';
@@ -962,56 +967,28 @@
                 imagesHtml = `
                     <div class="page-break-page text-center my-4">
                         <h4 class="fw-bold mb-3">مرفق 1</h4>
-                        <p class="text-muted">لا توجد صور مرفقة مع هذا البلاغ أو أن الملفات لم تُحفظ كصور.</p>
+                        <p class="text-muted">لا توجد صور مرفقة مع هذا البلاغ.</p>
                         <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
                     </div>
                 `;
             }
             attachmentsContainer.innerHTML = imagesHtml;
 
-            // إعداد زر المشاركة الشامل للمدير (نص + الصور المرفقة)
+            // إعداد زر المشاركة الذكي للمدير (ينشئ رابطاً شاملاً ومباشراً للبلاغ)
             const shareBtn = document.getElementById('share-report-btn');
-            shareBtn.onclick = async function() {
-                let attachCountText = imagesList.length > 0 ? `\nعدد المرفقات المصورة: ${imagesList.length}` : '';
+            shareBtn.onclick = function() {
+                const shareUrl = `${window.location.origin}${window.location.pathname}?view_id=${report.report_id}`;
                 
-                const shareText = `🚨 [تقرير رصد سيبراني رسمي]\n------------------------------\n📌 رقم البلاغ: ${report.report_id}\n👤 القائم بالرصد: ${report.officer}\n🌐 المنصة: ${report.platform}\n⚠️ نوع التهديد: ${report.threatType}\n🔗 رابط الهدف: ${report.url}\n🆔 اسم الحساب/الجهة: ${report.accountName || 'غير متوفر'}\n🔥 مستوى الخطورة: ${report.severity}\n📝 وصف الحالة: ${report.description || 'لا يوجد'}\n💡 التوصية: ${report.recommendation || 'لا توجد'}${attachCountText}`;
+                const shareText = `🚨 [تقرير رصد سيبراني رسمي]\n------------------------------\n📌 رقم البلاغ: ${report.report_id}\n👤 القائم بالرصد: ${report.officer}\n🌐 المنصة: ${report.platform}\n⚠️ نوع التهديد: ${report.threatType}\n🔗 رابط الهدف: ${report.url}\n🆔 اسم الحساب/الجهة: ${report.accountName || 'غير متوفر'}\n🔥 مستوى الخطورة: ${report.severity}\n📝 وصف الحالة: ${report.description || 'لا يوجد'}\n💡 التوصية: ${report.recommendation || 'لا توجد'}\n\n📲 لرؤية تفاصيل البلاغ والصور المرفقة كاملة افتح الرابط التالي:\n${shareUrl}`;
 
-                let filesToShare = [];
-
-                // تحويل مسارات أو بيانات الصور إلى ملفات جاهزة للمشاركة
-                if (imagesList.length > 0 && navigator.canShare) {
-                    try {
-                        for (let i = 0; i < imagesList.length; i++) {
-                            const response = await fetch(imagesList[i]);
-                            const blob = await response.blob();
-                            const file = new File([blob], `evidence_${report.report_id}_${i + 1}.png`, { type: blob.type || 'image/png' });
-                            filesToShare.push(file);
-                        }
-                    } catch (e) {
-                        console.log("لم يتم تحميل ملفات الصور بشكل أوتوماتيكي للمشاركة:", e);
-                    }
-                }
-
-                const shareData = {
-                    title: 'تقرير بلاغ سيبراني - ' + report.report_id,
-                    text: shareText
-                };
-
-                // إرفاق الصور إذا كانت مدعومة من النظام/المتصفح
-                if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
-                    shareData.files = filesToShare;
-                }
-
-                if (navigator.share) {
-                    try {
-                        await navigator.share(shareData);
-                    } catch (err) {
-                        console.log('تم إلغاء عملية المشاركة.');
-                    }
-                } else {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(shareText).then(() => {
-                        alert('تم نسخ تفاصيل البلاغ بالكامل إلى الحافظة لسهولة إرساله.');
+                        alert('تم نسخ رابط التقرير والتفاصيل بنجاح! يمكنك الآن لصق الرسالة مباشرة وإرسالها للمدير عبر واتساب أو تيليجرام.');
+                    }).catch(() => {
+                        prompt('قم بنسخ هذا النص والرابط المباشر لإرساله للمدير:', shareText);
                     });
+                } else {
+                    prompt('قم بنسخ هذا النص والرابط المباشر لإرساله للمدير:', shareText);
                 }
             };
 
@@ -1019,12 +996,10 @@
             modal.show();
         }
 
-        // طباعة الاستمارة بصيغة PDF
         function printReportAsPDF() {
             window.print();
         }
 
-        // تصدير الاستمارة بصيغة Word (.doc)
         function exportReportToWord() {
             const reportArea = document.getElementById('printable-report-area').innerHTML;
             const wordContent = `
