@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'cyber_security_ministry_secret_key'
+app.secret_key = 'cyber_security_ministry_secret_key_secure_2026'
 
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -20,7 +20,9 @@ def init_db():
         default_users = {
             "admin": {
                 "password": generate_password_hash("admin123"),
-                "is_admin": True
+                "is_admin": True,
+                "fullname": "مدير النظام الرئيسي",
+                "rank": "مدير فني"
             }
         }
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
@@ -62,6 +64,7 @@ def login():
         if username in users and check_password_hash(users[username]['password'], password):
             session['user'] = username
             session['is_admin'] = users[username].get('is_admin', False)
+            session['fullname'] = users[username].get('fullname', username)
             return redirect(url_for('index'))
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
     return render_template('login.html')
@@ -75,7 +78,20 @@ def logout():
 def index():
     if 'user' not in session:
         return redirect(url_for('login'))
-    return render_template('index.html')
+    
+    reports = load_reports()
+    total_reports = len(reports)
+    critical_reports = sum(1 for r in reports if 'حرج' in r.get('severity', ''))
+    monthly_count = sum(1 for r in reports if r.get('timestamp', '').startswith(datetime.now().strftime('%Y-%m')))
+    
+    stats = {
+        'total': total_reports,
+        'critical': critical_reports,
+        'monthly': monthly_count
+    }
+    
+    users = load_users() if session.get('is_admin') else {}
+    return render_template('index.html', stats=stats, users=users)
 
 @app.route('/submit-report', methods=['POST'])
 def submit_report():
@@ -85,7 +101,6 @@ def submit_report():
     reports = load_reports()
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
-    # حفظ الملفات المرفقة إن وجدت
     files = request.files.getlist('evidence_files')
     filenames = []
     for file in files:
@@ -175,6 +190,8 @@ def add_user():
         
     new_username = request.form.get('new_username')
     new_password = request.form.get('new_password')
+    fullname = request.form.get('new_fullname', '')
+    rank = request.form.get('new_rank', '')
     
     users = load_users()
     if new_username in users:
@@ -182,10 +199,49 @@ def add_user():
     else:
         users[new_username] = {
             "password": generate_password_hash(new_password),
-            "is_admin": False
+            "is_admin": False,
+            "fullname": fullname,
+            "rank": rank
         }
         save_users(users)
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
+        
+    return redirect(url_for('index'))
+
+@app.route('/delete-user/<username>', methods=['POST'])
+def delete_user(username):
+    if not session.get('is_admin'):
+        flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
+        return redirect(url_for('index'))
+        
+    if username == 'admin':
+        flash('لا يمكن حذف حساب المشرف الرئيسي.', 'danger')
+        return redirect(url_for('index'))
+        
+    users = load_users()
+    if username in users:
+        del users[username]
+        save_users(users)
+        flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
+    else:
+        flash('المستخدم غير موجود.', 'danger')
+        
+    return redirect(url_for('index'))
+
+@app.route('/delete-report/<report_id>', methods=['POST'])
+def delete_report(report_id):
+    if not session.get('is_admin'):
+        flash('غير مسموح لك بحذف السجلات.', 'danger')
+        return redirect(url_for('index'))
+        
+    reports = load_reports()
+    updated_reports = [r for r in reports if r.get('report_id') != report_id]
+    
+    if len(updated_reports) < len(reports):
+        save_reports(updated_reports)
+        flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
+    else:
+        flash('السجل غير موجود.', 'danger')
         
     return redirect(url_for('index'))
 
