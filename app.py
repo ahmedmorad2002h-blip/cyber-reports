@@ -69,7 +69,9 @@ def login():
             session['fullname'] = users[username].get('fullname', username)
             return redirect(url_for('index'))
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
-    return render_template('index.html')
+    
+    # استدعاء ملف login.html المستقل بشكل صحيح
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
