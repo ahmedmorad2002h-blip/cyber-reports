@@ -969,20 +969,48 @@
             }
             attachmentsContainer.innerHTML = imagesHtml;
 
-            // إعداد زر المشاركة للمدير
+            // إعداد زر المشاركة الشامل للمدير (نص + الصور المرفقة)
             const shareBtn = document.getElementById('share-report-btn');
-            shareBtn.onclick = function() {
-                const shareText = `[تقرير رصد سيبراني رسمي]\nرقم البلاغ: ${report.report_id}\nالقائم بالرصد: ${report.officer}\nالمنصة: ${report.platform}\nنوع التهديد: ${report.threatType}\nرابط المبلغ عنه: ${report.url}\nوصف الحالة: ${report.description || 'لا يوجد'}\nمستوى الخطورة: ${report.severity}`;
+            shareBtn.onclick = async function() {
+                let attachCountText = imagesList.length > 0 ? `\nعدد المرفقات المصورة: ${imagesList.length}` : '';
                 
+                const shareText = `🚨 [تقرير رصد سيبراني رسمي]\n------------------------------\n📌 رقم البلاغ: ${report.report_id}\n👤 القائم بالرصد: ${report.officer}\n🌐 المنصة: ${report.platform}\n⚠️ نوع التهديد: ${report.threatType}\n🔗 رابط الهدف: ${report.url}\n🆔 اسم الحساب/الجهة: ${report.accountName || 'غير متوفر'}\n🔥 مستوى الخطورة: ${report.severity}\n📝 وصف الحالة: ${report.description || 'لا يوجد'}\n💡 التوصية: ${report.recommendation || 'لا توجد'}${attachCountText}`;
+
+                let filesToShare = [];
+
+                // تحويل مسارات أو بيانات الصور إلى ملفات جاهزة للمشاركة
+                if (imagesList.length > 0 && navigator.canShare) {
+                    try {
+                        for (let i = 0; i < imagesList.length; i++) {
+                            const response = await fetch(imagesList[i]);
+                            const blob = await response.blob();
+                            const file = new File([blob], `evidence_${report.report_id}_${i + 1}.png`, { type: blob.type || 'image/png' });
+                            filesToShare.push(file);
+                        }
+                    } catch (e) {
+                        console.log("لم يتم تحميل ملفات الصور بشكل أوتوماتيكي للمشاركة:", e);
+                    }
+                }
+
+                const shareData = {
+                    title: 'تقرير بلاغ سيبراني - ' + report.report_id,
+                    text: shareText
+                };
+
+                // إرفاق الصور إذا كانت مدعومة من النظام/المتصفح
+                if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
+                    shareData.files = filesToShare;
+                }
+
                 if (navigator.share) {
-                    navigator.share({
-                        title: 'بلاغ سيبراني - ' + report.report_id,
-                        text: shareText,
-                        url: window.location.href
-                    }).catch(() => {});
+                    try {
+                        await navigator.share(shareData);
+                    } catch (err) {
+                        console.log('تم إلغاء عملية المشاركة.');
+                    }
                 } else {
                     navigator.clipboard.writeText(shareText).then(() => {
-                        alert('تم نسخ تفاصيل البلاغ ورابط المبلغ عنه ومرفقاته بنجاح لإرساله للمدير.');
+                        alert('تم نسخ تفاصيل البلاغ بالكامل إلى الحافظة لسهولة إرساله.');
                     });
                 }
             };
