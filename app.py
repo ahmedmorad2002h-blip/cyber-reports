@@ -4,57 +4,72 @@ import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from supabase import create_client, Client
 
 app = Flask(__name__)
-app.secret_key = 'cyber_security_ministry_secret_key_secure_2026'
+app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
 
-USERS_FILE = 'users.json'
-REPORTS_FILE = 'reports.json'
+# إعداد الاتصال بقاعدة بيانات Supabase السحابية
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://kzjpmkndafsgdoakkjee.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI6MjEwNDU0NzgwMX0.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k")
 
-def init_files():
-    if not os.path.exists(USERS_FILE):
-        default_users = {
-            "admin": {
-                "password": generate_password_hash("admin123"),
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# --- دوال المساعدة للتعامل مع قاعدة البيانات ---
+
+def init_admin_user():
+    """إنشاء حساب الأدمن الرئيسي تلقائياً عند أول تشغيل إذا لم يكن موجوداً"""
+    try:
+        res = supabase.table('users').select('*').eq('username', 'admin').execute()
+        if not res.data:
+            admin_user = {
+                "username": "admin",
+                "password": generate_password_hash("07816141614"),
                 "is_admin": True,
                 "fullname": "مدير النظام الرئيسي",
                 "rank": "مدير فني"
             }
-        }
-        with open(USERS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(default_users, f, ensure_ascii=False, indent=4)
-            
-    if not os.path.exists(REPORTS_FILE):
-        with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump([], f, ensure_ascii=False, indent=4)
+            supabase.table('users').insert(admin_user).execute()
+    except Exception as e:
+        print(f"Error initializing admin user: {e}")
 
-init_files()
+init_admin_user()
 
 def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r', encoding='utf-8') as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return {}
-    return {}
-
-def save_users(users):
-    with open(USERS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(users, f, ensure_ascii=False, indent=4)
+    try:
+        res = supabase.table('users').select('*').execute()
+        return {u['username']: u for u in res.data}
+    except Exception as e:
+        print(f"Error loading users: {e}")
+        return {}
 
 def load_reports():
-    if os.path.exists(REPORTS_FILE):
-        with open(REPORTS_FILE, 'r', encoding='utf-8') as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return []
-    return []
+    try:
+        res = supabase.table('reports').select('*').order('created_at', desc=True).execute()
+        reports = []
+        for r in res.data:
+            reports.append({
+                "report_id": r.get("report_id"),
+                "officer": r.get("officer"),
+                "source": r.get("source"),
+                "platform": r.get("platform"),
+                "url": r.get("url"),
+                "accountName": r.get("account_name"),
+                "datetime": r.get("datetime"),
+                "description": r.get("description"),
+                "threatType": r.get("threat_type"),
+                "severity": r.get("severity"),
+                "recommendation": r.get("recommendation"),
+                "timestamp": r.get("timestamp"),
+                "evidence": r.get("evidence", []),
+                "tech_indicators": r.get("tech_indicators", {})
+            })
+        return reports
+    except Exception as e:
+        print(f"Error loading reports: {e}")
+        return []
 
-def save_reports(reports):
-    with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(reports, f, ensure_ascii=False, indent=4)
+# --- مسارات التطبيق (Routes) ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -70,7 +85,6 @@ def login():
             return redirect(url_for('index'))
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
     
-    # استدعاء ملف login.html المستقل بشكل صحيح
     return render_template('login.html')
 
 @app.route('/logout')
@@ -102,7 +116,6 @@ def submit_report():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    reports = load_reports()
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     files = request.files.getlist('evidence_files')
@@ -122,16 +135,16 @@ def submit_report():
             data_url = f"data:{mime_type};base64,{encoded}"
             evidence_base64.append(data_url)
 
-    new_report = {
+    db_payload = {
         "report_id": report_id,
         "officer": f"{request.form.get('user_rank', '')} {request.form.get('user_full_name', '')}".strip(),
         "source": request.form.get('m_source'),
         "platform": request.form.get('m_platform'),
         "url": request.form.get('m_url'),
-        "accountName": request.form.get('m_account_name'),
+        "account_name": request.form.get('m_account_name'),
         "datetime": request.form.get('m_datetime'),
         "description": request.form.get('m_description'),
-        "threatType": request.form.get('m_threat_type'),
+        "threat_type": request.form.get('m_threat_type'),
         "severity": request.form.get('m_severity'),
         "recommendation": request.form.get('m_recommendation'),
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -148,9 +161,12 @@ def submit_report():
         }
     }
     
-    reports.insert(0, new_report)
-    save_reports(reports)
-    flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح', 'success')
+    try:
+        supabase.table('reports').insert(db_payload).execute()
+        flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح في قاعدة البيانات السحابية.', 'success')
+    except Exception as e:
+        flash(f'حدث خطأ أثناء حفظ البلاغ: {e}', 'danger')
+
     return redirect(url_for('index'))
 
 @app.route('/get-records')
@@ -186,8 +202,8 @@ def change_password():
     username = session['user']
     
     if check_password_hash(users[username]['password'], current_pass):
-        users[username]['password'] = generate_password_hash(new_pass)
-        save_users(users)
+        new_hashed = generate_password_hash(new_pass)
+        supabase.table('users').update({'password': new_hashed}).eq('username', username).execute()
         flash('تم تغيير كلمة المرور بنجاح.', 'success')
     else:
         flash('كلمة المرور الحالية غير صحيحة.', 'danger')
@@ -209,13 +225,14 @@ def add_user():
     if new_username in users:
         flash('اسم المستخدم موجود مسبقاً.', 'danger')
     else:
-        users[new_username] = {
+        new_user_data = {
+            "username": new_username,
             "password": generate_password_hash(new_password),
             "is_admin": False,
             "fullname": fullname,
             "rank": rank
         }
-        save_users(users)
+        supabase.table('users').insert(new_user_data).execute()
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
         
     return redirect(url_for('index'))
@@ -232,8 +249,7 @@ def delete_user(username):
         
     users = load_users()
     if username in users:
-        del users[username]
-        save_users(users)
+        supabase.table('users').delete().eq('username', username).execute()
         flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
     else:
         flash('المستخدم غير موجود.', 'danger')
@@ -246,14 +262,11 @@ def delete_report(report_id):
         flash('غير مسموح لك بحذف السجلات.', 'danger')
         return redirect(url_for('index'))
         
-    reports = load_reports()
-    updated_reports = [r for r in reports if r.get('report_id') != report_id]
-    
-    if len(updated_reports) < len(reports):
-        save_reports(updated_reports)
+    try:
+        supabase.table('reports').delete().eq('report_id', report_id).execute()
         flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
-    else:
-        flash('السجل غير موجود.', 'danger')
+    except Exception as e:
+        flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
         
     return redirect(url_for('index'))
 
