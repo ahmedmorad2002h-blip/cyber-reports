@@ -225,24 +225,33 @@ def add_user():
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
-    new_username = request.form.get('new_username')
-    new_password = request.form.get('new_password')
-    fullname = request.form.get('new_fullname', '')
-    rank = request.form.get('new_rank', '')
+    new_username = (request.form.get('new_username') or '').strip()
+    new_password = (request.form.get('new_password') or '').strip()
+    fullname = (request.form.get('new_fullname') or '').strip()
+    rank = (request.form.get('new_rank') or '').strip()
+    
+    if not new_username or not new_password:
+        flash('يرجى تعبئة اسم المستخدم وكلمة المرور بشكل صحيح.', 'danger')
+        return redirect(url_for('index'))
     
     users = load_users()
     if new_username in users:
         flash('اسم المستخدم موجود مسبقاً.', 'danger')
-    else:
-        new_user_data = {
-            "username": new_username,
-            "password": generate_password_hash(new_password),
-            "is_admin": False,
-            "fullname": fullname,
-            "rank": rank
-        }
+        return redirect(url_for('index'))
+        
+    new_user_data = {
+        "username": new_username,
+        "password": generate_password_hash(new_password),
+        "is_admin": False,
+        "fullname": fullname,
+        "rank": rank
+    }
+    
+    try:
         supabase.table('users').insert(new_user_data).execute()
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
+    except Exception as e:
+        flash(f'حدث خطأ أثناء إضافة المستخدم إلى قاعدة البيانات: {e}', 'danger')
         
     return redirect(url_for('index'))
 
