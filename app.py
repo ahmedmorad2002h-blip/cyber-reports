@@ -1,70 +1,69 @@
-import os, random, datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+import os
+import json
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'ahmed_secure_cyber_key_2026'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cyber_reports.db'
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+app.secret_key = 'cyber_security_ministry_secret_key'
 
-db = SQLAlchemy(app)
+UPLOAD_FOLDER = 'static/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password_hash = db.Column(db.String(200), nullable=False)
+USERS_FILE = 'users.json'
+REPORTS_FILE = 'reports.json'
 
-class Report(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    report_id = db.Column(db.String(50), unique=True, nullable=False)
-    rank = db.Column(db.String(50), nullable=False)
-    full_name = db.Column(db.String(150), nullable=False)
-    source = db.Column(db.String(150), nullable=True)
-    platform = db.Column(db.String(100), nullable=True)
-    url = db.Column(db.String(500), nullable=False)
-    account_name = db.Column(db.String(150), nullable=True)
-    report_datetime = db.Column(db.String(100), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    threat_type = db.Column(db.String(100), nullable=True)
-    
-    # المؤشرات الفنية
-    tech_ip = db.Column(db.String(100), nullable=True)
-    tech_domain = db.Column(db.String(200), nullable=True)
-    tech_url = db.Column(db.String(500), nullable=True)
-    tech_email = db.Column(db.String(150), nullable=True)
-    tech_username = db.Column(db.String(150), nullable=True)
-    tech_hash = db.Column(db.String(200), nullable=True)
-    tech_ioc = db.Column(db.String(255), nullable=True)
-    tech_other = db.Column(db.Text, nullable=True)
-    
-    images = db.Column(db.Text, nullable=True)
-    severity = db.Column(db.String(50), nullable=True)
-    recommendation = db.Column(db.Text, nullable=True)
-    timestamp = db.Column(db.String(100), nullable=True)
+def init_db():
+    if not os.path.exists(USERS_FILE):
+        default_users = {
+            "admin": {
+                "password": generate_password_hash("admin123"),
+                "is_admin": True
+            }
+        }
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(default_users, f, ensure_ascii=False, indent=4)
+            
+    if not os.path.exists(REPORTS_FILE):
+        with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump([], f, ensure_ascii=False, indent=4)
 
-with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(username='admin').first():
-        hashed_pw = generate_password_hash('123456')
-        default_user = User(username='admin', password_hash=hashed_pw)
-        db.session.add(default_user)
-        db.session.commit()
+init_db()
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=4)
+
+def load_reports():
+    if os.path.exists(REPORTS_FILE):
+        with open(REPORTS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+def save_reports(reports):
+    with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(reports, f, ensure_ascii=False, indent=4)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        user = User.query.filter_by(username=username).first()
-        if user and check_password_hash(user.password_hash, password):
-            session['user_id'] = user.id
-            session['username'] = user.username
-            flash('تم تسجيل الدخول بنجاح', 'success')
+        users = load_users()
+        
+        if username in users and check_password_hash(users[username]['password'], password):
+            session['user'] = username
+            session['is_admin'] = users[username].get('is_admin', False)
             return redirect(url_for('index'))
-        flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'danger')
+        flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
@@ -74,100 +73,121 @@ def logout():
 
 @app.route('/')
 def index():
-    if 'user_id' not in session:
+    if 'user' not in session:
         return redirect(url_for('login'))
     return render_template('index.html')
 
 @app.route('/submit-report', methods=['POST'])
 def submit_report():
-    if 'user_id' not in session:
+    if 'user' not in session:
         return redirect(url_for('login'))
-        
-    rank = request.form.get('user_rank')
-    full_name = request.form.get('user_full_name')
-    source = request.form.get('m_source')
-    platform = request.form.get('m_platform')
-    url = request.form.get('m_url')
-    account_name = request.form.get('m_account_name')
-    report_datetime = request.form.get('m_datetime')
-    description = request.form.get('m_description')
-    threat_type = request.form.get('m_threat_type')
     
-    tech_ip = request.form.get('tech_ip')
-    tech_domain = request.form.get('tech_domain')
-    tech_url = request.form.get('tech_url_ind')
-    tech_email = request.form.get('tech_email')
-    tech_username = request.form.get('tech_username')
-    tech_hash = request.form.get('tech_hash')
-    tech_ioc = request.form.get('tech_ioc')
-    tech_other = request.form.get('tech_other')
+    reports = load_reports()
+    report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
-    severity = request.form.get('m_severity')
-    recommendation = request.form.get('m_recommendation')
-    
-    uploaded_files = request.files.getlist('evidence_files')
+    # حفظ الملفات المرفقة إن وجدت
+    files = request.files.getlist('evidence_files')
     filenames = []
-    for file in uploaded_files:
+    for file in files:
         if file and file.filename:
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            filenames.append(filename)
+            unique_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
+            filenames.append(unique_name)
+
+    new_report = {
+        "report_id": report_id,
+        "officer": f"{request.form.get('user_rank')} {request.form.get('user_full_name')}",
+        "source": request.form.get('m_source'),
+        "platform": request.form.get('m_platform'),
+        "url": request.form.get('m_url'),
+        "accountName": request.form.get('m_account_name'),
+        "datetime": request.form.get('m_datetime'),
+        "description": request.form.get('m_description'),
+        "threatType": request.form.get('m_threat_type'),
+        "severity": request.form.get('m_severity'),
+        "recommendation": request.form.get('m_recommendation'),
+        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "evidence": filenames,
+        "tech_indicators": {
+            "ip": request.form.get('tech_ip'),
+            "domain": request.form.get('tech_domain'),
+            "url": request.form.get('tech_url_ind'),
+            "email": request.form.get('tech_email'),
+            "username": request.form.get('tech_username'),
+            "hash": request.form.get('tech_hash'),
+            "ioc": request.form.get('tech_ioc'),
+            "other": request.form.get('tech_other')
+        }
+    }
     
-    report_id = 'CYBER-REC-' + str(random.randint(100000, 999999))
-    
-    new_report = Report(
-        report_id=report_id,
-        rank=rank,
-        full_name=full_name,
-        source=source,
-        platform=platform,
-        url=url,
-        account_name=account_name,
-        report_datetime=report_datetime,
-        description=description,
-        threat_type=threat_type,
-        tech_ip=tech_ip,
-        tech_domain=tech_domain,
-        tech_url=tech_url,
-        tech_email=tech_email,
-        tech_username=tech_username,
-        tech_hash=tech_hash,
-        tech_ioc=tech_ioc,
-        tech_other=tech_other,
-        images=','.join(filenames),
-        severity=severity,
-        recommendation=recommendation,
-        timestamp=str(datetime.datetime.now())
-    )
-    db.session.add(new_report)
-    db.session.commit()
-    
-    flash(f'تم حفظ وتوثيق البلاغ بنجاح برقم: {report_id}', 'success')
+    reports.insert(0, new_report)
+    save_reports(reports)
+    flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح', 'success')
     return redirect(url_for('index'))
+
+@app.route('/get-records')
+def get_records():
+    if 'user' not in session:
+        return jsonify({'records': []})
+    reports = load_reports()
+    return jsonify({'records': reports})
+
+@app.route('/monthly-log')
+def monthly_log():
+    if 'user' not in session:
+        return jsonify({'monthly_reports': []})
+    reports = load_reports()
+    current_month = datetime.now().strftime('%Y-%m')
+    filtered = [r for r in reports if r.get('timestamp', '').startswith(current_month)]
+    return jsonify({'monthly_reports': filtered})
 
 @app.route('/change-password', methods=['POST'])
 def change_password():
-    if 'user_id' not in session:
+    if 'user' not in session:
         return redirect(url_for('login'))
+    
+    current_pass = request.form.get('current_password')
+    new_pass = request.form.get('new_password')
+    confirm_pass = request.form.get('confirm_password')
+    
+    if new_pass != confirm_pass:
+        flash('كلمتا المرور الجديدتان غير متطابقتين.', 'danger')
+        return redirect(url_for('index'))
         
-    current_password = request.form.get('current_password')
+    users = load_users()
+    username = session['user']
+    
+    if check_password_hash(users[username]['password'], current_pass):
+        users[username]['password'] = generate_password_hash(new_pass)
+        save_users(users)
+        flash('تم تغيير كلمة المرور بنجاح.', 'success')
+    else:
+        flash('كلمة المرور الحالية غير صحيحة.', 'danger')
+        
+    return redirect(url_for('index'))
+
+@app.route('/add-user', methods=['POST'])
+def add_user():
+    if not session.get('is_admin'):
+        flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
+        return redirect(url_for('index'))
+        
+    new_username = request.form.get('new_username')
     new_password = request.form.get('new_password')
-    confirm_password = request.form.get('confirm_password')
     
-    if new_password != confirm_password:
-        flash('كلمات المرور الجديدة غير متطابقة', 'danger')
-        return redirect(url_for('index'))
+    users = load_users()
+    if new_username in users:
+        flash('اسم المستخدم موجود مسبقاً.', 'danger')
+    else:
+        users[new_username] = {
+            "password": generate_password_hash(new_password),
+            "is_admin": False
+        }
+        save_users(users)
+        flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
         
-    user = User.query.get(session['user_id'])
-    if not user or not check_password_hash(user.password_hash, current_password):
-        flash('كلمة المرور الحالية غير صحيحة', 'danger')
-        return redirect(url_for('index'))
-        
-    user.password_hash = generate_password_hash(new_password)
-    db.session.commit()
-    
-    flash('تم تغيير كلمة السر بنجاح', 'success')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
