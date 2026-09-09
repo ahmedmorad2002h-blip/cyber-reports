@@ -2,382 +2,543 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>مديرية أمن وسلامة الوزارة - منصة الرصد والتحقيقات السيبرانية</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شعبة الأمن السيبراني - استمارة مخرجات الرصد الرسمية</title>
     
+    <meta property="og:title" content="شعبة الأمن السيبراني - نظام توثيق مخرجات الرصد">
+    <meta property="og:description" content="منصة رسمية مؤمنة لتوثيق الحالات السيبرانية، تتبع المؤشرات الفنية، ومنع تكرار البلاغات وتخزينها في مستودع آمن.">
+    <meta property="og:type" content="website">
+
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-color: #030712;
-            --panel-bg: rgba(11, 18, 33, 0.98);
-            --cyber-cyan: #00f2fe;
-            --cyber-blue: #4facfe;
-            --cyber-purple: #c084fc;
-            --cyber-glow: rgba(0, 242, 254, 0.6);
-            --border-color: rgba(0, 242, 254, 0.6);
-            --text-main: #ffffff;
-            --text-muted: #e2e8f0;
+            --bg-color: #030303;
+            --panel-bg: rgba(10, 10, 10, 0.95);
+            --primary-red: #ff1e38;
+            --dark-red: #990012;
+            --accent-glow: rgba(255, 30, 56, 0.5);
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --border-color: rgba(255, 30, 56, 0.35);
         }
 
-        @keyframes neonPulse {
-            0% { 
-                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); 
-                border-color: rgba(0, 242, 254, 0.5);
-            }
-            50% { 
-                box-shadow: 0 0 40px rgba(0, 242, 254, 0.8), inset 0 0 25px rgba(0, 242, 254, 0.3); 
-                border-color: #00f2fe;
-            }
-            100% { 
-                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); 
-                border-color: rgba(0, 242, 254, 0.5);
-            }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        @keyframes titleGlow {
-            0%, 100% { text-shadow: 0 0 10px rgba(0,242,254,0.5), 0 0 20px rgba(0,242,254,0.3); }
-            50% { text-shadow: 0 0 20px rgba(0,242,254,0.9), 0 0 40px rgba(192,132,252,0.6); }
-        }
-
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-main); 
-            font-family: 'Cairo', sans-serif; 
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Cairo', sans-serif;
             min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 50% 0%, #0f172a 0%, #030712 80%),
-                linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
-            background-size: 100% 100%, 40px 40px, 40px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow-x: hidden;
+            padding: 20px;
         }
 
-        .card { 
-            background: var(--panel-bg); 
-            border: 2px solid var(--border-color); 
-            border-radius: 20px; 
-            padding: 35px; 
-            animation: neonPulse 3s infinite ease-in-out;
-            backdrop-filter: blur(25px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.9));
-            border: 2px solid rgba(0, 242, 254, 0.5);
-            border-radius: 16px;
-            padding: 22px;
-            text-align: center;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .stat-card:hover {
-            transform: translateY(-6px) scale(1.03);
-            box-shadow: 0 0 35px var(--cyber-cyan);
-            border-color: var(--cyber-cyan);
-        }
-
-        h1, h2, h3, h4, .navbar-brand {
-            animation: titleGlow 4s infinite ease-in-out;
-            color: #ffffff !important;
-            font-weight: 900 !important;
-        }
-
-        p, span, label, .form-label, .text-muted {
-            color: #f1f5f9 !important;
-            font-weight: 600 !important;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-        }
-
-        input, select, textarea { 
-            background: rgba(2, 6, 23, 0.98) !important; 
-            border: 2px solid rgba(0, 242, 254, 0.5) !important; 
-            color: #ffffff !important; 
-            border-radius: 12px !important;
-            padding: 12px 16px !important;
-            font-weight: 700 !important;
-        }
-        input::placeholder, textarea::placeholder {
-            color: #94a3b8 !important;
-        }
-        input:focus, select:focus, textarea:focus { 
-            border-color: var(--cyber-cyan) !important; 
-            box-shadow: 0 0 25px var(--cyber-cyan) !important; 
-            background: rgba(3, 7, 18, 1) !important;
-            outline: none;
-            color: #ffffff !important;
-        }
-
-        select option {
-            background-color: #0b1326;
-            color: #ffffff;
-            padding: 12px;
-        }
-
-        .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 5px; }
-        
-        .sidebar {
-            position: fixed; top: 0; right: -380px; width: 380px; height: 100%;
-            background: rgba(5, 11, 24, 0.99); 
-            box-shadow: -20px 0 50px rgba(0,0,0,0.98); 
-            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-            z-index: 1050; padding: 35px;
-            border-left: 3px solid var(--cyber-cyan);
-            overflow-y: auto;
-        }
-        .sidebar.active { right: 0; }
-        .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0, 242, 254, 0.4); padding-bottom: 18px; margin-bottom: 25px; }
-        .close-btn { background: none; border: none; font-size: 32px; color: var(--cyber-cyan); cursor: pointer; transition: transform 0.3s; }
-        .close-btn:hover { transform: rotate(90deg); color: #fff; }
-
-        .btn-cyber {
-            background: linear-gradient(135deg, #0072ff, #00f2fe);
-            border: none;
-            color: #030712;
-            font-weight: 900;
-            box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 12px;
-            letter-spacing: 0.5px;
-        }
-        .btn-cyber:hover {
-            background: linear-gradient(135deg, #005bc5, #00c6ff);
-            color: #ffffff;
-            box-shadow: 0 0 45px var(--cyber-cyan);
-            transform: translateY(-3px) scale(1.02);
-        }
-
-        .btn-outline-cyber {
-            border: 2px solid var(--cyber-cyan);
-            color: var(--cyber-cyan);
-            background: rgba(0, 242, 254, 0.1);
-            font-weight: 800;
-            border-radius: 12px;
-            transition: all 0.3s;
-        }
-        .btn-outline-cyber:hover {
-            background: rgba(0, 242, 254, 0.3);
-            color: #ffffff;
-            border-color: #ffffff;
-            box-shadow: 0 0 25px var(--cyber-cyan);
-            transform: translateY(-3px);
-        }
-
-        .badge-critical { background: rgba(239, 68, 68, 0.35); color: #fca5a5; border: 2px solid rgba(239, 68, 68, 0.8); font-weight: bold; }
-        .badge-medium { background: rgba(234, 179, 8, 0.35); color: #fde047; border: 2px solid rgba(234, 179, 8, 0.8); font-weight: bold; }
-        .badge-low { background: rgba(59, 130, 246, 0.35); color: #93c5fd; border: 2px solid rgba(59, 130, 246, 0.8); font-weight: bold; }
-
-        #globe-container {
+        #cyber-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 320px;
-            position: relative;
-            margin: 15px 0;
-            border-radius: 16px;
-            overflow: hidden;
-            background: radial-gradient(circle, rgba(11,18,33,0.8) 0%, rgba(3,7,18,0.95) 100%);
-            border: 1px solid rgba(0, 242, 254, 0.3);
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, #150104 0%, #030303 100%);
         }
 
-        .hidden { display: none !important; }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            z-index: 10;
+        }
 
-        /* تعديلات الطباعة المحسنة لضمان طباعة التقرير الكامل مع الصور بدون فراغات */
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 0 45px rgba(0, 0, 0, 0.9), 0 0 25px var(--accent-glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-red), transparent);
+            animation: scanline 3s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header-section i {
+            font-size: 45px;
+            color: var(--primary-red);
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px var(--primary-red);
+        }
+
+        h1 {
+            font-family: 'Orbitron', 'Cairo', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #ccc;
+            font-weight: 600;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-red);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            background: rgba(15, 15, 15, 0.9);
+            cursor: pointer;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--primary-red);
+            color: #fff;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 30, 56, 0.4);
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: #e01630;
+            box-shadow: 0 0 25px var(--primary-red);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--primary-red);
+            color: var(--primary-red);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 30, 56, 0.1);
+            color: #fff;
+        }
+
+        .preview-images-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preview-img-box {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            background: #111;
+        }
+
+        .preview-img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .action-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .whatsapp-share-btn {
+            background: #25d366;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+        }
+        .whatsapp-share-btn:hover {
+            background: #1ebc57;
+            box-shadow: 0 0 25px #25d366;
+        }
+
+        .copy-share-btn {
+            background: #007bff;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+        }
+        .copy-share-btn:hover {
+            background: #0056b3;
+            box-shadow: 0 0 25px #007bff;
+        }
+
+        .visit-target-btn {
+            background: #ff9800;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+            color: #000;
+            font-weight: 900;
+        }
+        .visit-target-btn:hover {
+            background: #e68900;
+            box-shadow: 0 0 25px #ff9800;
+            color: #000;
+        }
+
+        .report-success-box {
+            background: rgba(15, 25, 15, 0.95);
+            border: 1px solid #25d366;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: right;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .alert-error {
+            background: rgba(255, 30, 56, 0.15);
+            border: 1px solid var(--primary-red);
+            color: #ff8593;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .menu-btn {
+            background: rgba(15, 15, 15, 0.9);
+            border: 1px solid var(--border-color);
+            padding: 16px 20px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: right;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .menu-btn:hover {
+            border-color: var(--primary-red);
+            background: rgba(255, 30, 56, 0.08);
+            transform: translateX(-5px);
+        }
+
+        .menu-btn i {
+            color: var(--primary-red);
+            font-size: 18px;
+        }
+
+        .footer-info {
+            margin-top: 25px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .print-header {
+            display: none;
+        }
+
+        #print-attachments-container {
+            display: none;
+        }
+
+        /* تنسيقات الطباعة الرسمية */
         @media print {
-            body * {
+            body {
+                background: #fff;
+                color: #000;
+                display: block;
+                padding: 0;
+            }
+            #cyber-canvas, .no-print, .btn, .menu-options, .footer-info, #success-action-container, .preview-images-container {
                 display: none !important;
             }
-            #printable-report-area, #printable-report-area * {
-                display: block !important;
-                visibility: visible !important;
-                color: #000000 !important;
+            .card {
+                background: #fff;
+                border: none;
+                box-shadow: none;
+                padding: 0;
+                width: 100%;
+                max-width: 100%;
+                page-break-after: always;
+            }
+            input, select, textarea {
+                border: none !important;
                 background: transparent !important;
+                color: #000 !important;
+                padding: 2px 0 !important;
+                font-size: 13px !important;
             }
-            #printable-report-area {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 15px !important;
-                background: #ffffff !important;
+            label {
+                color: #333 !important;
+                font-weight: bold;
+                margin-top: 8px;
             }
-            #printable-report-area table {
-                display: table !important;
-                width: 100% !important;
-                border-collapse: collapse !important;
+            .print-hidden-field {
+                display: none !important;
             }
-            #printable-report-area tr {
-                display: table-row !important;
-            }
-            #printable-report-area td, #printable-report-area th {
-                display: table-cell !important;
-                border: 1px solid #333333 !important;
-                padding: 8px !important;
-                color: #000000 !important;
-            }
-            .page-break-page {
-                page-break-after: always !important;
-                break-after: page !important;
-                page-break-inside: avoid !important;
-                margin-top: 30px !important;
-            }
-            img {
-                max-width: 100% !important;
-                height: auto !important;
+            .print-header {
                 display: block !important;
-                margin: 15px auto !important;
-                page-break-inside: avoid !important;
-                border: 1px solid #333 !important;
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+            }
+
+            #print-attachments-container {
+                display: block !important;
+            }
+            .print-attachment-page {
+                page-break-before: always;
+                break-before: page;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 0;
+                box-sizing: border-box;
+                text-align: center;
+            }
+            .print-att-header {
+                text-align: center;
+                border-bottom: 2px solid #000;
+                width: 100%;
+                padding-bottom: 8px;
+                margin-bottom: 5px;
+            }
+            .print-att-header h2, .print-att-header h3, .print-att-header p {
+                color: #000 !important;
+                margin: 2px 0;
+                font-size: 14px;
+            }
+            .print-att-title {
+                font-size: 18px;
+                font-weight: 900;
+                color: #000;
+                margin: 5px 0 10px 0;
+                background: #f0f0f0;
+                padding: 6px 30px;
+                border: 2px solid #000;
+                border-radius: 6px;
+            }
+            .print-att-img-box {
+                flex-grow: 1;
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                max-height: 78vh;
+            }
+            .print-att-img-box img {
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+                border: 2px solid #000;
+                background: #fff;
+                padding: 4px;
+            }
+            .print-att-footer {
+                font-size: 12px;
+                color: #000;
+                margin-top: 10px;
+                border-top: 1px solid #999;
+                width: 100%;
+                padding-top: 5px;
+                font-weight: bold;
             }
         }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important;">
-        <div class="d-flex align-items-center">
-            <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 12px var(--cyber-cyan));"></i>
-            <span class="navbar-brand mb-0 h1 fw-black" style="letter-spacing: 1px; font-size: 1.2rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-OPS v2.6]</span></span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
-            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
-            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
-        </div>
-    </nav>
+    <canvas id="cyber-canvas"></canvas>
 
-    <div id="options-sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <h5 class="m-0 fw-bold text-white" style="color: var(--cyber-cyan);"><i class="fas fa-sliders-h me-2"></i> الإعدادات والخيارات</h5>
-            <button type="button" class="close-btn" onclick="toggleSidebar()">&times;</button>
-        </div>
-        <div class="sidebar-body">
-            <div class="mb-4 p-3 rounded text-center" style="background: rgba(0,242,254,0.08); border: 2px solid rgba(0,242,254,0.4);">
-                <div class="text-white fw-bold mb-1 fs-5" style="color: var(--cyber-cyan) !important;">{{ session.get('fullname') }}</div>
-                <div class="text-white small">الصلاحية: {% if session.get('is_admin') %}<span class="text-danger fw-bold">مشرف نظام (Admin)</span>{% else %}<span class="text-info fw-bold">مستخدم مخول</span>{% endif %}</div>
-            </div>
-
-            <ul class="list-unstyled">
-                <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(0,242,254,0.4);" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                        <i class="fas fa-key text-info me-2"></i> تغيير كلمة السر
-                    </a>
-                </li>
-                {% if session.get('is_admin') %}
-                <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(234,179,8,0.6);" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <i class="fas fa-user-plus text-warning me-2"></i> إضافة مستخدم جديد
-                    </a>
-                </li>
-                <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(239,68,68,0.6);" data-bs-toggle="modal" data-bs-target="#manageUsersModal">
-                        <i class="fas fa-users-cog text-danger me-2"></i> إدارة المستخدمين المسجلين
-                    </a>
-                </li>
-                {% endif %}
-                <li class="mt-4">
-                    <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger fw-bold d-block p-3 rounded text-center" style="background: rgba(239,68,68,0.15); border: 2px solid rgba(239,68,68,0.6);">
-                        <i class="fas fa-sign-out-alt me-2"></i> تسجيل الخروج
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="container my-5" style="max-width: 920px;">
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'success' else 'info' }} text-center text-white fw-bold shadow-lg mb-4" style="border-radius: 12px; background: rgba(15,23,42,0.98); border: 2px solid var(--cyber-cyan);">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div id="menu-section" class="card shadow-lg text-center">
-            <div class="mb-2 pt-1">
-                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 25px rgba(0, 242, 254, 0.9));"></i>
-            </div>
-            <h2 class="mb-1 fw-black text-white">منظومة مخرجات الرصد والتحقيقات السيبرانية</h2>
-            <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار (شامل Dark Web)</p>
+    <div class="container">
+        <div class="card" id="main-card">
             
-            <div class="position-relative">
-                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem;">
-                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live 3D Map)
+            <!-- الخطوة 1: تسجيل الدخول -->
+            <div id="step-auth" class="auth-section">
+                <div class="header-section">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h1>شعبة الأمن السيبراني</h1>
+                    <div class="subtitle">بوابة الدخول وتوثيق مخرجات الرصد</div>
                 </div>
-                <div id="globe-container"></div>
-            </div>
 
-            <div class="row g-3 mb-4">
-                <div class="col-4">
-                    <div class="stat-card">
-                        <div class="text-white small mb-1 fw-bold">إجمالي السجلات</div>
-                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan); text-shadow: 0 0 10px var(--cyber-cyan);">{{ stats.total }}</h3>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="stat-card">
-                        <div class="text-white small mb-1 fw-bold">حالات حرجة</div>
-                        <h3 class="m-0 fw-bold text-danger" style="text-shadow: 0 0 15px rgba(239,68,68,0.8);">{{ stats.critical }}</h3>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="stat-card">
-                        <div class="text-white small mb-1 fw-bold">نشاط الشهر الحالي</div>
-                        <h3 class="m-0 fw-bold text-warning" style="text-shadow: 0 0 15px rgba(234,179,8,0.8);">{{ stats.monthly }}</h3>
-                    </div>
-                </div>
-            </div>
+                <div id="auth-error" class="alert-error hidden">يرجى اختيار الصنف/الصفة وإدخال الاسم الثلاثي.</div>
 
-            <div class="d-grid gap-3" style="max-width: 480px; margin: 0 auto;">
-                <button class="btn btn-cyber py-3 fw-bold fs-6" onclick="showSection('form-section')">
-                    <i class="fa-solid fa-file-shield me-2"></i> ملء استمارة مخرجات رصد جديدة
-                </button>
-                <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadRecords()">
-                    <i class="fa-solid fa-database me-2"></i> السجلات المحفوظة ونظام منع التكرار
-                </button>
-                <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadMonthlyLog()">
-                    <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي
+                <div class="form-group">
+                    <label>الفئة / الصفة الوظيفية (مراتب / مفوضين)</label>
+                    <select id="officer-rank">
+                        <option value="">اختر الصفة الوظيفية...</option>
+                        <option value="مفوض">مفوض</option>
+                        <option value="رئيس عرفاء">رئيس عرفاء</option>
+                        <option value="عريف">عريف</option>
+                        <option value="شرطي">شرطي</option>
+                        <option value="منتسب / مرتب">منتسب / مرتب</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>اسم المنتسب أو المفوض الثلاثي</label>
+                    <input type="text" id="officer-name" placeholder="أدخل الاسم الثلاثي...">
+                </div>
+
+                <button class="btn" onclick="authenticateOfficer()">
+                    <span>دخول للنظام</span>
+                    <i class="fa-solid fa-arrow-left"></i>
                 </button>
             </div>
-        </div>
 
-        <div id="form-section" class="card shadow-lg hidden">
-            <form method="POST" action="{{ url_for('submit_report') }}" enctype="multipart/form-data">
-                
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: rgba(0, 242, 254, 0.4) !important;">
-                    <h3 class="m-0 fw-bold text-white" style="font-size: 1.4rem;"><i class="fa-solid fa-shield-halved me-2" style="color: var(--cyber-cyan);"></i> استمارة مخرجات الرصد السيبراني المتقدم</h3>
-                    <button type="button" class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+            <!-- الخطوة 2: القائمة الرئيسية -->
+            <div id="step-menu" class="hidden">
+                <div class="header-section">
+                    <i class="fa-solid fa-terminal"></i>
+                    <h1 id="welcome-title">مرحباً بك</h1>
+                    <div class="subtitle" id="welcome-subtitle">تم التحقق بنجاح // نظام الرصد السيبراني</div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">الرتبة / الصفة الوظيفية:</label>
-                        <select name="user_rank" class="form-control" required>
-                            <option value="" disabled selected>اختر الرتبة...</option>
-                            <option value="مفوض">مفوض</option>
-                            <option value="رئيس عرفاء">رئيس عرفاء</option>
-                            <option value="عريف">عريف</option>
-                            <option value="شرطي">شرطي</option>
-                            <option value="منتسب / مرتب">منتسب / مرتب</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">الاسم الثلاثي:</label>
-                        <input type="text" name="user_full_name" class="form-control" placeholder="أدخل اسمك الثلاثي..." required>
-                    </div>
+                <div class="menu-options">
+                    <button class="menu-btn" onclick="showForm()">
+                        <div>
+                            <i class="fa-solid fa-file-shield" style="margin-left: 10px;"></i>
+                            ملء استمارة مخرجات الرصد الجديدة
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="menu-btn" onclick="viewSavedRecords()">
+                        <div>
+                            <i class="fa-solid fa-database" style="margin-left: 10px;"></i>
+                            السجلات المحفوظة (نظام منع التكرار)
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="menu-btn" onclick="logout()" style="border-color: rgba(255,30,56,0.6);">
+                        <div>
+                            <i class="fa-solid fa-right-from-bracket" style="margin-left: 10px;"></i>
+                            إنهاء الجلسة / تسجيل الخروج
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- الخطوة 3: استمارة مخرجات الرصد -->
+            <div id="step-form" class="hidden">
+                <div class="print-header">
+                    <h2>جمهورية العراق</h2>
+                    <h3>شعبة الأمن السيبراني - مديرية الأمن السيبراني</h3>
+                    <p>استمارة توثيق مخرجات الرصد الرسمية</p>
+                    <p id="print-officer-info" style="font-weight: bold; margin-top: 5px;"></p>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">1. مصدر الرصد</label>
-                    <input type="text" name="m_source" class="form-control" placeholder="مثال: رصد مباشر، تتبع استخباراتي...">
+                <div class="header-section no-print">
+                    <h1>استمارة مخرجات الرصد السيبراني</h1>
+                    <div class="subtitle">المعلومات الواجب تضمينها في مخرجات الرصد</div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">المنصة أو التطبيق المستهدف بالرصد (شامل الشبكة المظلمة)</label>
-                    <select name="m_platform" class="form-control">
-                        <option value="Dark Web (Tor / Onion)">Dark Web (الشبكة المظلمة / Tor / Onion)</option>
+                <div id="form-error" class="alert-error hidden">يرجى ملء الحقول الأساسية المطلوبة للبلاغ (رابط صالح ومفعل).</div>
+
+                <!-- 1. مصدر الرصد -->
+                <div class="form-group" id="grp-source">
+                    <label>1. مصدر الرصد</label>
+                    <input type="text" id="m-source" placeholder="مثال: رصد مباشر، بلاغ رسمي...">
+                </div>
+
+                <!-- خيارات المنصات -->
+                <div class="form-group" id="grp-platform">
+                    <label>المنصة أو التطبيق المستهدف بالرصد</label>
+                    <select id="m-platform">
                         <option value="Telegram">Telegram (تيليجرام)</option>
                         <option value="Facebook">Facebook (فيسبوك)</option>
                         <option value="Instagram">Instagram (انستغرام)</option>
@@ -388,30 +549,34 @@
                     </select>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">2. رابط الموقع أو الصفحة أو النطاق (.onion أو رابط عادي) ذي العلاقة</label>
-                    <input type="text" name="m_url" class="form-control" placeholder="https://... أو رابط onion خاص بالدارك ويب" required>
+                <!-- 2. رابط الموقع أو الصفحة -->
+                <div class="form-group" id="grp-url">
+                    <label>2. رابط الموقع أو الصفحة أو الحساب أو النطاق ذي العلاقة (يتم التحقق من صحة الرابط ومنع التكرار)</label>
+                    <input type="text" id="m-url" placeholder="https://...">
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">3. اسم الحساب أو القناة أو الجهة المرتبطة بالحالة (إن وجد)</label>
-                    <input type="text" name="m_account_name" class="form-control" placeholder="أدخل اسم الحساب أو الجهة المستهدفة...">
+                <!-- 3. اسم الحساب أو الصفحة -->
+                <div class="form-group" id="grp-account-name">
+                    <label>3. اسم الحساب أو الصفحة أو الجهة المرتبطة بالحالة (إن وجد)</label>
+                    <input type="text" id="m-account-name" placeholder="أدخل اسم الحساب أو الجهة...">
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">4. تاريخ ووقت النشر أو الرصد</label>
-                    <input type="datetime-local" name="m_datetime" class="form-control">
+                <!-- 4. تاريخ ووقت النشر -->
+                <div class="form-group" id="grp-datetime">
+                    <label>4. تاريخ ووقت النشر</label>
+                    <input type="datetime-local" id="m-datetime">
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">5. وصف مختصر وواضح للحالة المرصودة</label>
-                    <textarea name="m_description" rows="2" class="form-control" placeholder="اكتب وصفاً موجزاً لطبيعة الحالة والمحتوى المنشور..."></textarea>
+                <!-- 5. وصف مختصر للحالة -->
+                <div class="form-group" id="grp-description">
+                    <label>5. وصف مختصر وواضح للحالة المرصودة</label>
+                    <textarea id="m-description" rows="2" placeholder="اكتب وصفاً موجزاً وواضحاً لطبيعة الحالة..."></textarea>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">6. نوع التهديد أو النشاط السيبراني</label>
-                    <select name="m_threat_type" class="form-control">
-                        <option value="تسريب قواعد بيانات من الدارك ويب">تسريب قواعد بيانات من الدارك ويب</option>
+                <!-- 6. نوع التهديد -->
+                <div class="form-group" id="grp-threat-type">
+                    <label>6. نوع التهديد أو النشاط السيبراني</label>
+                    <select id="m-threat-type">
                         <option value="ابتزاز إلكتروني">ابتزاز إلكتروني</option>
                         <option value="تشهير وإساءة">تشهير وإساءة</option>
                         <option value="حساب مزيف / انتحال صفة">حساب مزيف / انتحال صفة</option>
@@ -421,611 +586,529 @@
                     </select>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">7. المؤشرات الفنية المتوفرة (تملأ الحقول عند توفرها بدقة):</label>
+                <!-- 7. المؤشرات الفنية -->
+                <div class="form-group" id="grp-technical">
+                    <label>7. المؤشرات الفنية المتوفرة (تملأ الحقول عند توفرها):</label>
                     <div class="tech-grid">
-                        <input type="text" name="tech_ip" class="form-control" placeholder="عنوان IP أو Node">
-                        <input type="text" name="tech_domain" class="form-control" placeholder="اسم النطاق Domain / Onion">
-                        <input type="text" name="tech_url_ind" class="form-control" placeholder="الرابط الفرعي URL">
-                        <input type="text" name="tech_email" class="form-control" placeholder="البريد الإلكتروني">
-                        <input type="text" name="tech_username" class="form-control" placeholder="اسم المستخدم أو المعرف (ID)">
-                        <input type="text" name="tech_hash" class="form-control" placeholder="قيمة التجزئة Hash">
-                        <input type="text" name="tech_ioc" class="form-control" placeholder="مؤشرات الاختراق IOC">
-                        <input type="text" name="tech_other" class="form-control" placeholder="معلومات فنية أخرى">
+                        <input type="text" id="tech-ip" placeholder="عنوان IP">
+                        <input type="text" id="tech-domain" placeholder="اسم النطاق Domain">
+                        <input type="text" id="tech-url-ind" placeholder="الرابط URL">
+                        <input type="text" id="tech-email" placeholder="البريد الإلكتروني">
+                        <input type="text" id="tech-username" placeholder="اسم المستخدم أو المعرف">
+                        <input type="text" id="tech-hash" placeholder="قيمة التجزئة Hash">
+                        <input type="text" id="tech-ioc" placeholder="مؤشرات الاختراق IOC">
+                        <input type="text" id="tech-other" placeholder="أي معلومات فنية أخرى">
                     </div>
                 </div>
 
-                <div class="mb-3" id="grp-evidence">
-                    <label class="form-label">8. صور أو أدلة التوثيق المتوفرة (إرفاق لقطات شاشة أو أدلة)</label>
-                    <input type="file" name="evidence_files" class="form-control" multiple accept="image/*" id="evidence-input">
-                    <div id="image-preview" class="d-flex gap-2 mt-2 flex-wrap"></div>
+                <!-- 8. المرفقات والأدلة -->
+                <div class="form-group" id="grp-evidence">
+                    <label>8. صور أو أدلة التوثيق المتوفرة (إرفاق لقطات شاشة أو أدلة)</label>
+                    <input type="file" id="m-evidence-file" accept="image/*" multiple>
+                    <div id="file-names" style="font-size: 11px; color: var(--primary-red); margin-top: 4px;"></div>
+                    <div id="image-preview-container" class="preview-images-container"></div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">9. بيان أوّلي عن مستوى الخطورة أو أهمية الحالة</label>
-                    <select name="m_severity" class="form-control">
+                <!-- 9. مستوى الخطورة -->
+                <div class="form-group" id="grp-severity">
+                    <label>9. بيان أولي عن مستوى الخطورة أو أهمية الحالة</label>
+                    <select id="m-severity">
                         <option value="حرج / عالي الخطورة">حرج / عالي الخطورة</option>
                         <option value="متوسط الخطورة">متوسط الخطورة</option>
                         <option value="منخفض الخطورة">منخفض الخطورة</option>
                     </select>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">10. التوصية الأولية أو الإجراء المقترح (عند الحاجة)</label>
-                    <textarea name="m_recommendation" rows="2" class="form-control" placeholder="اكتب الإجراءات اللاحقة المناسبة أو التوصية الفنية..."></textarea>
+                <!-- 10. التوصية الأولية -->
+                <div class="form-group" id="grp-recommendation">
+                    <label>10. التوصية الأولية أو الإجراء المقترح (عند الحاجة)</label>
+                    <textarea id="m-recommendation" rows="2" placeholder="اكتب الإجراءات اللاحقة المناسبة أو التوصية الأمنية..."></textarea>
                 </div>
 
-                <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn btn-cyber flex-grow-1 py-3 fs-6">
-                        <i class="fas fa-save me-2"></i> حفظ البلاغ وتوثيقه رسمياً
-                    </button>
+                <div style="display: flex; gap: 10px;" class="no-print">
+                    <button class="btn btn-secondary" onclick="backToMenu()">رجوع</button>
+                    <button class="btn" id="submit-btn" onclick="submitAndPrintReport()">حفظ البلاغ وطباعته</button>
                 </div>
-            </form>
-        </div>
 
-        <div id="records-section" class="card shadow-lg hidden">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;"><i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> السجلات المحفوظة ونظام منع التكرار</h3>
-                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
-            </div>
-            
-            <div class="mb-3">
-                <input type="text" id="record-search" class="form-control" placeholder="بحث سريع في السجلات (برقم البلاغ، المنصة مثل Dark Web، اسم القائم بالرصد، الرابط)..." onkeyup="filterRecords()">
+                <div id="success-action-container"></div>
             </div>
 
-            <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
-        </div>
-
-        <div id="monthly-section" class="card shadow-lg hidden">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري الرسمي</h3>
-                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+            <!-- عرض البلاغ عند فتح الرابط القصير -->
+            <div id="step-shared-view" class="hidden">
+                <div class="header-section">
+                    <i class="fa-solid fa-shield-halved" style="color: #25d366;"></i>
+                    <h1>عرض تفاصيل بلاغ الرصد الرسمي</h1>
+                    <div class="subtitle" id="shared-subtitle">جاري استرجاع تفاصيل البلاغ...</div>
+                </div>
+                <div id="shared-report-content" style="background: rgba(20,20,20,0.9); border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; text-align: right;">
+                    <div style="text-align: center; padding: 20px; color: #ff8593;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 30px; margin-bottom: 10px;"></i>
+                        <p>جاري استرجاع البيانات من السجلات...</p>
+                    </div>
+                </div>
+                <div id="shared-action-btn" style="margin-top: 20px;"></div>
             </div>
-            <div id="monthly-container" style="max-height: 500px; overflow-y: auto;"></div>
-        </div>
 
-    </div>
-
-    <!-- نافذة عرض تفاصيل البلاغ والطباعة ومشاركة الرابط -->
-    <div class="modal fade" id="reportDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
-                <div class="modal-header border-bottom no-print-section" style="border-color: rgba(0,242,254,0.4) !important;">
-                    <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2" style="color: var(--cyber-cyan);"></i> تفاصيل البلاغ السيبراني الكامل</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <!-- الخطوة 4: السجلات المحفوظة -->
+            <div id="step-records" class="hidden">
+                <div class="header-section">
+                    <h1>سجل مخرجات الرصد</h1>
+                    <div class="subtitle">استعراض الحالات المحفوظة وتفعيل منع التكرار</div>
                 </div>
-                <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
-                    
-                    <!-- منطقة الطباعة المخصصة -->
-                    <div id="printable-report-area">
-                        <div class="text-center mb-4 pb-2 border-bottom">
-                            <h4 class="fw-bold" style="color:#000;">جمهورية العراق</h4>
-                            <h5 class="fw-bold" style="color:#000;">مديرية أمن وسلامة الوزارة</h5>
-                            <h6 class="fw-bold" style="color:#000;">[استمارة رصد وتحقيق سيبراني معتمدة]</h6>
-                        </div>
 
-                        <div id="report-content-body" class="mb-4">
-                            <!-- سيتم تعبئة تفاصيل البلاغ هنا ديناميكياً على شكل جدول رسمي -->
-                        </div>
+                <div id="records-container" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; font-size: 13px;"></div>
 
-                        <!-- الصور المرفقة: كل صورة في صفحة مستقلة مع تسمية مرفق 1، مرفق 2، إلخ -->
-                        <div id="report-attachments-print-area">
-                            <!-- سيتم تعبئة المرفقات هنا -->
-                        </div>
-                    </div>
+                <button class="btn btn-secondary" onclick="backToMenu()">العودة للقائمة</button>
+            </div>
 
-                </div>
-                <div class="modal-footer border-top no-print-section d-flex justify-content-between flex-wrap gap-2" style="border-color: rgba(0,242,254,0.4) !important;">
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-cyber fw-bold" onclick="printReportAsPDF()">
-                            <i class="fas fa-file-pdf me-1"></i> طباعة كـ PDF
-                        </button>
-                        <button type="button" class="btn btn-outline-cyber fw-bold" onclick="exportReportToWord()">
-                            <i class="fas fa-file-word me-1"></i> تصدير كـ Word
-                        </button>
-                    </div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-info text-dark fw-bold" id="copy-report-link-btn">
-                            <i class="fas fa-link me-1"></i> نسخ رابط البلاغ الكامل
-                        </button>
-                        <button type="button" class="btn btn-warning text-dark fw-bold" id="share-report-btn">
-                            <i class="fas fa-share-alt me-1"></i> مشاركة سريعة
-                        </button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
-                    </div>
-                </div>
+            <div class="footer-info">
+                SECURE CYBER OPERATIONS // LOCAL PERMANENT STORAGE PROTOCOL
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="changePasswordModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
-                <form method="POST" action="{{ url_for('change_password') }}">
-                    <div class="modal-header border-bottom" style="border-color: rgba(0,242,254,0.4) !important;">
-                        <h5 class="modal-title fw-bold text-white"><i class="fas fa-key me-2" style="color: var(--cyber-cyan);"></i> تغيير كلمة السر</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور الحالية</label>
-                            <input type="password" name="current_password" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور الجديدة</label>
-                            <input type="password" name="new_password" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">تأكيد كلمة المرور الجديدة</label>
-                            <input type="password" name="confirm_password" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-top" style="border-color: rgba(0,242,254,0.4) !important;">
-                        <button type="submit" class="btn btn-cyber">حفظ التغييرات</button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إلغاء</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- حاوية طباعة المرفقات بصفحات مستقلة -->
+    <div id="print-attachments-container"></div>
 
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #f59e0b !important; border-radius: 16px;">
-                <form method="POST" action="{{ url_for('add_user') }}">
-                    <div class="modal-header border-bottom" style="border-color: rgba(245,158,11,0.4) !important;">
-                        <h5 class="modal-title text-warning fw-bold"><i class="fas fa-user-plus me-2"></i> إضافة حساب مستخدم جديد</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">اسم المستخدم (للتسجيل)</label>
-                            <input type="text" name="new_username" class="form-control" required placeholder="مثال: officer_ahmed">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">الاسم الكامل أو الرتبة والاسم</label>
-                            <input type="text" name="new_fullname" class="form-control" placeholder="مثال: مفوض أحمد جاسم">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور المؤقتة</label>
-                            <input type="password" name="new_password" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.4) !important;">
-                        <button type="submit" class="btn btn-warning text-dark fw-bold">إضافة الحساب رسمياً</button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إلغاء</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    {% if session.get('is_admin') %}
-    <div class="modal fade" id="manageUsersModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #ef4444 !important; border-radius: 16px;">
-                <div class="modal-header border-bottom" style="border-color: rgba(239,68,68,0.4) !important;">
-                    <h5 class="modal-title text-danger fw-bold"><i class="fas fa-users-cog me-2"></i> إدارة المستخدمين المسجلين في النظام</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-                    <div class="table-responsive">
-                        <table class="table table-dark table-striped table-bordered align-middle">
-                            <thead>
-                                <tr>
-                                    <th>اسم المستخدم</th>
-                                    <th>الاسم الكامل</th>
-                                    <th>نوع الصلاحية</th>
-                                    <th>الإجراء</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for uname, udata in users.items() %}
-                                <tr>
-                                    <td><code>{{ uname }}</code></td>
-                                    <td>{{ udata.get('fullname', 'غير محدد') }}</td>
-                                    <td>
-                                        {% if udata.get('is_admin') %}
-                                            <span class="badge bg-danger">مشرف (Admin)</span>
-                                        {% else %}
-                                            <span class="badge bg-info text-dark fw-bold">مستخدم مخول</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if uname != 'admin' %}
-                                        <form action="{{ url_for('delete_user', username=uname) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم؟');">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold"><i class="fas fa-trash-alt"></i> حذف</button>
-                                        </form>
-                                        {% else %}
-                                        <span class="text-muted small">محمي</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer border-top" style="border-color: rgba(239,68,68,0.4) !important;">
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let allGlobalRecords = [];
-        let currentSelectedReport = null;
+        const canvas = document.getElementById('cyber-canvas');
+        const ctx = canvas.getContext('2d');
 
-        function initCyberGlobe() {
-            const container = document.getElementById('globe-container');
-            if (!container) return;
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 18;
-
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            container.appendChild(renderer.domElement);
-
-            const globeRadius = 5;
-            const sphereGeometry = new THREE.SphereGeometry(globeRadius, 32, 32);
-            const sphereMaterial = new THREE.MeshBasicMaterial({
-                color: 0x0b1326,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.35
+        const globe = { radius: Math.min(width, height) * 0.5 };
+        const nodes = [];
+        for (let i = 0; i < 75; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * globe.radius;
+            nodes.push({
+                x: width / 2 + Math.cos(angle) * dist,
+                y: height / 2 + Math.sin(angle) * dist,
+                targetX: width / 2 + (Math.random() - 0.5) * globe.radius * 2.5,
+                targetY: height / 2 + (Math.random() - 0.5) * globe.radius * 2.5,
+                progress: Math.random(),
+                speed: 0.003 + Math.random() * 0.009
             });
-            const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            scene.add(globe);
+        }
 
-            const atmosGeometry = new THREE.SphereGeometry(globeRadius + 0.2, 32, 32);
-            const atmosMaterial = new THREE.MeshBasicMaterial({
-                color: 0x00f2fe,
-                transparent: true,
-                opacity: 0.08,
-                wireframe: true
+        function animate() {
+            ctx.fillStyle = 'rgba(3, 3, 3, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, globe.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 30, 56, 0.15)';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, globe.radius * 0.6, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 30, 56, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            nodes.forEach(node => {
+                node.progress += node.speed;
+                if (node.progress >= 1) {
+                    node.progress = 0;
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * globe.radius;
+                    node.x = centerX + Math.cos(angle) * dist;
+                    node.y = centerY + Math.sin(angle) * dist;
+                    node.targetX = centerX + (Math.random() - 0.5) * globe.radius * 2.5;
+                    node.targetY = centerY + (Math.random() - 0.5) * globe.radius * 2.5;
+                }
+
+                const currentX = node.x + (node.targetX - node.x) * node.progress;
+                const currentY = node.y + (node.targetY - node.y) * node.progress;
+
+                ctx.beginPath();
+                ctx.moveTo(node.x, node.y);
+                ctx.lineTo(currentX, currentY);
+                ctx.strokeStyle = 'rgba(255, 30, 56, 0.4)';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff1e38';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff1e38';
+                ctx.fill();
+                ctx.shadowBlur = 0;
             });
-            const atmosphere = new THREE.Mesh(atmosGeometry, atmosMaterial);
-            scene.add(atmosphere);
 
-            const nodeCount = 35;
-            const nodePositions = [];
-            const nodeGroup = new THREE.Group();
+            requestAnimationFrame(animate);
+        }
+        animate();
 
-            for (let i = 0; i < nodeCount; i++) {
-                const phi = Math.acos(-1 + (2 * i) / nodeCount);
-                const theta = Math.sqrt(nodeCount * Math.PI) * phi;
+        let currentOfficer = null;
+        let uploadedImagesBase64 = [];
 
-                const x = globeRadius * Math.cos(theta) * Math.sin(phi);
-                const y = globeRadius * Math.sin(theta) * Math.sin(phi);
-                const z = globeRadius * Math.cos(phi);
-
-                const vector = new THREE.Vector3(x, y, z);
-                nodePositions.push(vector);
-
-                const dotGeo = new THREE.SphereGeometry(0.08, 8, 8);
-                const dotMat = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0x00f2fe : 0xff3366 });
-                const dot = new THREE.Mesh(dotGeo, dotMat);
-                dot.position.copy(vector);
-                nodeGroup.add(dot);
+        function isValidUrl(string) {
+            try {
+                let url = new URL(string.includes('://') ? string : 'https://' + string);
+                return url.hostname.includes('.');
+            } catch (_) {
+                return false;
             }
-            scene.add(nodeGroup);
-
-            const arcsGroup = new THREE.Group();
-
-            function createRandomArc() {
-                if (nodePositions.length < 2) return;
-                const startIdx = Math.floor(Math.random() * nodePositions.length);
-                let endIdx = Math.floor(Math.random() * nodePositions.length);
-                while (endIdx === startIdx) endIdx = Math.floor(Math.random() * nodePositions.length);
-
-                const p1 = nodePositions[startIdx];
-                const p2 = nodePositions[endIdx];
-
-                const mid = p1.clone().add(p2).multiplyScalar(0.5);
-                mid.normalize().multiplyScalar(globeRadius + 2.5);
-
-                const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
-                const points = curve.getPoints(50);
-                const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-                const isCritical = Math.random() > 0.6;
-                const mat = new THREE.LineBasicMaterial({
-                    color: isCritical ? 0xff4d4d : 0x00f2fe,
-                    transparent: true,
-                    opacity: 0.8
-                });
-
-                const arcLine = new THREE.Line(geometry, mat);
-                arcsGroup.add(arcLine);
-
-                setTimeout(() => {
-                    arcsGroup.remove(arcLine);
-                    geometry.dispose();
-                    mat.dispose();
-                }, 2500);
-            }
-
-            scene.add(arcsGroup);
-
-            setInterval(() => {
-                for(let k=0; k<2; k++) createRandomArc();
-            }, 800);
-
-            function animate() {
-                requestAnimationFrame(animate);
-                globe.rotation.y += 0.003;
-                atmosphere.rotation.y += 0.0035;
-                nodeGroup.rotation.y += 0.003;
-                arcsGroup.rotation.y += 0.003;
-                renderer.render(scene, camera);
-            }
-            animate();
-
-            window.addEventListener('resize', () => {
-                if (!container) return;
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            });
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            initCyberGlobe();
-
             const urlParams = new URLSearchParams(window.location.search);
-            const reportParam = urlParams.get('report');
-            if (reportParam) {
-                fetch('/get-records')
-                    .then(res => res.json())
-                    .then(data => {
-                        allGlobalRecords = data.records || [];
-                        const targetReport = allGlobalRecords.find(r => r.report_id === reportParam);
-                        if (targetReport) {
-                            openReportModal(targetReport);
-                        }
-                    });
+            const reportId = urlParams.get('id');
+
+            if (reportId) {
+                document.getElementById('step-auth').classList.add('hidden');
+                document.getElementById('step-menu').classList.add('hidden');
+                document.getElementById('step-form').classList.add('hidden');
+                document.getElementById('step-records').classList.add('hidden');
+                document.getElementById('step-shared-view').classList.remove('hidden');
+
+                const contentDiv = document.getElementById('shared-report-content');
+                const actionDiv = document.getElementById('shared-action-btn');
+                const subtitleDiv = document.getElementById('shared-subtitle');
+
+                let savedRecords = JSON.parse(localStorage.getItem('cyber_monitoring_official_records') || '[]');
+                let rec = savedRecords.find(r => (r.report_id === reportId || r.id === reportId));
+
+                if (rec) {
+                    subtitleDiv.innerText = `تم استرجاع البلاغ بنجاح من السجلات المحلية الرسمية`;
+                    displayReportContent(rec, contentDiv, actionDiv);
+                } else {
+                    subtitleDiv.innerText = `خطأ في العثور على البلاغ`;
+                    contentDiv.innerHTML = `<h3 style="color: #ff1e38; text-align: center;">عذراً، لم يتم العثور على البلاغ في السجلات الرسمية المحلية (قد يكون الجهاز الحالي مختلفاً عن الجهاز الذي أنشأ البلاغ).</h3>`;
+                    actionDiv.innerHTML = `<button class="btn btn-secondary" onclick="window.location.href=window.location.pathname">الانتقال للرئيسية</button>`;
+                }
             }
         });
 
-        function toggleSidebar() {
-            document.getElementById('options-sidebar').classList.toggle('active');
-        }
-
-        function showSection(sectionId) {
-            document.getElementById('menu-section').classList.add('hidden');
-            document.getElementById('form-section').classList.add('hidden');
-            document.getElementById('records-section').classList.add('hidden');
-            document.getElementById('monthly-section').classList.add('hidden');
-            document.getElementById(sectionId).classList.remove('hidden');
-            
-            if(sectionId === 'menu-section') {
-                setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
+        function displayReportContent(rec, contentDiv, actionDiv) {
+            let techHtml = '';
+            if (rec.technicalIndicators) {
+                for (let [k, v] of Object.entries(rec.technicalIndicators)) {
+                    if (v) techHtml += `• <b>${k.toUpperCase()}:</b> ${v}<br>`;
+                }
             }
-        }
 
-        function loadRecords() {
-            showSection('records-section');
-            fetch('/get-records')
-                .then(res => res.json())
-                .then(data => {
-                    allGlobalRecords = data.records;
-                    renderRecordsList(allGlobalRecords);
+            let imagesHtml = '';
+            if (rec.evidenceImages && rec.evidenceImages.length > 0) {
+                imagesHtml = `<div style="margin-top:12px;"><strong style="color:#ff1e38;">المرفقات والأدلة المصورة:</strong><div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">`;
+                rec.evidenceImages.forEach((img, idx) => {
+                    imagesHtml += `<a href="${img}" target="_blank"><img src="${img}" style="width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ff1e38;" title="مرفق ${idx+1}"></a>`;
                 });
-        }
-
-        function renderRecordsList(records) {
-            const container = document.getElementById('records-container');
-            if(records.length === 0) {
-                container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد سجلات مطابقة أو محفوظة حتى الآن.</p>';
-                return;
+                imagesHtml += `</div></div>`;
             }
-            container.innerHTML = records.map(r => `
-                <div class="p-3 rounded mb-3 position-relative shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4);">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> عرض وتفاصيل</button>
-                            <span class="badge ${r.severity && r.severity.includes('حرج') ? 'badge-critical' : 'badge-low'}">${r.severity || 'غير محدد'}</span>
-                            <span class="text-white small fw-bold">${r.timestamp}</span>
-                            {% if session.get('is_admin') %}
-                            <form action="/delete-report/${r.report_id}" method="POST" class="d-inline ms-2" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف السجل"><i class="fas fa-trash-alt"></i></button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span> | <strong>التهديد:</strong> ${r.threatType}</div>
-                    <div class="text-info text-break small mb-2 fw-bold"><strong>الرابط المرصود:</strong> <a href="${r.url}" target="_blank" class="text-cyan text-decoration-underline" style="color: var(--cyber-cyan);">${r.url}</a></div>
-                    ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${r.description}</div>` : ''}
-                </div>
-            `).join('');
-        }
 
-        function filterRecords() {
-            const query = document.getElementById('record-search').value.toLowerCase();
-            const filtered = allGlobalRecords.filter(r => 
-                (r.report_id && r.report_id.toLowerCase().includes(query)) ||
-                (r.officer && r.officer.toLowerCase().includes(query)) ||
-                (r.platform && r.platform.toLowerCase().includes(query)) ||
-                (r.url && r.url.toLowerCase().includes(query)) ||
-                (r.threatType && r.threatType.toLowerCase().includes(query)) ||
-                (r.accountName && r.accountName.toLowerCase().includes(query))
-            );
-            renderRecordsList(filtered);
-        }
-
-        function loadMonthlyLog() {
-            showSection('monthly-section');
-            fetch('/monthly-log')
-                .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById('monthly-container');
-                    if(data.monthly_reports.length === 0) {
-                        container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
-                        return;
-                    }
-                    container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
-                        <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-3 fw-bold" style="background: rgba(2,6,23,0.95);">
-                            <div>
-                                <span class="fw-bold" style="color: var(--cyber-cyan);">${r.report_id}</span> 
-                                <span class="mx-2 text-white">|</span> <span class="text-white">${r.officer}</span> 
-                                <span class="badge bg-secondary ms-2">${r.threatType}</span>
-                                <span class="badge bg-dark border border-info text-info ms-2">${r.platform}</span>
-                            </div>
-                            <span class="badge bg-dark border border-info text-info">${r.timestamp}</span>
-                        </li>
-                    `).join('') + '</ul>';
-                });
-        }
-
-        function openReportModal(report) {
-            currentSelectedReport = report;
-            const bodyContainer = document.getElementById('report-content-body');
-            const attachmentsContainer = document.getElementById('report-attachments-print-area');
-
-            bodyContainer.innerHTML = `
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; color: #000;">
-                    <tr>
-                        <td style="border: 1px solid #333; padding: 10px; width: 50%;"><strong>رقم البلاغ:</strong> ${report.report_id}</td>
-                        <td style="border: 1px solid #333; padding: 10px; width: 50%;"><strong>تاريخ الرصد:</strong> ${report.timestamp}</td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #333; padding: 10px;"><strong>القائم بالرصد:</strong> ${report.officer}</td>
-                        <td style="border: 1px solid #333; padding: 10px;"><strong>المنصة المستهدفة:</strong> ${report.platform}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="border: 1px solid #333; padding: 10px;"><strong>رابط المبلغ عنه (Target URL):</strong> <a href="${report.url}" target="_blank">${report.url}</a></td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #333; padding: 10px;"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</td>
-                        <td style="border: 1px solid #333; padding: 10px;"><strong>نوع التهديد:</strong> ${report.threatType}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="border: 1px solid #333; padding: 10px;"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #333; padding: 10px;"><strong>مستوى الخطورة:</strong> ${report.severity}</td>
-                        <td style="border: 1px solid #333; padding: 10px;"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</td>
-                    </tr>
-                </table>
+            contentDiv.innerHTML = `
+                <div style="margin-bottom:8px;"><strong style="color:#ff1e38;">رقم البلاغ:</strong> ${rec.report_id || rec.id}</div>
+                <div style="margin-bottom:8px;"><strong>القائم بالرصد:</strong> ${rec.officer}</div>
+                <div style="margin-bottom:8px;"><strong>مصدر الرصد:</strong> ${rec.source || 'غير متوفر'}</div>
+                <div style="margin-bottom:8px;"><strong>المنصة المستهدفة:</strong> ${rec.platform}</div>
+                <div style="margin-bottom:8px;"><strong style="color:#ff8593;">رابط الهدف المبلغ عنه:</strong> <a href="${rec.url}" target="_blank" style="color:#ff9800; word-break:break-all;">${rec.url}</a></div>
+                <div style="margin-bottom:8px;"><strong>اسم الحساب أو الجهة:</strong> ${rec.accountName || 'غير متوفر'}</div>
+                <div style="margin-bottom:8px;"><strong>نوع التهديد:</strong> ${rec.threatType}</div>
+                <div style="margin-bottom:8px;"><strong>مستوى الخطورة:</strong> ${rec.severity}</div>
+                <div style="margin-bottom:8px;"><strong>تاريخ ووقت النشر:</strong> ${rec.datetime || 'غير متوفر'}</div>
+                <div style="margin-bottom:8px;"><strong>وصف الحالة:</strong> ${rec.description || 'لا يوجد وصف'}</div>
+                <div style="margin-bottom:8px;"><strong>التوصية المقترحة:</strong> ${rec.recommendation || 'لا توجد توصية'}</div>
+                ${techHtml ? `<div style="margin-top:10px; border-top:1px solid rgba(255,30,56,0.3); padding-top:8px;"><strong>المؤشرات الفنية:</strong><br>${techHtml}</div>` : ''}
+                ${imagesHtml}
             `;
 
-            let imagesList = report.evidence || []; 
-            let imagesHtml = '';
-            if (imagesList.length > 0) {
-                imagesList.forEach((imgSrc, idx) => {
-                    imagesHtml += `
-                        <div class="page-break-page text-center my-4" style="page-break-after: always; break-after: page;">
-                            <h4 class="fw-bold mb-3" style="color: #000;">مرفق ${idx + 1}</h4>
-                            <img src="${imgSrc}" style="max-width: 100%; max-height: 650px; object-fit: contain; border: 2px solid #333; border-radius: 8px; display: block; margin: 0 auto;" alt="مرفق ${idx + 1}">
-                            <div class="mt-3 text-muted small" style="color: #555;">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
-                        </div>
-                    `;
-                });
-            } else {
-                imagesHtml = `
-                    <div class="page-break-page text-center my-4">
-                        <h4 class="fw-bold mb-3" style="color: #000;">مرفق 1</h4>
-                        <p class="text-muted" style="color: #555;">لا توجد صور مرفقة مع هذا البلاغ.</p>
-                        <div class="mt-3 text-muted small" style="color: #555;">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
-                    </div>
-                `;
-            }
-            attachmentsContainer.innerHTML = imagesHtml;
-
-            const copyLinkBtn = document.getElementById('copy-report-link-btn');
-            copyLinkBtn.onclick = function() {
-                const reportUrl = `${window.location.origin}${window.location.pathname}?report=${report.report_id}`;
-                navigator.clipboard.writeText(reportUrl).then(() => {
-                    alert('تم نسخ رابط البلاغ الكامل بنجاح! يمكنك إرساله لأي شخص ليتمكن من رؤية البلاغ كاملاً فور فتحه.');
-                }).catch(() => {
-                    prompt('انسخ الرابط أدناه:', reportUrl);
-                });
-            };
-
-            const shareBtn = document.getElementById('share-report-btn');
-            shareBtn.onclick = function() {
-                const reportUrl = `${window.location.origin}${window.location.pathname}?report=${report.report_id}`;
-                const shareText = `[تقرير رصد سيبراني رسمي]\nرقم البلاغ: ${report.report_id}\nالقائم بالرصد: ${report.officer}\nالمنصة: ${report.platform}\nنوع التهديد: ${report.threatType}\nرابط المبلغ عنه: ${report.url}\nرابط الاستعراض الكامل: ${reportUrl}`;
-                
-                if (navigator.share) {
-                    navigator.share({
-                        title: 'بلاغ سيبراني - ' + report.report_id,
-                        text: shareText,
-                        url: reportUrl
-                    }).catch(() => {});
-                } else {
-                    navigator.clipboard.writeText(shareText).then(() => {
-                        alert('تم نسخ تفاصيل البلاغ ورابط الاستعراض بنجاح!');
-                    });
-                }
-            };
-
-            const modal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
-            modal.show();
+            actionDiv.innerHTML = `
+                <a href="${rec.url}" target="_blank" class="btn visit-target-btn" style="margin-bottom: 10px;">
+                    <i class="fa-solid fa-external-link-alt"></i> 🔗 زيارة الصفحة المبلغ عنها فوراً
+                </a>
+                <button class="btn btn-secondary" onclick="window.location.href=window.location.pathname">إنشاء بلاغ جديد / الانتقال للرئيسية</button>
+            `;
         }
 
-        function printReportAsPDF() {
+        document.getElementById('m-evidence-file').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const previewContainer = document.getElementById('image-preview-container');
+            previewContainer.innerHTML = '';
+            uploadedImagesBase64 = [];
+            let names = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                names.push(file.name);
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const base64String = event.target.result;
+                    uploadedImagesBase64.push(base64String);
+
+                    const imgBox = document.createElement('div');
+                    imgBox.className = 'preview-img-box';
+                    imgBox.innerHTML = `<img src="${base64String}" alt="دليل مرفق">`;
+                    previewContainer.appendChild(imgBox);
+                }
+                reader.readAsDataURL(file);
+            }
+            document.getElementById('file-names').innerText = names.length > 0 ? 'الملفات المرفقة: ' + names.join(', ') : '';
+        });
+
+        function authenticateOfficer() {
+            const rank = document.getElementById('officer-rank').value;
+            const name = document.getElementById('officer-name').value.trim();
+            const errorDiv = document.getElementById('auth-error');
+
+            if (!rank || !name) {
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            errorDiv.classList.add('hidden');
+
+            currentOfficer = { rank, name };
+            
+            document.getElementById('welcome-title').innerText = `${rank} / ${name}`;
+            document.getElementById('welcome-subtitle').innerText = `تم توثيق الدخول باسم المنتسب // آمن`;
+            document.getElementById('print-officer-info').innerText = `القائم بالرصد: ${rank} ${name}`;
+
+            document.getElementById('step-auth').classList.add('hidden');
+            document.getElementById('step-menu').classList.remove('hidden');
+        }
+
+        function showForm() {
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-form').classList.remove('hidden');
+            document.getElementById('success-action-container').innerHTML = '';
+            document.getElementById('image-preview-container').innerHTML = '';
+            document.getElementById('file-names').innerText = '';
+            uploadedImagesBase64 = [];
+        }
+
+        function backToMenu() {
+            document.getElementById('step-form').classList.add('hidden');
+            document.getElementById('step-records').classList.add('hidden');
+            document.getElementById('step-menu').classList.remove('hidden');
+            document.getElementById('success-action-container').innerHTML = '';
+        }
+
+        function logout() {
+            currentOfficer = null;
+            document.getElementById('officer-rank').value = '';
+            document.getElementById('officer-name').value = '';
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-auth').classList.remove('hidden');
+        }
+
+        function submitAndPrintReport() {
+            const errorDiv = document.getElementById('form-error');
+            const urlVal = document.getElementById('m-url').value.trim();
+            
+            if (!urlVal) {
+                errorDiv.innerText = 'يرجى إدخال الرابط الأساسي للبلاغ.';
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            if (!isValidUrl(urlVal)) {
+                errorDiv.innerText = '⚠️ خطأ فني: الرابط المدخل غير صالح أو عبارة عن حروف عشوائية غير معتمدة. يرجى إدخال رابط صحيح وموثوق.';
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            let savedRecords = JSON.parse(localStorage.getItem('cyber_monitoring_official_records') || '[]');
+            const isDuplicate = savedRecords.some(r => r.url.trim().toLowerCase() === urlVal.toLowerCase());
+
+            if (isDuplicate) {
+                errorDiv.innerText = '⚠️ تنبيه أمني: تم تقديم هذا البلاغ من قبل لنفس الرابط! تم رفض العملية بالكامل ولا يمكن طباعتها أو تكرارها.';
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            errorDiv.classList.add('hidden');
+
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري فحص وتوثيق البلاغ...`;
+
+            const fileInput = document.getElementById('m-evidence-file');
+            let filesList = [];
+            for(let i=0; i<fileInput.files.length; i++) {
+                filesList.push(fileInput.files[i].name);
+            }
+
+            let reportId = 'CYBER-REC-' + Math.floor(100000 + Math.random() * 900000);
+
+            const reportData = {
+                report_id: reportId,
+                officer: `${currentOfficer.rank} ${currentOfficer.name}`,
+                source: document.getElementById('m-source').value.trim(),
+                platform: document.getElementById('m-platform').value,
+                url: urlVal,
+                accountName: document.getElementById('m-account-name').value.trim(),
+                datetime: document.getElementById('m-datetime').value,
+                description: document.getElementById('m-description').value.trim(),
+                threatType: document.getElementById('m-threat-type').value,
+                technicalIndicators: {
+                    ip: document.getElementById('tech-ip').value.trim(),
+                    domain: document.getElementById('tech-domain').value.trim(),
+                    url: document.getElementById('tech-url-ind').value.trim(),
+                    email: document.getElementById('tech-email').value.trim(),
+                    username: document.getElementById('tech-username').value.trim(),
+                    hash: document.getElementById('tech-hash').value.trim(),
+                    ioc: document.getElementById('tech-ioc').value.trim(),
+                    other: document.getElementById('tech-other').value.trim()
+                },
+                evidenceFiles: filesList,
+                evidenceImages: uploadedImagesBase64,
+                severity: document.getElementById('m-severity').value,
+                recommendation: document.getElementById('m-recommendation').value.trim(),
+                timestamp: new Date().toLocaleString()
+            };
+
+            savedRecords.push(reportData);
+            localStorage.setItem('cyber_monitoring_official_records', JSON.stringify(savedRecords));
+
+            const fieldsToCheck = [
+                { id: 'm-source', grp: 'grp-source' },
+                { id: 'm-account-name', grp: 'grp-account-name' },
+                { id: 'm-datetime', grp: 'grp-datetime' },
+                { id: 'm-description', grp: 'grp-description' },
+                { id: 'm-recommendation', grp: 'grp-recommendation' }
+            ];
+
+            fieldsToCheck.forEach(item => {
+                const val = document.getElementById(item.id).value.trim();
+                const grpEl = document.getElementById(item.grp);
+                if (!val) {
+                    grpEl.classList.add('print-hidden-field');
+                } else {
+                    grpEl.classList.remove('print-hidden-field');
+                }
+            });
+
+            const techValues = Object.values(reportData.technicalIndicators);
+            const hasTech = techValues.some(v => v !== '');
+            const techGrp = document.getElementById('grp-technical');
+            if (!hasTech) {
+                techGrp.classList.add('print-hidden-field');
+            } else {
+                techGrp.classList.remove('print-hidden-field');
+            }
+
+            // توليد صفحة مستقلة بالطباعة لكل دليل مرفق
+            const printAttContainer = document.getElementById('print-attachments-container');
+            printAttContainer.innerHTML = '';
+            if (reportData.evidenceImages && reportData.evidenceImages.length > 0) {
+                reportData.evidenceImages.forEach((imgBase64, idx) => {
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'print-attachment-page';
+                    pageDiv.innerHTML = `
+                        <div class="print-att-header">
+                            <h2>جمهورية العراق</h2>
+                            <h3>شعبة الأمن السيبراني - مديرية الأمن السيبراني</h3>
+                            <p>استمارة توثيق مخرجات الرصد الرسمية - أدلة التوثيق البصري</p>
+                        </div>
+                        <div class="print-att-title">مرفق رقم (${idx + 1})</div>
+                        <div class="print-att-img-box">
+                            <img src="${imgBase64}" alt="مرفق ${idx + 1}">
+                        </div>
+                        <div class="print-att-footer">
+                            رقم البلاغ: ${reportId} | القائم بالرصد: ${reportData.officer}
+                        </div>
+                    `;
+                    printAttContainer.appendChild(pageDiv);
+                });
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `حفظ البلاغ وطباعته`;
+
+            let shortLink = `${window.location.origin}${window.location.pathname}?id=${reportId}`;
+
+            let shareText = `🚨 *تقرير رصد سيبراني رسمي*\n\n` +
+                            `🆔 المعرف: ${reportId}\n` +
+                            `👤 القائم بالرصد: ${reportData.officer}\n` +
+                            `🌐 المنصة: ${reportData.platform}\n` +
+                            `⚠️ نوع التهديد: ${reportData.threatType}\n` +
+                            `🔴 مستوى الخطورة: ${reportData.severity}\n\n` +
+                            `🔗 *رابط البلاغ القصير (سجل دائم):*\n${shortLink}\n\n` +
+                            `🎯 *رابط الهدف المرصود مباشرة:* ${reportData.url}`;
+
+            let whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+            const successContainer = document.getElementById('success-action-container');
+            successContainer.innerHTML = `
+                <div class="report-success-box">
+                    <h3 style="color: #25d366; margin-bottom: 8px;"><i class="fa-solid fa-circle-check"></i> تم التحقق وحفظ وتوثيق البلاغ بنجاح!</h3>
+                    <p style="font-size: 13px; color: #ccc; margin-bottom: 12px;">اختر طريقة الإرسال المناسبة:</p>
+                    <div class="action-btn-group">
+                        <button class="btn copy-share-btn" onclick="navigator.clipboard.writeText(\`${shareText}\`); alert('تم نسخ نص البلاغ مع الرابط القصير بنجاح!');">
+                            <i class="fa-solid fa-copy"></i> نسخ نص التقرير مع الرابط (موصى به)
+                        </button>
+                        <a href="${whatsappUrl}" target="_blank" class="btn whatsapp-share-btn">
+                            <i class="fa-brands fa-whatsapp"></i> فتح واتساب ومشاركة التقرير مباشرة
+                        </a>
+                        <a href="${reportData.url}" target="_blank" class="btn visit-target-btn">
+                            <i class="fa-solid fa-external-link-alt"></i> 🔗 زيارة الصفحة المبلغ عنها فوراً
+                        </a>
+                    </div>
+                </div>
+            `;
+
             window.print();
         }
 
-        function exportReportToWord() {
-            const reportArea = document.getElementById('printable-report-area').innerHTML;
-            const wordContent = `
-                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                <head><meta charset='utf-8'><title>تقرير البلاغ السيبراني</title>
-                <style>
-                    body { font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; color: #000; background: #fff; padding: 20px; }
-                    h4, h5, h6 { color: #000; font-weight: bold; }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                    th, td { border: 1px solid #333; padding: 8px; text-align: right; }
-                    img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #ccc; page-break-after: always; }
-                </style>
-                </head>
-                <body>
-                    <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
-                        <h2>جمهورية العراق</h2>
-                        <h3>مديرية أمن وسلامة الوزارة</h3>
-                        <h4>[استمارة رصد وتحقيق سيبراني معتمدة]</h4>
-                    </div>
-                    ${reportArea}
-                </body>
-                </html>
-            `;
-            const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Cyber_Report_${currentSelectedReport ? currentSelectedReport.report_id : 'document'}.doc`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+        function viewSavedRecords() {
+            const container = document.getElementById('records-container');
+            const savedRecords = JSON.parse(localStorage.getItem('cyber_monitoring_official_records') || '[]');
 
-        document.getElementById('evidence-input').addEventListener('change', function(e) {
-            const preview = document.getElementById('image-preview');
-            preview.innerHTML = '';
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = document.createElement('img');
-                    img.src = event.target.result;
-                    img.style.width = '75px';
-                    img.style.height = '75px';
-                    img.style.objectFit = 'cover';
-                    img.style.borderRadius = '8px';
-                    img.style.border = '2px solid var(--cyber-cyan)';
-                    preview.appendChild(img);
-                }
-                reader.readAsDataURL(file);
-            });
-        });
+            if (savedRecords.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#888;">لا توجد سجلات رصد محفوظة محلياً حتى الآن.</p>';
+            } else {
+                let html = '';
+                savedRecords.forEach((rec) => {
+                    let imagesHtml = '';
+                    if (rec.evidenceImages && rec.evidenceImages.length > 0) {
+                        imagesHtml = `<div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;">`;
+                        rec.evidenceImages.forEach((imgSrc, idx) => {
+                            imagesHtml += `<img src="${imgSrc}" title="مرفق ${idx + 1}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #ff1e38;">`;
+                        });
+                        imagesHtml += `</div>`;
+                    }
+
+                    let recLink = `${window.location.origin}${window.location.pathname}?id=${rec.report_id || rec.id}`;
+
+                    html += `
+                        <div style="background:rgba(20,20,20,0.85); border:1px solid rgba(255,30,56,0.3); padding:12px; border-radius:6px; margin-bottom:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <strong style="color:#ff1e38;">${rec.report_id || rec.id}</strong>
+                                <span style="color:#888; font-size:11px;">${rec.timestamp}</span>
+                            </div>
+                            <span style="color:#fff; font-weight:600;">القائم بالرصد: ${rec.officer}</span><br>
+                            <span style="color:#ccc; font-size:12px;">المنصة: ${rec.platform} | التهديد: ${rec.threatType} | الخطورة: ${rec.severity}</span><br>
+                            <span style="color:#ff8593; font-size:12px; word-break:break-all;">الرابط/الهدف: ${rec.url}</span><br>
+                            ${imagesHtml}
+                            <div style="margin-top: 8px; display: flex; gap: 8px;">
+                                <a href="${recLink}" target="_blank" style="background:#25d366; color:#000; padding:4px 10px; border-radius:4px; font-size:11px; text-decoration:none; font-weight:bold;"><i class="fa-solid fa-eye"></i> فتح الرابط القصير</a>
+                                <a href="${rec.url}" target="_blank" style="background:#ff9800; color:#000; padding:4px 10px; border-radius:4px; font-size:11px; text-decoration:none; font-weight:bold;"><i class="fa-solid fa-external-link-alt"></i> زيارة الهدف</a>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-records').classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
