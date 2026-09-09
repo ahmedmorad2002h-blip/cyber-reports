@@ -182,7 +182,7 @@
 
         .hidden { display: none !important; }
 
-        /* تخصيص الطباعة بحيث تظهر الصور كل واحدة في صفحة مستقلة وتخفي النقطة الثامنة النصية */
+        /* تخصيص الطباعة بحيث تظهر الصور كل واحدة في صفحة مستقلة وتخفي العناصر غير المطلوبة */
         @media print {
             body * {
                 visibility: hidden;
@@ -869,11 +869,10 @@
                 <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
             `;
 
-            // تجهيز الصور بحيث تظهر كل صورة في صفحة مستقلة مع تسمية مرفق 1، مرفق 2...
-            // (نقطة 8 النصية غير متضمنة هنا عمداً لتلبية الشرط)
-            let imagesHtml = '';
-            let imagesList = report.images || []; // افتراض أن السجل يحتوي على مصفوفة صور إن وجدت، أو محاكاة الصور المرفقة
+            // قراءة الصور من مصفوفة evidence الصحيحة لضمان ظهورها في الطباعة والصفحات المستقلة
+            let imagesList = report.evidence || []; 
             
+            let imagesHtml = '';
             if (imagesList.length > 0) {
                 imagesList.forEach((imgSrc, idx) => {
                     imagesHtml += `
@@ -964,3 +963,4 @@
     </script>
 </body>
 </html>
+```[cite: 3]
