@@ -2,48 +2,16 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تسجيل الدخول - شعبة الأمن السيبراني</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-dark d-flex align-items-center justify-content-center vh-100 text-light">
-    <div class="card bg-black border border-danger p-4 shadow-lg" style="width: 380px;">
-        <h3 class="text-center mb-4 text-danger">تسجيل الدخول</h3>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages <!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
     <title>تسجيل الدخول - مديرية أمن وسلامة الوزارة</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            background-color: #050b14; 
-            color: #e2f1ff; 
-            font-family: 'Cairo', sans-serif;
-            background-image: radial-gradient(circle at 50% 10%, #0a192f 0%, #050b14 70%);
-        }
-        .card { 
-            background: rgba(10, 18, 32, 0.95); 
-            border: 1px solid rgba(0, 242, 254, 0.4); 
-            border-radius: 14px; 
-            box-shadow: 0 0 30px rgba(0, 242, 254, 0.15); 
-        }
+        body { background-color: #050b14; color: #e2f1ff; font-family: 'Cairo', sans-serif; background-image: radial-gradient(circle at 50% 10%, #0a192f 0%, #050b14 70%); }
+        .card { background: rgba(10, 18, 32, 0.95); border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 14px; box-shadow: 0 0 30px rgba(0, 242, 254, 0.15); }
         input { background: rgba(5, 12, 22, 0.9) !important; border: 1px solid rgba(0, 242, 254, 0.3) !important; color: #fff !important; }
         input:focus { border-color: #00f2fe !important; box-shadow: 0 0 10px rgba(0, 242, 254, 0.5) !important; }
-        .btn-cyber {
-            background: linear-gradient(135deg, #0072ff, #00f2fe);
-            border: none;
-            color: #000;
-            font-weight: 700;
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
-        }
-        .btn-cyber:hover {
-            background: linear-gradient(135deg, #005bc5, #00c6ff);
-            color: #fff;
-        }
+        .btn-cyber { background: linear-gradient(135deg, #0072ff, #00f2fe); border: none; color: #000; font-weight: 700; box-shadow: 0 0 15px rgba(0, 242, 254, 0.3); }
+        .btn-cyber:hover { background: linear-gradient(135deg, #005bc5, #00c6ff); color: #fff; }
     </style>
 </head>
 <body class="d-flex align-items-center justify-content-center vh-100">
@@ -71,25 +39,6 @@
                 <input type="password" name="password" class="form-control" required>
             </div>
             <button type="submit" class="btn btn-cyber w-100 py-2">تسجيل الدخول للنظام</button>
-        </form>
-    </div>
-</body>
-</html>%}
-                    <div class="alert alert-{{ category }} p-2 text-center">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST">
-            <div class="mb-3">
-                <label class="form-label">اسم المستخدم</label>
-                <input type="text" name="username" class="form-control bg-dark text-light border-secondary" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">كلمة المرور</label>
-                <input type="password" name="password" class="form-control bg-dark text-light border-secondary" required>
-            </div>
-            <button type="submit" class="btn btn-danger w-100">دخول للنظام</button>
         </form>
     </div>
 </body>
