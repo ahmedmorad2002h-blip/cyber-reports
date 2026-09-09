@@ -165,10 +165,6 @@
             transform: translateY(-3px);
         }
 
-        .badge-critical { background: rgba(239, 68, 68, 0.35); color: #fca5a5; border: 2px solid rgba(239, 68, 68, 0.8); font-weight: bold; }
-        .badge-medium { background: rgba(234, 179, 8, 0.35); color: #fde047; border: 2px solid rgba(234, 179, 8, 0.8); font-weight: bold; }
-        .badge-low { background: rgba(59, 130, 246, 0.35); color: #93c5fd; border: 2px solid rgba(59, 130, 246, 0.8); font-weight: bold; }
-
         #globe-container {
             width: 100%;
             height: 320px;
@@ -531,7 +527,7 @@
 
     </div>
 
-    <!-- نافذة التنبيه الصوتي والبصري عند وصول بلاغ جديد -->
+    <!-- نافذة التنبيه الصوتي والبصري -->
     <div id="cyber-alert-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999; display: none;">
         <div class="toast show text-white p-3 shadow-lg" style="background: rgba(3, 7, 18, 0.98); border: 2px solid #ef4444; border-radius: 14px; box-shadow: 0 0 30px rgba(239, 68, 68, 0.8) !important;">
             <div class="d-flex align-items-center justify-content-between">
@@ -547,7 +543,7 @@
         </div>
     </div>
 
-    <!-- نافذة عرض تفاصيل البلاغ والطباعة والمشاركة -->
+    <!-- نافذة عرض تفاصيل البلاغ والطباعة -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
@@ -708,7 +704,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // المتغيرات الخاصة بالصلاحيات والمستخدم الحالي
         const IS_ADMIN = {{ 'true' if session.get('is_admin') else 'false' }};
         const CURRENT_USER_FULLNAME = "{{ session.get('fullname', '') }}";
 
@@ -716,11 +711,9 @@
         let currentSelectedReport = null;
         let lastKnownTotalReports = null;
 
-        // --- دالة توليد صوت التنبيه السيبراني (Cyber Siren) ---
         function playCyberAlertSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
                 osc1.type = 'sawtooth';
@@ -732,70 +725,40 @@
                 gain1.connect(audioCtx.destination);
                 osc1.start();
                 osc1.stop(audioCtx.currentTime + 0.25);
-
-                setTimeout(() => {
-                    const osc2 = audioCtx.createOscillator();
-                    const gain2 = audioCtx.createGain();
-                    osc2.type = 'sine';
-                    osc2.frequency.setValueAtTime(1200, audioCtx.currentTime);
-                    gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                    osc2.connect(gain2);
-                    gain2.connect(audioCtx.destination);
-                    osc2.start();
-                    osc2.stop(audioCtx.currentTime + 0.3);
-                }, 150);
-
             } catch (e) {
-                console.log("الصوت محجوب بواسطة متصفح المستخدم حتى التفاعل مع الصفحة:", e);
+                console.log("الصوت محجوب:", e);
             }
         }
 
-        // --- دالة إظهار التنبيه البصري والصوتي ---
         function triggerNewReportNotification(reportId) {
             playCyberAlertSound();
-            
             const toast = document.getElementById('cyber-alert-toast');
             const msg = document.getElementById('cyber-alert-msg');
-            
-            if (msg) {
-                msg.innerText = `تم تسجيل بلاغ جديد برقم (${reportId}) الآن!`;
-            }
-            
-            if (toast) {
-                toast.style.display = 'block';
-            }
-            
-            setTimeout(() => {
-                if (toast) toast.style.display = 'none';
-            }, 7000);
+            if (msg) msg.innerText = `تم تسجيل بلاغ جديد برقم (${reportId}) الآن!`;
+            if (toast) toast.style.display = 'block';
+            setTimeout(() => { if (toast) toast.style.display = 'none'; }, 7000);
         }
 
-        // --- نظام المراقبة الحية (Check for New Reports Live) ---
         function monitorNewReports() {
             fetch('/get-records')
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.records) {
                         const currentCount = data.records.length;
-                        
                         if (lastKnownTotalReports !== null && currentCount > lastKnownTotalReports) {
                             const newestReport = data.records[0];
-                            // إشعار بالبلاغ الجديد إذا كان المشرف هو من يشاهد أو أن البلاغ مخصص للمستخدم الحالي
                             if (IS_ADMIN || (newestReport.officer && newestReport.officer.includes(CURRENT_USER_FULLNAME))) {
                                 triggerNewReportNotification(newestReport.report_id);
                             }
-                            
                             const recordsSection = document.getElementById('records-section');
                             if (recordsSection && !recordsSection.classList.contains('hidden')) {
                                 loadRecords();
                             }
                         }
-                        
                         lastKnownTotalReports = currentCount;
                     }
                 })
-                .catch(err => console.error("خطأ أثناء مراقبة البلاغات الجديدة:", err));
+                .catch(err => console.error("خطأ المراقبة:", err));
         }
 
         setInterval(monitorNewReports, 5000);
@@ -806,15 +769,12 @@
                 const originalHtml = btnElement.innerHTML;
                 btnElement.innerHTML = '<i class="fas fa-check me-1"></i> تم النسخ!';
                 btnElement.classList.add('btn-success');
-                btnElement.classList.remove('btn-outline-cyber', 'btn-outline-info');
-                
+                btnElement.classList.remove('btn-outline-cyber');
                 setTimeout(() => {
                     btnElement.innerHTML = originalHtml;
                     btnElement.classList.remove('btn-success');
                     btnElement.classList.add('btn-outline-cyber');
                 }, 2000);
-            }).catch(err => {
-                console.error('فشل نسخ الرابط:', err);
             });
         }
 
@@ -832,127 +792,48 @@
             container.appendChild(renderer.domElement);
 
             const globeRadius = 5;
-            const sphereGeometry = new THREE.SphereGeometry(globeRadius, 32, 32);
-            const sphereMaterial = new THREE.MeshBasicMaterial({
-                color: 0x0b1326,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.35
-            });
-            const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            const globe = new THREE.Mesh(
+                new THREE.SphereGeometry(globeRadius, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0x0b1326, wireframe: true, transparent: true, opacity: 0.35 })
+            );
             scene.add(globe);
-
-            const atmosGeometry = new THREE.SphereGeometry(globeRadius + 0.2, 32, 32);
-            const atmosMaterial = new THREE.MeshBasicMaterial({
-                color: 0x00f2fe,
-                transparent: true,
-                opacity: 0.08,
-                wireframe: true
-            });
-            const atmosphere = new THREE.Mesh(atmosGeometry, atmosMaterial);
-            scene.add(atmosphere);
-
-            const nodeCount = 35;
-            const nodePositions = [];
-            const nodeGroup = new THREE.Group();
-
-            for (let i = 0; i < nodeCount; i++) {
-                const phi = Math.acos(-1 + (2 * i) / nodeCount);
-                const theta = Math.sqrt(nodeCount * Math.PI) * phi;
-
-                const x = globeRadius * Math.cos(theta) * Math.sin(phi);
-                const y = globeRadius * Math.sin(theta) * Math.sin(phi);
-                const z = globeRadius * Math.cos(phi);
-
-                const vector = new THREE.Vector3(x, y, z);
-                nodePositions.push(vector);
-
-                const dotGeo = new THREE.SphereGeometry(0.08, 8, 8);
-                const dotMat = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0x00f2fe : 0xff3366 });
-                const dot = new THREE.Mesh(dotGeo, dotMat);
-                dot.position.copy(vector);
-                nodeGroup.add(dot);
-            }
-            scene.add(nodeGroup);
-
-            const arcsGroup = new THREE.Group();
-
-            function createRandomArc() {
-                if (nodePositions.length < 2) return;
-                const startIdx = Math.floor(Math.random() * nodePositions.length);
-                let endIdx = Math.floor(Math.random() * nodePositions.length);
-                while (endIdx === startIdx) endIdx = Math.floor(Math.random() * nodePositions.length);
-
-                const p1 = nodePositions[startIdx];
-                const p2 = nodePositions[endIdx];
-
-                const mid = p1.clone().add(p2).multiplyScalar(0.5);
-                mid.normalize().multiplyScalar(globeRadius + 2.5);
-
-                const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
-                const points = curve.getPoints(50);
-                const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-                const isCritical = Math.random() > 0.6;
-                const mat = new THREE.LineBasicMaterial({
-                    color: isCritical ? 0xff4d4d : 0x00f2fe,
-                    transparent: true,
-                    opacity: 0.8
-                });
-
-                const arcLine = new THREE.Line(geometry, mat);
-                arcsGroup.add(arcLine);
-
-                setTimeout(() => {
-                    arcsGroup.remove(arcLine);
-                    geometry.dispose();
-                    mat.dispose();
-                }, 2500);
-            }
-
-            scene.add(arcsGroup);
-
-            setInterval(() => {
-                for(let k=0; k<2; k++) createRandomArc();
-            }, 800);
 
             function animate() {
                 requestAnimationFrame(animate);
                 globe.rotation.y += 0.003;
-                atmosphere.rotation.y += 0.0035;
-                nodeGroup.rotation.y += 0.003;
-                arcsGroup.rotation.y += 0.003;
                 renderer.render(scene, camera);
             }
             animate();
-
-            window.addEventListener('resize', () => {
-                if (!container) return;
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            });
         }
 
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
             monitorNewReports();
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const viewId = urlParams.get('view_id');
-            if (viewId) {
-                fetch('/get-records')
-                    .then(res => res.json())
-                    .then(data => {
-                        const targetReport = data.records.find(r => r.report_id === viewId);
-                        if (targetReport) {
-                            openReportModal(targetReport);
-                        } else {
-                            alert('لم يتم العثور على البلاغ المطلوب أو قد يكون تم حذفه.');
-                        }
-                    })
-                    .catch(err => console.error('خطأ في جلب بيانات البلاغ:', err));
-            }
+            // معاينة الصور فور اختيارها في استمارة الرفع
+            document.getElementById('evidence-input')?.addEventListener('change', function(e) {
+                const previewContainer = document.getElementById('image-preview');
+                previewContainer.innerHTML = '';
+                Array.from(e.target.files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            const img = document.createElement('img');
+                            img.src = evt.target.result;
+                            img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--cyber-cyan);';
+                            previewContainer.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+
+            // ربط زر مشاركة الرابط مع المدير
+            document.getElementById('share-report-btn')?.addEventListener('click', function() {
+                if (currentSelectedReport) {
+                    copyLink(currentSelectedReport.url, this);
+                }
+            });
         });
 
         function toggleSidebar() {
@@ -968,26 +849,14 @@
             if (monthlySec) monthlySec.classList.add('hidden');
 
             document.getElementById(sectionId).classList.remove('hidden');
-            
-            if(sectionId === 'menu-section') {
-                setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
-            }
         }
 
-        // تحميل البلاغات وتصفيتها حسب صلاحة المستخدم (Admin يرى الكل، المستخدم يرى بلاغاته فقط)
         function loadRecords() {
             showSection('records-section');
             fetch('/get-records')
                 .then(res => res.json())
                 .then(data => {
-                    let records = data.records || [];
-                    
-                    if (!IS_ADMIN) {
-                        // تصفية السجلات ليظهر فقط ما قام المستخدم الحالي بقديمه
-                        records = records.filter(r => r.officer && r.officer.includes(CURRENT_USER_FULLNAME));
-                    }
-                    
-                    allGlobalRecords = records;
+                    allGlobalRecords = data.records || [];
                     renderRecordsList(allGlobalRecords);
                 });
         }
@@ -1003,20 +872,29 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
                         <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> عرض وتفاصيل</button>
-                            <span class="badge ${r.severity && r.severity.includes('حرج') ? 'badge-critical' : 'badge-low'}">${r.severity || 'غير محدد'}</span>
-                            <span class="text-white small fw-bold">${r.timestamp}</span>
-                            {% if session.get('is_admin') %}
-                            <form action="/delete-report/${r.report_id}" method="POST" class="d-inline ms-2" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟');">
+                            ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success">تمت الموافقة</span>' : '<span class="badge bg-warning text-dark">قيد المراجعة</span>'}
+                            
+                            <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> تفاصيل</button>
+                            
+                            ${IS_ADMIN && r.status === 'قيد المراجعة' ? `
+                                <form action="/approve-report/${r.report_id}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success py-0 px-2 fw-bold">موافقة</button>
+                                </form>
+                                <form action="/reject-report/${r.report_id}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
+                                </form>
+                            ` : ''}
+
+                            ${IS_ADMIN ? `
+                            <form action="/delete-report/${r.report_id}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف السجل"><i class="fas fa-trash-alt"></i></button>
                             </form>
-                            {% endif %}
+                            ` : ''}
                         </div>
                     </div>
-                    <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span> | <strong>التهديد:</strong> ${r.threatType}</div>
+                    <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span></div>
                     <div class="text-info text-break small mb-2 fw-bold d-flex align-items-center gap-2">
-                        <span><strong>الرابط المرصود:</strong> <a href="${r.url}" target="_blank" class="text-cyan text-decoration-underline" style="color: var(--cyber-cyan);">${r.url}</a></span>
-                        <button class="btn btn-sm btn-outline-cyber py-0 px-2" onclick="copyLink('${r.url}', this)" title="نسخ الرابط"><i class="fas fa-copy me-1"></i> نسخ الرابط</button>
+                        <span><strong>الرابط:</strong> <a href="${r.url}" target="_blank" style="color: var(--cyber-cyan);">${r.url}</a></span>
                     </div>
                     ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${r.description}</div>` : ''}
                 </div>
@@ -1029,26 +907,18 @@
                 (r.report_id && r.report_id.toLowerCase().includes(query)) ||
                 (r.officer && r.officer.toLowerCase().includes(query)) ||
                 (r.platform && r.platform.toLowerCase().includes(query)) ||
-                (r.url && r.url.toLowerCase().includes(query)) ||
-                (r.threatType && r.threatType.toLowerCase().includes(query)) ||
-                (r.accountName && r.accountName.toLowerCase().includes(query))
+                (r.url && r.url.toLowerCase().includes(query))
             );
             renderRecordsList(filtered);
         }
 
-        // تحميل سجل النشاط الشهري الكامل (متاح للـ Admin فقط)
         function loadMonthlyLog() {
-            if (!IS_ADMIN) {
-                alert('عذراً، الاطلاع على سجل النشاط الشهري الكامل مخصص لمدير النظام (Admin) فقط.');
-                return;
-            }
             showSection('monthly-section');
             fetch('/monthly-log')
                 .then(res => res.json())
                 .then(data => {
                     const container = document.getElementById('monthly-container');
                     if(!container) return;
-                    
                     if(data.monthly_reports.length === 0) {
                         container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
                         return;
@@ -1056,10 +926,7 @@
                     container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
                         <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-3 fw-bold" style="background: rgba(2,6,23,0.95);">
                             <div>
-                                <span class="fw-bold" style="color: var(--cyber-cyan);">${r.report_id}</span> 
-                                <span class="mx-2 text-white">|</span> <span class="text-white">${r.officer}</span> 
-                                <span class="badge bg-secondary ms-2">${r.threatType}</span>
-                                <span class="badge bg-dark border border-info text-info ms-2">${r.platform}</span>
+                                <span style="color: var(--cyber-cyan);">${r.report_id}</span> | <span>${r.officer}</span>
                             </div>
                             <span class="badge bg-dark border border-info text-info">${r.timestamp}</span>
                         </li>
@@ -1071,109 +938,78 @@
             currentSelectedReport = report;
             const bodyContainer = document.getElementById('report-content-body');
             const attachmentsContainer = document.getElementById('report-attachments-print-area');
-
+            
             bodyContainer.innerHTML = `
-                <div class="row mb-2"><div class="col-6"><strong>رقم البلاغ:</strong> ${report.report_id}</div><div class="col-6"><strong>تاريخ الرصد:</strong> ${report.timestamp}</div></div>
-                <div class="row mb-2"><div class="col-6"><strong>القائم بالرصد:</strong> ${report.officer}</div><div class="col-6"><strong>المنصة المستهدفة:</strong> ${report.platform}</div></div>
-                <div class="row mb-2">
-                    <div class="col-12 d-flex align-items-center gap-2">
-                        <strong>رابط المبلغ عنه (Target URL):</strong> 
-                        <a href="${report.url}" target="_blank">${report.url}</a>
-                        <button class="btn btn-sm btn-outline-cyber py-0 px-2 ms-2" onclick="copyLink('${report.url}', this)"><i class="fas fa-copy me-1"></i> نسخ الرابط</button>
-                    </div>
-                </div>
-                <div class="row mb-2"><div class="col-6"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</div><div class="col-6"><strong>نوع التهديد:</strong> ${report.threatType}</div></div>
-                <div class="row mb-2"><div class="col-12"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</div></div>
-                <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
+                <table class="table table-bordered text-white align-middle" style="border-color: rgba(0,242,254,0.3);">
+                    <tr><th width="30%">رقم البلاغ</th><td>${report.report_id}</td></tr>
+                    <tr><th>القائم بالرصد</th><td>${report.officer}</td></tr>
+                    <tr><th>المنصة</th><td>${report.platform}</td></tr>
+                    <tr><th>اسم الحساب / الجهة</th><td>${report.accountName || 'غير محدد'}</td></tr>
+                    <tr><th>الرابط</th><td><a href="${report.url}" target="_blank" style="color: var(--cyber-cyan);">${report.url}</a></td></tr>
+                    <tr><th>تاريخ ووقت الرصد</th><td>${report.datetime || report.timestamp}</td></tr>
+                    <tr><th>نوع التهديد</th><td>${report.threatType || 'غير محدد'}</td></tr>
+                    <tr><th>مستوى الخطورة</th><td>${report.severity || 'غير محدد'}</td></tr>
+                    <tr><th>الوصف</th><td>${report.description || 'لا يوجد وصف'}</td></tr>
+                    <tr><th>التوصية</th><td>${report.recommendation || 'لا توجد توصية'}</td></tr>
+                    <tr><th>حالة البلاغ</th><td>${report.status}</td></tr>
+                </table>
             `;
 
-            let imagesList = report.evidence || []; 
-            
-            let imagesHtml = '';
-            if (imagesList.length > 0) {
-                imagesList.forEach((imgSrc, idx) => {
-                    imagesHtml += `
-                        <div class="page-break-page text-center my-4">
-                            <h4 class="fw-bold mb-3">مرفق ${idx + 1}</h4>
-                            <img src="${imgSrc}" style="max-width: 100%; max-height: 70vh; object-fit: contain; border: 2px solid #000; border-radius: 8px;" alt="مرفق ${idx + 1}">
-                            <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
-                        </div>
-                    `;
-                });
-            } else {
-                imagesHtml = `
-                    <div class="page-break-page text-center my-4">
-                        <h4 class="fw-bold mb-3">مرفق 1</h4>
-                        <p class="text-muted">لا توجد صور مرفقة مع هذا البلاغ.</p>
-                        <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
+            if (report.evidence && report.evidence.length > 0) {
+                attachmentsContainer.innerHTML = `
+                    <h5 class="fw-bold mt-4 mb-3 text-info no-print-section"><i class="fas fa-paperclip me-2"></i>الأدلة المرفقة (${report.evidence.length})</h5>
+                    <div class="d-flex flex-wrap gap-3 no-print-section mb-4">
+                        ${report.evidence.map(img => `<img src="${img}" style="max-width: 200px; border-radius: 8px; border: 1px solid var(--cyber-cyan);">`).join('')}
+                    </div>
+                    <div class="d-none d-print-block">
+                        ${report.evidence.map((img, index) => `
+                            <div class="page-break-page">
+                                <h6>دليل التوثيق رقم (${index + 1}) - البلاغ ${report.report_id}</h6>
+                                <img src="${img}">
+                            </div>
+                        `).join('')}
                     </div>
                 `;
+            } else {
+                attachmentsContainer.innerHTML = '<p class="text-muted small">لا توجد أدلة مصورة مرفقة لهذا البلاغ.</p>';
             }
-            attachmentsContainer.innerHTML = imagesHtml;
-
-            const shareBtn = document.getElementById('share-report-btn');
-            shareBtn.onclick = function() {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?view_id=${report.report_id}`;
-                
-                const shareText = `🚨 [تقرير رصد سيبراني رسمي]\n------------------------------\n📌 رقم البلاغ: ${report.report_id}\n👤 القائم بالرصد: ${report.officer}\n🌐 المنصة: ${report.platform}\n⚠️ نوع التهديد: ${report.threatType}\n🔗 رابط الهدف: ${report.url}\n🆔 اسم الحساب/الجهة: ${report.accountName || 'غير متوفر'}\n🔥 مستوى الخطورة: ${report.severity}\n📝 وصف الحالة: ${report.description || 'لا يوجد'}\n💡 التوصية: ${report.recommendation || 'لا توجد'}\n\n📲 لرؤية تفاصيل البلاغ والصور المرفقة كاملة افتح الرابط التالي:\n${shareUrl}`;
-
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(shareText).then(() => {
-                        alert('تم نسخ رابط التقرير والتفاصيل بنجاح! يمكنك الآن لصق الرسالة مباشرة وإرسالها للمدير عبر واتساب أو تيليجرام.');
-                    }).catch(() => {
-                        prompt('قم بنسخ هذا النص والرابط المباشر لإرساله للمدير:', shareText);
-                    });
-                } else {
-                    prompt('قم بنسخ هذا النص والرابط المباشر لإرساله للمدير:', shareText);
-                }
-            };
 
             const modal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
             modal.show();
         }
 
-        function printReportAsPDF() {
-            window.print();
+        function printReportAsPDF() { 
+            window.print(); 
         }
 
         function exportReportToWord() {
-            const reportArea = document.getElementById('printable-report-area').innerHTML;
-            const wordContent = `
+            if (!currentSelectedReport) return;
+            
+            const content = `
                 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                <head><meta charset='utf-8'><title>تقرير البلاغ السيبراني</title>
-                <style>body { font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; }</style>
-                </head>
-                <body>${reportArea}</body>
+                <head><meta charset='utf-8'><title>تقرير ${currentSelectedReport.report_id}</title></head>
+                <body style="font-family: Arial; direction: rtl; text-align: right;">
+                    <h2>جمهورية العراق - مديرية أمن وسلامة الوزارة</h2>
+                    <h3>تقرير رصد سيبراني: ${currentSelectedReport.report_id}</h3>
+                    <hr/>
+                    <p><strong>القائم بالرصد:</strong> ${currentSelectedReport.officer}</p>
+                    <p><strong>المنصة:</strong> ${currentSelectedReport.platform}</p>
+                    <p><strong>الرابط:</strong> ${currentSelectedReport.url}</p>
+                    <p><strong>الوصف:</strong> ${currentSelectedReport.description}</p>
+                    <p><strong>التوصية:</strong> ${currentSelectedReport.recommendation}</p>
+                </body>
                 </html>
             `;
-            const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
+
+            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Cyber_Report_${currentSelectedReport ? currentSelectedReport.report_id : 'document'}.doc`;
+            a.download = `Report_${currentSelectedReport.report_id}.doc`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
         }
-
-        document.getElementById('evidence-input').addEventListener('change', function(e) {
-            const preview = document.getElementById('image-preview');
-            preview.innerHTML = '';
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = document.createElement('img');
-                    img.src = event.target.result;
-                    img.style.width = '75px';
-                    img.style.height = '75px';
-                    img.style.objectFit = 'cover';
-                    img.style.borderRadius = '8px';
-                    img.style.border = '2px solid var(--cyber-cyan)';
-                    preview.appendChild(img);
-                }
-                reader.readAsDataURL(file);
-            });
-        });
     </script>
 </body>
 </html>
