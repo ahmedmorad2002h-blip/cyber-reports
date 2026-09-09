@@ -9,7 +9,7 @@ from supabase import create_client, Client
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
 
-# معالجة صارمة لرابط وقاعدة بيانات Supabase لمنع أي قيم فارغة أو خاطئة
+# معالجة رابط وقاعدة بيانات Supabase
 raw_url = os.environ.get("SUPABASE_URL", "").strip().strip('"').strip("'")
 if raw_url and raw_url.startswith("http"):
     SUPABASE_URL = raw_url
@@ -39,8 +39,9 @@ def init_admin_user():
                 "rank": "مدير فني"
             }
             supabase.table('users').insert(admin_user).execute()
+            print("✅ تم إنشاء حساب الأدمن الرئيسي بنجاح.")
     except Exception as e:
-        print(f"Error initializing admin user: {e}")
+        print(f"🚨 خطأ في إنشاء حساب الأدمن: {e}")
 
 init_admin_user()
 
@@ -49,7 +50,7 @@ def load_users():
         res = supabase.table('users').select('*').execute()
         return {u['username']: u for u in res.data}
     except Exception as e:
-        print(f"Error loading users: {e}")
+        print(f"🚨 خطأ في تحميل المستخدمين: {e}")
         return {}
 
 def load_reports():
@@ -70,12 +71,12 @@ def load_reports():
                 "severity": r.get("severity"),
                 "recommendation": r.get("recommendation"),
                 "timestamp": r.get("timestamp"),
-                "evidence": r.get("evidence", []),
-                "tech_indicators": r.get("tech_indicators", {})
+                "evidence": r.get("evidence", []) if isinstance(r.get("evidence"), list) else [],
+                "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
         return reports
     except Exception as e:
-        print(f"Error loading reports: {e}")
+        print(f"🚨 خطأ في تحميل البلاغات من Supabase: {e}")
         return []
 
 # --- مسارات التطبيق (Routes) ---
@@ -87,11 +88,21 @@ def login():
         password = request.form.get('password')
         users = load_users()
         
-        if username in users and check_password_hash(users[username]['password'], password):
-            session['user'] = username
-            session['is_admin'] = users[username].get('is_admin', False)
-            session['fullname'] = users[username].get('fullname', username)
-            return redirect(url_for('index'))
+        if username in users:
+            user_db_password = users[username].get('password', '')
+            # التحقق سواء كانت كلمة المرور مشفرة أو نص عادي
+            is_valid = False
+            try:
+                is_valid = check_password_hash(user_db_password, password)
+            except Exception:
+                is_valid = (user_db_password == password)
+
+            if is_valid:
+                session['user'] = username
+                session['is_admin'] = users[username].get('is_admin', False)
+                session['fullname'] = users[username].get('fullname', username)
+                return redirect(url_for('index'))
+                
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
     
     return render_template('login.html')
@@ -108,8 +119,8 @@ def index():
     
     reports = load_reports()
     total_reports = len(reports)
-    critical_reports = sum(1 for r in reports if 'حرج' in r.get('severity', ''))
-    monthly_count = sum(1 for r in reports if r.get('timestamp', '').startswith(datetime.now().strftime('%Y-%m')))
+    critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
+    monthly_count = sum(1 for r in reports if str(r.get('timestamp', '')).startswith(datetime.now().strftime('%Y-%m')))
     
     stats = {
         'total': total_reports,
@@ -171,9 +182,11 @@ def submit_report():
     }
     
     try:
-        supabase.table('reports').insert(db_payload).execute()
-        flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح في قاعدة البيانات السحابية.', 'success')
+        res = supabase.table('reports').insert(db_payload).execute()
+        print("✅ تم حفظ البلاغ بنجاح:", res)
+        flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح.', 'success')
     except Exception as e:
+        print(f"🚨 خطأ أثناء حفظ البلاغ في Supabase: {e}")
         flash(f'حدث خطأ أثناء حفظ البلاغ: {e}', 'danger')
 
     return redirect(url_for('index'))
@@ -191,7 +204,7 @@ def monthly_log():
         return jsonify({'monthly_reports': []})
     reports = load_reports()
     current_month = datetime.now().strftime('%Y-%m')
-    filtered = [r for r in reports if r.get('timestamp', '').startswith(current_month)]
+    filtered = [r for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
     return jsonify({'monthly_reports': filtered})
 
 @app.route('/change-password', methods=['POST'])
@@ -248,9 +261,11 @@ def add_user():
     }
     
     try:
-        supabase.table('users').insert(new_user_data).execute()
+        res = supabase.table('users').insert(new_user_data).execute()
+        print("✅ تم حفظ المستخدم في Supabase:", res)
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
     except Exception as e:
+        print(f"🚨 خطأ أثناء إضافة المستخدم إلى Supabase: {e}")
         flash(f'حدث خطأ أثناء إضافة المستخدم إلى قاعدة البيانات: {e}', 'danger')
         
     return redirect(url_for('index'))
@@ -265,12 +280,12 @@ def delete_user(username):
         flash('لا يمكن حذف حساب المشرف الرئيسي.', 'danger')
         return redirect(url_for('index'))
         
-    users = load_users()
-    if username in users:
+    try:
         supabase.table('users').delete().eq('username', username).execute()
         flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
-    else:
-        flash('المستخدم غير موجود.', 'danger')
+    except Exception as e:
+        print(f"🚨 خطأ أثناء حذف المستخدم: {e}")
+        flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
         
     return redirect(url_for('index'))
 
@@ -284,6 +299,7 @@ def delete_report(report_id):
         supabase.table('reports').delete().eq('report_id', report_id).execute()
         flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
     except Exception as e:
+        print(f"🚨 خطأ أثناء حذف البلاغ: {e}")
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
         
     return redirect(url_for('index'))
