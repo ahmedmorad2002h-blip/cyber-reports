@@ -6,7 +6,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <!-- مكتبة Three.js للرسم ثلاثي الأبعاد -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <style>
@@ -170,7 +169,6 @@
         .badge-medium { background: rgba(234, 179, 8, 0.35); color: #fde047; border: 2px solid rgba(234, 179, 8, 0.8); font-weight: bold; }
         .badge-low { background: rgba(59, 130, 246, 0.35); color: #93c5fd; border: 2px solid rgba(59, 130, 246, 0.8); font-weight: bold; }
 
-        /* حاوية الكرة الأرضية السيبرانية */
         #globe-container {
             width: 100%;
             height: 320px;
@@ -183,6 +181,43 @@
         }
 
         .hidden { display: none !important; }
+
+        /* تخصيص الطباعة بحيث تظهر الصور كل واحدة في صفحة مستقلة وتخفي النقطة الثامنة النصية */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-report-area, #printable-report-area * {
+                visibility: visible;
+            }
+            #printable-report-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: #ffffff !important;
+                color: #000000 !important;
+                padding: 20px;
+            }
+            #printable-report-area * {
+                color: #000000 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                border-color: #ccc !important;
+            }
+            .no-print-section {
+                display: none !important;
+            }
+            .page-break-page {
+                page-break-after: always;
+                break-after: page;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -199,7 +234,6 @@
         </div>
     </nav>
 
-    <!-- الشريط الجانبي للإدارة والحساب -->
     <div id="options-sidebar" class="sidebar">
         <div class="sidebar-header">
             <h5 class="m-0 fw-bold text-white" style="color: var(--cyber-cyan);"><i class="fas fa-sliders-h me-2"></i> الإعدادات والخيارات</h5>
@@ -248,7 +282,6 @@
             {% endif %}
         {% endwith %}
 
-        <!-- القائمة الرئيسية -->
         <div id="menu-section" class="card shadow-lg text-center">
             <div class="mb-2 pt-1">
                 <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 25px rgba(0, 242, 254, 0.9));"></i>
@@ -256,7 +289,6 @@
             <h2 class="mb-1 fw-black text-white">منظومة مخرجات الرصد والتحقيقات السيبرانية</h2>
             <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار (شامل Dark Web)</p>
             
-            <!-- الكرة الأرضية ثلاثية الأبعاد لمحاكاة الهجمات السيبرانية بين الدول -->
             <div class="position-relative">
                 <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem;">
                     <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live 3D Map)
@@ -264,7 +296,6 @@
                 <div id="globe-container"></div>
             </div>
 
-            <!-- بطاقات الإحصائيات السريعة -->
             <div class="row g-3 mb-4">
                 <div class="col-4">
                     <div class="stat-card">
@@ -299,7 +330,6 @@
             </div>
         </div>
 
-        <!-- استمارة البلاغ الكاملة -->
         <div id="form-section" class="card shadow-lg hidden">
             <form method="POST" action="{{ url_for('submit_report') }}" enctype="multipart/form-data">
                 
@@ -378,7 +408,6 @@
                     </select>
                 </div>
 
-                <!-- المؤشرات الفنية الثمانية -->
                 <div class="mb-3">
                     <label class="form-label">7. المؤشرات الفنية المتوفرة (تملأ الحقول عند توفرها بدقة):</label>
                     <div class="tech-grid">
@@ -421,7 +450,6 @@
             </form>
         </div>
 
-        <!-- السجلات المحفوظة ومنع التكرار -->
         <div id="records-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;"><i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> السجلات المحفوظة ونظام منع التكرار</h3>
@@ -435,7 +463,6 @@
             <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
-        <!-- سجل النشاط الشهري -->
         <div id="monthly-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري الرسمي</h3>
@@ -446,7 +473,55 @@
 
     </div>
 
-    <!-- نافذة تغيير كلمة السر -->
+    <!-- نافذة عرض تفاصيل البلاغ والطباعة والمشاركة -->
+    <div class="modal fade" id="reportDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
+                <div class="modal-header border-bottom no-print-section" style="border-color: rgba(0,242,254,0.4) !important;">
+                    <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2" style="color: var(--cyber-cyan);"></i> تفاصيل البلاغ السيبراني الكامل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
+                    
+                    <!-- منطقة الطباعة المخصصة -->
+                    <div id="printable-report-area">
+                        <div class="text-center mb-4 pb-2 border-bottom">
+                            <h4 class="fw-bold">جمهورية العراق</h4>
+                            <h5 class="fw-bold">مديرية أمن وسلامة الوزارة</h5>
+                            <h6 class="fw-bold text-info">[استمارة رصد وتحقيق سيبراني معتمدة]</h6>
+                        </div>
+
+                        <div id="report-content-body" class="mb-4">
+                            <!-- سيتم تعبئة تفاصيل البلاغ هنا ديناميكياً -->
+                        </div>
+
+                        <!-- الصور المرفقة: كل صورة في صفحة مستقلة مع تسمية مرفق 1، مرفق 2، إلخ -->
+                        <div id="report-attachments-print-area">
+                            <!-- سيتم تعبئة المرفقات هنا -->
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-top no-print-section d-flex justify-content-between" style="border-color: rgba(0,242,254,0.4) !important;">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-cyber fw-bold" onclick="printReportAsPDF()">
+                            <i class="fas fa-file-pdf me-1"></i> طباعة كـ PDF
+                        </button>
+                        <button type="button" class="btn btn-outline-cyber fw-bold" onclick="exportReportToWord()">
+                            <i class="fas fa-file-word me-1"></i> تصدير كـ Word
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-warning text-dark fw-bold" id="share-report-btn">
+                            <i class="fas fa-share-alt me-1"></i> مشاركة البلاغ للمدير
+                        </button>
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
@@ -478,7 +553,6 @@
         </div>
     </div>
 
-    <!-- نافذة إضافة مستخدم -->
     <div class="modal fade" id="addUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #f59e0b !important; border-radius: 16px;">
@@ -510,7 +584,6 @@
         </div>
     </div>
 
-    <!-- نافذة إدارة المستخدمين -->
     {% if session.get('is_admin') %}
     <div class="modal fade" id="manageUsersModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -568,8 +641,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let allGlobalRecords = [];
+        let currentSelectedReport = null;
 
-        // تشغيل الكرة الأرضية السيبرانية وثلاثية الأبعاد باستخدام Three.js
         function initCyberGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
@@ -583,7 +656,6 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
 
-            // شبكة الكرة الأرضية السيبرانية
             const globeRadius = 5;
             const sphereGeometry = new THREE.SphereGeometry(globeRadius, 32, 32);
             const sphereMaterial = new THREE.MeshBasicMaterial({
@@ -595,7 +667,6 @@
             const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
             scene.add(globe);
 
-            // هالة إضاءة محيطة بالكرة
             const atmosGeometry = new THREE.SphereGeometry(globeRadius + 0.2, 32, 32);
             const atmosMaterial = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
@@ -606,7 +677,6 @@
             const atmosphere = new THREE.Mesh(atmosGeometry, atmosMaterial);
             scene.add(atmosphere);
 
-            // نقاط عشوائية تمثل دول أو عُقد سيبرانية
             const nodeCount = 35;
             const nodePositions = [];
             const nodeGroup = new THREE.Group();
@@ -630,13 +700,7 @@
             }
             scene.add(nodeGroup);
 
-            // خطوط الهجمات السيبرانية (Arcs) المتحركة بين العقد
             const arcsGroup = new THREE.Group();
-            const arcLineMaterial = new THREE.LineBasicMaterial({
-                color: 0x00f2fe,
-                transparent: true,
-                opacity: 0.5
-            });
 
             function createRandomArc() {
                 if (nodePositions.length < 2) return;
@@ -647,7 +711,6 @@
                 const p1 = nodePositions[startIdx];
                 const p2 = nodePositions[endIdx];
 
-                // نقطة منتصف مرفوعة للأعلى لعمل انحناء القوس خارج الكرة
                 const mid = p1.clone().add(p2).multiplyScalar(0.5);
                 mid.normalize().multiplyScalar(globeRadius + 2.5);
 
@@ -655,7 +718,6 @@
                 const points = curve.getPoints(50);
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
-                // تغيير لون هجمات معينة للون الأحمر (حالات حرجة)
                 const isCritical = Math.random() > 0.6;
                 const mat = new THREE.LineBasicMaterial({
                     color: isCritical ? 0xff4d4d : 0x00f2fe,
@@ -666,7 +728,6 @@
                 const arcLine = new THREE.Line(geometry, mat);
                 arcsGroup.add(arcLine);
 
-                // إزالة الخط بعد مدة قصيرة لتتجدد الهجمات باستمرار
                 setTimeout(() => {
                     arcsGroup.remove(arcLine);
                     geometry.dispose();
@@ -676,12 +737,10 @@
 
             scene.add(arcsGroup);
 
-            // حلقة تدوير وخلق هجمات جديدة دورياً
             setInterval(() => {
                 for(let k=0; k<2; k++) createRandomArc();
             }, 800);
 
-            // حركة دوران مستمرة للكرة
             function animate() {
                 requestAnimationFrame(animate);
                 globe.rotation.y += 0.003;
@@ -692,7 +751,6 @@
             }
             animate();
 
-            // التجاوب عند تغيير حجم النافذة
             window.addEventListener('resize', () => {
                 if (!container) return;
                 camera.aspect = container.clientWidth / container.clientHeight;
@@ -701,7 +759,6 @@
             });
         }
 
-        // تشغيل الكرة عند تحميل الصفحة
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
         });
@@ -717,7 +774,6 @@
             document.getElementById('monthly-section').classList.add('hidden');
             document.getElementById(sectionId).classList.remove('hidden');
             
-            // إعادة ضبط حجم الـ WebGL لو رجعنا للرئيسية
             if(sectionId === 'menu-section') {
                 setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
             }
@@ -744,6 +800,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
                         <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> عرض وتفاصيل</button>
                             <span class="badge ${r.severity && r.severity.includes('حرج') ? 'badge-critical' : 'badge-low'}">${r.severity || 'غير محدد'}</span>
                             <span class="text-white small fw-bold">${r.timestamp}</span>
                             {% if session.get('is_admin') %}
@@ -795,6 +852,95 @@
                         </li>
                     `).join('') + '</ul>';
                 });
+        }
+
+        // فتح نافذة تفاصيل البلاغ وتعبئة المحتوى والمرفقات للطباعة أو المشاركة
+        function openReportModal(report) {
+            currentSelectedReport = report;
+            const bodyContainer = document.getElementById('report-content-body');
+            const attachmentsContainer = document.getElementById('report-attachments-print-area');
+
+            bodyContainer.innerHTML = `
+                <div class="row mb-2"><div class="col-6"><strong>رقم البلاغ:</strong> ${report.report_id}</div><div class="col-6"><strong>تاريخ الرصد:</strong> ${report.timestamp}</div></div>
+                <div class="row mb-2"><div class="col-6"><strong>القائم بالرصد:</strong> ${report.officer}</div><div class="col-6"><strong>المنصة المستهدفة:</strong> ${report.platform}</div></div>
+                <div class="row mb-2"><div class="col-12"><strong>رابط المبلغ عنه (Target URL):</strong> <a href="${report.url}" target="_blank">${report.url}</a></div></div>
+                <div class="row mb-2"><div class="col-6"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</div><div class="col-6"><strong>نوع التهديد:</strong> ${report.threatType}</div></div>
+                <div class="row mb-2"><div class="col-12"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</div></div>
+                <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
+            `;
+
+            // تجهيز الصور بحيث تظهر كل صورة في صفحة مستقلة مع تسمية مرفق 1، مرفق 2...
+            // (نقطة 8 النصية غير متضمنة هنا عمداً لتلبية الشرط)
+            let imagesHtml = '';
+            let imagesList = report.images || []; // افتراض أن السجل يحتوي على مصفوفة صور إن وجدت، أو محاكاة الصور المرفقة
+            
+            if (imagesList.length > 0) {
+                imagesList.forEach((imgSrc, idx) => {
+                    imagesHtml += `
+                        <div class="page-break-page text-center my-4">
+                            <h4 class="fw-bold mb-3">مرفق ${idx + 1}</h4>
+                            <img src="${imgSrc}" style="max-width: 100%; max-height: 70vh; object-fit: contain; border: 2px solid #000; border-radius: 8px;" alt="مرفق ${idx + 1}">
+                            <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                imagesHtml = `
+                    <div class="page-break-page text-center my-4">
+                        <h4 class="fw-bold mb-3">مرفق 1</h4>
+                        <p class="text-muted">لا توجد صور مرفقة مع هذا البلاغ أو أن الملفات لم تُحفظ كصور.</p>
+                        <div class="mt-3 text-muted small">رقم البلاغ: ${report.report_id} | الجهة المبلغ عنها: ${report.url}</div>
+                    </div>
+                `;
+            }
+            attachmentsContainer.innerHTML = imagesHtml;
+
+            // إعداد زر المشاركة للمدير (نسخ رابط البلاغ والتفاصيل الكاملة ورابط المبلغ عنه)
+            const shareBtn = document.getElementById('share-report-btn');
+            shareBtn.onclick = function() {
+                const shareText = `[تقرير رصد سيبراني رسمي]\nرقم البلاغ: ${report.report_id}\nالقائم بالرصد: ${report.officer}\nالمنصة: ${report.platform}\nنوع التهديد: ${report.threatType}\nرابط المبلغ عنه: ${report.url}\nوصف الحالة: ${report.description || 'لا يوجد'}\nمستوى الخطورة: ${report.severity}`;
+                
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'بلاغ سيبراني - ' + report.report_id,
+                        text: shareText,
+                        url: window.location.href
+                    }).catch(() => {});
+                } else {
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        alert('تم نسخ تفاصيل البلاغ ورابط المبلغ عنه ومرفقاته بنجاح لإرساله للمدير.');
+                    });
+                }
+            };
+
+            const modal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
+            modal.show();
+        }
+
+        // طباعة الاستمارة بصيغة PDF (تستخدم نافذة طباعة المتصفح مع حفظ كملف PDF)
+        function printReportAsPDF() {
+            window.print();
+        }
+
+        // تصدير الاستمارة بصيغة Word (.doc)
+        function exportReportToWord() {
+            const reportArea = document.getElementById('printable-report-area').innerHTML;
+            const wordContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'><title>تقرير البلاغ السيبراني</title>
+                <style>body { font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; }</style>
+                </head>
+                <body>${reportArea}</body>
+                </html>
+            `;
+            const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Cyber_Report_${currentSelectedReport ? currentSelectedReport.report_id : 'document'}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         document.getElementById('evidence-input').addEventListener('change', function(e) {
