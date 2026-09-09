@@ -69,7 +69,7 @@ def login():
             session['fullname'] = users[username].get('fullname', username)
             return redirect(url_for('index'))
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
-    return render_template('index1.html') # أو اسم ملف الـ html الخاص بك
+    return render_template('index.html')
 
 @app.route('/logout')
 def logout():
@@ -93,7 +93,7 @@ def index():
     }
     
     users = load_users() if session.get('is_admin') else {}
-    return render_template('index1.html', stats=stats, users=users)
+    return render_template('index.html', stats=stats, users=users)
 
 @app.route('/submit-report', methods=['POST'])
 def submit_report():
@@ -103,7 +103,6 @@ def submit_report():
     reports = load_reports()
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
-    # معالجة الصور وتحويلها لـ Base64 لكي تُحفظ داخل ملف reports.json حصرياً ولا تُحذف أبداً على الاستضافة
     files = request.files.getlist('evidence_files')
     evidence_base64 = []
     for file in files:
@@ -134,7 +133,7 @@ def submit_report():
         "severity": request.form.get('m_severity'),
         "recommendation": request.form.get('m_recommendation'),
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "evidence": evidence_base64, # مصفوفة الصور المزبردة
+        "evidence": evidence_base64,
         "tech_indicators": {
             "ip": request.form.get('tech_ip'),
             "domain": request.form.get('tech_domain'),
