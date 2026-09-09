@@ -182,22 +182,23 @@
 
         .hidden { display: none !important; }
 
-        /* تخصيص الطباعة بحيث تظهر الصور كل واحدة في صفحة مستقلة وتخفي العناصر غير المطلوبة */
+        /* تخصيص الطباعة لضمان ظهور التقرير كاملاً وعدم ظهور صفحات بيضاء */
         @media print {
             body * {
-                visibility: hidden;
+                visibility: hidden !important;
             }
             #printable-report-area, #printable-report-area * {
-                visibility: visible;
+                visibility: visible !important;
             }
             #printable-report-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
                 background: #ffffff !important;
                 color: #000000 !important;
-                padding: 20px;
+                padding: 15px !important;
+                margin: 0 !important;
             }
             #printable-report-area * {
                 color: #000000 !important;
@@ -205,17 +206,36 @@
                 box-shadow: none !important;
                 border-color: #ccc !important;
             }
-            .no-print-section {
+            .modal {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                overflow: visible !important;
+            }
+            .modal-dialog {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+            }
+            .modal-content {
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+            }
+            .no-print-section, .modal-header, .modal-footer, nav, .sidebar, .modal-backdrop {
                 display: none !important;
             }
             .page-break-page {
-                page-break-after: always;
-                break-after: page;
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
+                page-break-after: always !important;
+                break-after: page !important;
+                min-height: 100vh !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
             }
         }
     </style>
@@ -473,7 +493,7 @@
 
     </div>
 
-    <!-- نافذة عرض تفاصيل البلاغ والطباعة والمشاركة -->
+    <!-- نافذة عرض تفاصيل البلاغ والطباعة ومشاركة الرابط -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
@@ -502,8 +522,8 @@
                     </div>
 
                 </div>
-                <div class="modal-footer border-top no-print-section d-flex justify-content-between" style="border-color: rgba(0,242,254,0.4) !important;">
-                    <div class="d-flex gap-2">
+                <div class="modal-footer border-top no-print-section d-flex justify-content-between flex-wrap gap-2" style="border-color: rgba(0,242,254,0.4) !important;">
+                    <div class="d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-cyber fw-bold" onclick="printReportAsPDF()">
                             <i class="fas fa-file-pdf me-1"></i> طباعة كـ PDF
                         </button>
@@ -511,9 +531,12 @@
                             <i class="fas fa-file-word me-1"></i> تصدير كـ Word
                         </button>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-info text-dark fw-bold" id="copy-report-link-btn">
+                            <i class="fas fa-link me-1"></i> نسخ رابط البلاغ الكامل
+                        </button>
                         <button type="button" class="btn btn-warning text-dark fw-bold" id="share-report-btn">
-                            <i class="fas fa-share-alt me-1"></i> مشاركة البلاغ للمدير
+                            <i class="fas fa-share-alt me-1"></i> مشاركة سريعة
                         </button>
                         <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                     </div>
@@ -761,6 +784,21 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
+
+            // التحقق مما إذا كان الرابط يحتوي على معرف تقرير لعرضه مباشرة عند فتح الرابط المنسخ
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportParam = urlParams.get('report');
+            if (reportParam) {
+                fetch('/get-records')
+                    .then(res => res.json())
+                    .then(data => {
+                        allGlobalRecords = data.records || [];
+                        const targetReport = allGlobalRecords.find(r => r.report_id === reportParam);
+                        if (targetReport) {
+                            openReportModal(targetReport);
+                        }
+                    });
+            }
         });
 
         function toggleSidebar() {
@@ -854,7 +892,7 @@
                 });
         }
 
-        // فتح نافذة تفاصيل البلاغ وتعبئة المحتوى والمرفقات للطباعة أو المشاركة
+        // فتح نافذة تفاصيل البلاغ وتعبئة المحتوى والمرفقات للطباعة أو المشاركة أو نسخ الرابط المباشر
         function openReportModal(report) {
             currentSelectedReport = report;
             const bodyContainer = document.getElementById('report-content-body');
@@ -869,7 +907,6 @@
                 <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
             `;
 
-            // قراءة الصور من مصفوفة evidence الصحيحة لضمان ظهورها في الطباعة والصفحات المستقلة
             let imagesList = report.evidence || []; 
             
             let imagesHtml = '';
@@ -894,20 +931,32 @@
             }
             attachmentsContainer.innerHTML = imagesHtml;
 
-            // إعداد زر المشاركة للمدير (نسخ رابط البلاغ والتفاصيل الكاملة ورابط المبلغ عنه)
+            // ميزة نسخ رابط البلاغ المباشر (ليراه أي شخص بشكل كامل فور فتحه)
+            const copyLinkBtn = document.getElementById('copy-report-link-btn');
+            copyLinkBtn.onclick = function() {
+                const reportUrl = `${window.location.origin}${window.location.pathname}?report=${report.report_id}`;
+                navigator.clipboard.writeText(reportUrl).then(() => {
+                    alert('تم نسخ رابط البلاغ الكامل بنجاح! يمكنك إرساله لأي شخص ليتمكن من رؤية البلاغ كاملاً فور فتحه.');
+                }).catch(() => {
+                    prompt('انسخ الرابط أدناه:', reportUrl);
+                });
+            };
+
+            // زر المشاركة السريعة
             const shareBtn = document.getElementById('share-report-btn');
             shareBtn.onclick = function() {
-                const shareText = `[تقرير رصد سيبراني رسمي]\nرقم البلاغ: ${report.report_id}\nالقائم بالرصد: ${report.officer}\nالمنصة: ${report.platform}\nنوع التهديد: ${report.threatType}\nرابط المبلغ عنه: ${report.url}\nوصف الحالة: ${report.description || 'لا يوجد'}\nمستوى الخطورة: ${report.severity}`;
+                const reportUrl = `${window.location.origin}${window.location.pathname}?report=${report.report_id}`;
+                const shareText = `[تقرير رصد سيبراني رسمي]\nرقم البلاغ: ${report.report_id}\nالقائم بالرصد: ${report.officer}\nالمنصة: ${report.platform}\nنوع التهديد: ${report.threatType}\nرابط المبلغ عنه: ${report.url}\nرابط الاستعراض الكامل: ${reportUrl}`;
                 
                 if (navigator.share) {
                     navigator.share({
                         title: 'بلاغ سيبراني - ' + report.report_id,
                         text: shareText,
-                        url: window.location.href
+                        url: reportUrl
                     }).catch(() => {});
                 } else {
                     navigator.clipboard.writeText(shareText).then(() => {
-                        alert('تم نسخ تفاصيل البلاغ ورابط المبلغ عنه ومرفقاته بنجاح لإرساله للمدير.');
+                        alert('تم نسخ تفاصيل البلاغ ورابط الاستعراض بنجاح!');
                     });
                 }
             };
@@ -916,7 +965,7 @@
             modal.show();
         }
 
-        // طباعة الاستمارة بصيغة PDF (تستخدم نافذة طباعة المتصفح مع حفظ كملف PDF)
+        // طباعة الاستمارة بصيغة PDF
         function printReportAsPDF() {
             window.print();
         }
@@ -963,4 +1012,4 @@
     </script>
 </body>
 </html>
-```[cite: 3]
+```[cite: 4]
