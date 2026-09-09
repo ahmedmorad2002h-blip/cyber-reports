@@ -593,7 +593,7 @@
                     </div>
                     <div class="modal-footer border-top" style="border-color: rgba(0,242,254,0.4) !important;">
                         <button type="submit" class="btn btn-cyber">حفظ التغييرات</button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                     </div>
                 </form>
             </div>
@@ -624,7 +624,7 @@
                     </div>
                     <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.4) !important;">
                         <button type="submit" class="btn btn-warning text-dark fw-bold">إضافة الحساب رسمياً</button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                     </div>
                 </form>
             </div>
@@ -689,6 +689,25 @@
     <script>
         let allGlobalRecords = [];
         let currentSelectedReport = null;
+
+        // دالة نسخ الرابط المضافة
+        function copyLink(url, btnElement) {
+            if (!url) return;
+            navigator.clipboard.writeText(url).then(() => {
+                const originalHtml = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fas fa-check me-1"></i> تم النسخ!';
+                btnElement.classList.add('btn-success');
+                btnElement.classList.remove('btn-outline-cyber', 'btn-outline-info');
+                
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHtml;
+                    btnElement.classList.remove('btn-success');
+                    btnElement.classList.add('btn-outline-cyber');
+                }, 2000);
+            }).catch(err => {
+                console.error('فشل نسخ الرابط:', err);
+            });
+        }
 
         function initCyberGlobe() {
             const container = document.getElementById('globe-container');
@@ -858,7 +877,10 @@
                         </div>
                     </div>
                     <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span> | <strong>التهديد:</strong> ${r.threatType}</div>
-                    <div class="text-info text-break small mb-2 fw-bold"><strong>الرابط المرصود:</strong> <a href="${r.url}" target="_blank" class="text-cyan text-decoration-underline" style="color: var(--cyber-cyan);">${r.url}</a></div>
+                    <div class="text-info text-break small mb-2 fw-bold d-flex align-items-center gap-2">
+                        <span><strong>الرابط المرصود:</strong> <a href="${r.url}" target="_blank" class="text-cyan text-decoration-underline" style="color: var(--cyber-cyan);">${r.url}</a></span>
+                        <button class="btn btn-sm btn-outline-cyber py-0 px-2" onclick="copyLink('${r.url}', this)" title="نسخ الرابط"><i class="fas fa-copy me-1"></i> نسخ الرابط</button>
+                    </div>
                     ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${r.description}</div>` : ''}
                 </div>
             `).join('');
@@ -910,7 +932,13 @@
             bodyContainer.innerHTML = `
                 <div class="row mb-2"><div class="col-6"><strong>رقم البلاغ:</strong> ${report.report_id}</div><div class="col-6"><strong>تاريخ الرصد:</strong> ${report.timestamp}</div></div>
                 <div class="row mb-2"><div class="col-6"><strong>القائم بالرصد:</strong> ${report.officer}</div><div class="col-6"><strong>المنصة المستهدفة:</strong> ${report.platform}</div></div>
-                <div class="row mb-2"><div class="col-12"><strong>رابط المبلغ عنه (Target URL):</strong> <a href="${report.url}" target="_blank">${report.url}</a></div></div>
+                <div class="row mb-2">
+                    <div class="col-12 d-flex align-items-center gap-2">
+                        <strong>رابط المبلغ عنه (Target URL):</strong> 
+                        <a href="${report.url}" target="_blank">${report.url}</a>
+                        <button class="btn btn-sm btn-outline-cyber py-0 px-2 ms-2" onclick="copyLink('${report.url}', this)"><i class="fas fa-copy me-1"></i> نسخ الرابط</button>
+                    </div>
+                </div>
                 <div class="row mb-2"><div class="col-6"><strong>اسم الحساب/الجهة:</strong> ${report.accountName || 'غير متوفر'}</div><div class="col-6"><strong>نوع التهديد:</strong> ${report.threatType}</div></div>
                 <div class="row mb-2"><div class="col-12"><strong>وصف الحالة:</strong> ${report.description || 'لا يوجد وصف'}</div></div>
                 <div class="row mb-2"><div class="col-6"><strong>مستوى الخطورة:</strong> ${report.severity}</div><div class="col-6"><strong>التوصية:</strong> ${report.recommendation || 'لا توجد توصية'}</div></div>
