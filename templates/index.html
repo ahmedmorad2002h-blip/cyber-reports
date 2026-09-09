@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>مديرية أمن وسلامة الوزارة - استمارة مخرجات الرصد الرسمية</title>
+    <title>مديرية أمن وسلامة الوزارة - استمارة الرصد</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -12,7 +12,6 @@
             --bg-color: #050b14;
             --panel-bg: rgba(10, 18, 32, 0.95);
             --cyber-cyan: #00f2fe;
-            --cyber-blue: #4facfe;
             --border-color: rgba(0, 242, 254, 0.3);
             --text-main: #e2f1ff;
         }
@@ -42,62 +41,35 @@
             box-shadow: 0 0 12px rgba(0, 242, 254, 0.4) !important; 
         }
         .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px; }
-        
         .sidebar {
             position: fixed; top: 0; right: -300px; width: 300px; height: 100%;
             background: #07111e; box-shadow: -5px 0 20px rgba(0,0,0,0.8); transition: 0.3s; z-index: 1050; padding: 25px;
             border-left: 1px solid var(--border-color);
         }
         .sidebar.active { right: 0; }
-        .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 242, 254, 0.2); padding-bottom: 12px; margin-bottom: 20px; }
         .close-btn { background: none; border: none; font-size: 24px; color: var(--cyber-cyan); cursor: pointer; }
-
         .btn-cyber {
             background: linear-gradient(135deg, #0072ff, #00f2fe);
-            border: none;
-            color: #000;
-            font-weight: 700;
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
-            transition: 0.2s;
+            border: none; color: #000; font-weight: 700;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.3); transition: 0.2s;
         }
-        .btn-cyber:hover {
-            background: linear-gradient(135deg, #005bc5, #00c6ff);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
-        }
-
-        .btn-outline-cyber {
-            border: 1px solid var(--cyber-cyan);
-            color: var(--cyber-cyan);
-            background: transparent;
-            font-weight: 600;
-        }
-        .btn-outline-cyber:hover {
-            background: rgba(0, 242, 254, 0.15);
-            color: #fff;
-            border-color: #fff;
-        }
-
+        .btn-cyber:hover { background: linear-gradient(135deg, #005bc5, #00c6ff); color: #fff; }
+        .btn-outline-cyber { border: 1px solid var(--cyber-cyan); color: var(--cyber-cyan); background: transparent; font-weight: 600; }
+        .btn-outline-cyber:hover { background: rgba(0, 242, 254, 0.15); color: #fff; border-color: #fff; }
+        .hidden { display: none !important; }
+        .print-header { display: none; }
         @media print {
-            body { background: #fff; color: #000; display: block; padding: 0; }
+            body { background: #fff; color: #000; padding: 0; }
             .no-print, .btn, .sidebar, nav { display: none !important; }
             .card { background: #fff; border: none; box-shadow: none; padding: 0; width: 100%; max-width: 100%; }
             input, select, textarea { border: none !important; background: transparent !important; color: #000 !important; font-size: 13px !important; }
             label { color: #222 !important; font-weight: bold; margin-top: 8px; }
-            #grp-evidence { display: none !important; }
             .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .print-attachment-page { page-break-before: always; break-before: page; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 15px 0; text-align: center; }
-            .print-att-header { text-align: center; border-bottom: 2px solid #000; width: 100%; padding-bottom: 8px; margin-bottom: 5px; }
-            .print-att-img-box { flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; max-height: 78vh; }
-            .print-att-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid #000; padding: 4px; }
         }
-        .print-header { display: none; }
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- شريط التنقل العلوي -->
     <nav class="navbar navbar-dark bg-black px-4 border-bottom" style="border-color: rgba(0, 242, 254, 0.2) !important;">
         <span class="navbar-brand mb-0 h1"><i class="fa-solid fa-shield-halved text-info me-2" style="color: var(--cyber-cyan) !important;"></i> مديرية أمن وسلامة الوزارة</span>
         <div>
@@ -106,33 +78,30 @@
         </div>
     </nav>
 
-    <!-- الشريط الجانبي لخيارات الحساب -->
     <div id="options-sidebar" class="sidebar">
-        <div class="sidebar-header">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3" style="border-color: rgba(0,242,254,0.2);">
             <h5 class="m-0" style="color: var(--cyber-cyan);">خيارات الحساب</h5>
             <button type="button" class="close-btn" onclick="toggleSidebar()">&times;</button>
         </div>
-        <div class="sidebar-body">
-            <ul class="list-unstyled">
-                <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-light d-block p-2 rounded bg-dark border border-secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                        <i class="fas fa-key text-info me-2"></i> تغيير كلمة السر
-                    </a>
-                </li>
-                {% if session.get('is_admin') %}
-                <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-light d-block p-2 rounded bg-dark border border-info" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <i class="fas fa-user-plus text-warning me-2"></i> إضافة حساب مستخدم
-                    </a>
-                </li>
-                {% endif %}
-                <li>
-                    <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger d-block p-2 rounded bg-dark border border-danger">
-                        <i class="fas fa-sign-out-alt me-2"></i> تسجيل الخروج
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <ul class="list-unstyled">
+            <li class="mb-3">
+                <a href="#" class="text-decoration-none text-light d-block p-2 rounded bg-dark border border-secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    <i class="fas fa-key text-info me-2"></i> تغيير كلمة السر
+                </a>
+            </li>
+            {% if session.get('is_admin') %}
+            <li class="mb-3">
+                <a href="#" class="text-decoration-none text-light d-block p-2 rounded bg-dark border border-info" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="fas fa-user-plus text-warning me-2"></i> إضافة حساب مستخدم
+                </a>
+            </li>
+            {% endif %}
+            <li>
+                <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger d-block p-2 rounded bg-dark border border-danger">
+                    <i class="fas fa-sign-out-alt me-2"></i> تسجيل الخروج
+                </a>
+            </li>
+        </ul>
     </div>
 
     <div class="container my-5" style="max-width: 800px;">
@@ -145,7 +114,7 @@
             {% endif %}
         {% endwith %}
 
-        <!-- 1. القائمة الرئيسية -->
+        <!-- القائمة الرئيسية -->
         <div id="menu-section" class="card shadow-lg text-center">
             <div class="mb-3">
                 <i class="fa-solid fa-network-wired fa-3x" style="color: var(--cyber-cyan); text-shadow: 0 0 15px rgba(0, 242, 254, 0.5);"></i>
@@ -165,13 +134,13 @@
             </div>
         </div>
 
-        <!-- 2. استمارة البلاغ الكاملة -->
+        <!-- استمارة البلاغ -->
         <div id="form-section" class="card shadow-lg hidden">
             <form method="POST" action="{{ url_for('submit_report') }}" enctype="multipart/form-data">
                 
                 <div class="print-header">
                     <h2>جمهورية العراق</h2>
-                    <h3>وزارة ... / مديرية أمن وسلامة الوزارة</h3>
+                    <h3>وزارة الداخلية / مديرية أمن وسلامة الوزارة</h3>
                     <p>استمارة توثيق مخرجات الرصد الرسمية</p>
                 </div>
 
@@ -180,7 +149,6 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm no-print" onclick="showSection('menu-section')">العودة للقائمة</button>
                 </div>
 
-                <!-- اختيار الرتبة والاسم -->
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label">الرتبة / الصفة الوظيفية:</label>
@@ -199,13 +167,11 @@
                     </div>
                 </div>
 
-                <!-- 1. مصدر الرصد -->
                 <div class="mb-3">
                     <label class="form-label">1. مصدر الرصد</label>
                     <input type="text" name="m_source" class="form-control" placeholder="مثال: رصد مباشر، بلاغ رسمي...">
                 </div>
 
-                <!-- المنصة المستهدفة -->
                 <div class="mb-3">
                     <label class="form-label">المنصة أو التطبيق المستهدف بالرصد</label>
                     <select name="m_platform" class="form-control">
@@ -219,31 +185,26 @@
                     </select>
                 </div>
 
-                <!-- 2. رابط الموقع -->
                 <div class="mb-3">
-                    <label class="form-label">2. رابط الموقع أو الصفحة أو الحساب أو النطاق ذي العلاقة (يتم فحصه لمنع التكرار)</label>
+                    <label class="form-label">2. رابط الموقع أو الصفحة أو الحساب (يتم فحصه لمنع التكرار)</label>
                     <input type="text" name="m_url" class="form-control" placeholder="https://..." required>
                 </div>
 
-                <!-- 3. اسم الحساب -->
                 <div class="mb-3">
-                    <label class="form-label">3. اسم الحساب أو الصفحة أو الجهة المرتبطة بالحالة (إن وجد)</label>
+                    <label class="form-label">3. اسم الحساب أو الصفحة أو الجهة المرتبطة بالحالة</label>
                     <input type="text" name="m_account_name" class="form-control" placeholder="أدخل اسم الحساب أو الجهة...">
                 </div>
 
-                <!-- 4. تاريخ ووقت النشر -->
                 <div class="mb-3">
                     <label class="form-label">4. تاريخ ووقت النشر</label>
                     <input type="datetime-local" name="m_datetime" class="form-control">
                 </div>
 
-                <!-- 5. وصف الحالة -->
                 <div class="mb-3">
                     <label class="form-label">5. وصف مختصر وواضح للحالة المرصودة</label>
                     <textarea name="m_description" rows="2" class="form-control" placeholder="اكتب وصفاً موجزاً لطبيعة الحالة..."></textarea>
                 </div>
 
-                <!-- 6. نوع التهديد -->
                 <div class="mb-3">
                     <label class="form-label">6. نوع التهديد أو النشاط السيبراني</label>
                     <select name="m_threat_type" class="form-control">
@@ -251,34 +212,26 @@
                         <option value="تشهير وإساءة">تشهير وإساءة</option>
                         <option value="حساب مزيف / انتحال صفة">حساب مزيف / انتحال صفة</option>
                         <option value="اختراق أو تسريب معلومات">اختراق أو تسريب معلومات</option>
-                        <option value="هجوم سيبراني / DDoS">هجوم سيبراني / DDoS</option>
                         <option value="أخرى">أخرى</option>
                     </select>
                 </div>
 
-                <!-- 7. المؤشرات الفنية المتوفرة -->
                 <div class="mb-3">
-                    <label class="form-label">7. المؤشرات الفنية المتوفرة (تملأ الحقول عند توفرها):</label>
+                    <label class="form-label">7. المؤشرات الفنية المتوفرة:</label>
                     <div class="tech-grid">
                         <input type="text" name="tech_ip" class="form-control" placeholder="عنوان IP">
                         <input type="text" name="tech_domain" class="form-control" placeholder="اسم النطاق Domain">
                         <input type="text" name="tech_url_ind" class="form-control" placeholder="الرابط URL">
                         <input type="text" name="tech_email" class="form-control" placeholder="البريد الإلكتروني">
-                        <input type="text" name="tech_username" class="form-control" placeholder="اسم المستخدم أو المعرف">
-                        <input type="text" name="tech_hash" class="form-control" placeholder="قيمة التجزئة Hash">
-                        <input type="text" name="tech_ioc" class="form-control" placeholder="مؤشرات الاختراق IOC">
-                        <input type="text" name="tech_other" class="form-control" placeholder="أي معلومات فنية أخرى">
                     </div>
                 </div>
 
-                <!-- 8. صور أو أدلة التوثيق (تختفي تماماً عند الطباعة) -->
-                <div class="mb-3" id="grp-evidence">
-                    <label class="form-label">8. صور أو أدلة التوثيق المتوفرة (إرفاق لقطات شاشة أو أدلة)</label>
+                <div class="mb-3 no-print">
+                    <label class="form-label">8. صور أو أدلة التوثيق المتوفرة</label>
                     <input type="file" name="evidence_files" class="form-control" multiple accept="image/*" id="evidence-input">
                     <div id="image-preview" class="d-flex gap-2 mt-2 flex-wrap"></div>
                 </div>
 
-                <!-- 9. بيان مستوى الخطورة -->
                 <div class="mb-3">
                     <label class="form-label">9. بيان أوّلي عن مستوى الخطورة أو أهمية الحالة</label>
                     <select name="m_severity" class="form-control">
@@ -288,9 +241,8 @@
                     </select>
                 </div>
 
-                <!-- 10. التوصية المقترحة -->
                 <div class="mb-3">
-                    <label class="form-label">10. التوصية الأولية أو الإجراء المقترح (عند الحاجة)</label>
+                    <label class="form-label">10. التوصية الأولية أو الإجراء المقترح</label>
                     <textarea name="m_recommendation" rows="2" class="form-control" placeholder="اكتب الإجراءات اللاحقة المناسبة..."></textarea>
                 </div>
 
@@ -300,7 +252,7 @@
             </form>
         </div>
 
-        <!-- 3. قسم السجلات المحفوظة -->
+        <!-- السجلات المحفوظة -->
         <div id="records-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="m-0" style="color: var(--cyber-cyan); font-size: 1.3rem;">السجلات المحفوظة ونظام منع التكرار</h3>
@@ -309,7 +261,7 @@
             <div id="records-container" style="max-height: 450px; overflow-y: auto;"></div>
         </div>
 
-        <!-- 4. قسم سجل النشاط الشهري -->
+        <!-- سجل النشاط الشهري -->
         <div id="monthly-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="m-0 text-info" style="font-size: 1.3rem;">سجل النشاط الشهري</h3>
@@ -352,7 +304,7 @@
         </div>
     </div>
 
-    <!-- نافذة إضافة مستخدم (للأدمن فقط) -->
+    <!-- نافذة إضافة مستخدم -->
     <div class="modal fade" id="addUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content bg-dark text-light border border-info">
@@ -382,91 +334,43 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function toggleSidebar() {
-            document.getElementById('options-sidebar').classList.toggle('active');
-        }
-
+        function toggleSidebar() { document.getElementById('options-sidebar').classList.toggle('active'); }
         function showSection(sectionId) {
-            document.getElementById('menu-section').classList.add('hidden');
-            document.getElementById('form-section').classList.add('hidden');
-            document.getElementById('records-section').classList.add('hidden');
-            document.getElementById('monthly-section').classList.add('hidden');
-            
+            ['menu-section', 'form-section', 'records-section', 'monthly-section'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
             document.getElementById(sectionId).classList.remove('hidden');
         }
-
         function loadRecords() {
             showSection('records-section');
-            fetch('/get-records')
-                .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById('records-container');
-                    if(data.records.length === 0) {
-                        container.innerHTML = '<p class="text-center text-muted">لا توجد سجلات محفوظة حتى الآن.</p>';
-                        return;
-                    }
-                    let html = '';
-                    data.records.forEach(r => {
-                        html += `
-                            <div class="bg-black border border-secondary p-3 rounded mb-3">
-                                <div class="d-flex justify-content-between fw-bold" style="color: var(--cyber-cyan);">
-                                    <span>${r.report_id}</span>
-                                    <span class="text-muted small">${r.timestamp}</span>
-                                </div>
-                                <div><strong>القائم بالرصد:</strong> ${r.officer}</div>
-                                <div><strong>المنصة:</strong> ${r.platform} | <strong>التهديد:</strong> ${r.threatType} | <strong>الخطورة:</strong> ${r.severity}</div>
-                                <div class="text-info text-break small">الرابط: <a href="${r.url}" target="_blank" class="text-light text-decoration-underline">${r.url}</a></div>
-                            </div>
-                        `;
-                    });
-                    container.innerHTML = html;
-                });
+            fetch('/get-records').then(res => res.json()).then(data => {
+                const container = document.getElementById('records-container');
+                if(data.records.length === 0) { container.innerHTML = '<p class="text-center text-muted">لا توجد سجلات محفوظة.</p>'; return; }
+                container.innerHTML = data.records.map(r => `
+                    <div class="bg-black border border-secondary p-3 rounded mb-3">
+                        <div class="d-flex justify-content-between fw-bold" style="color: var(--cyber-cyan);">
+                            <span>${r.report_id}</span><span class="text-muted small">${r.timestamp}</span>
+                        </div>
+                        <div><strong>القائم بالرصد:</strong> ${r.officer}</div>
+                        <div><strong>المنصة:</strong> ${r.platform} | <strong>التهديد:</strong> ${r.threatType} | <strong>الخطورة:</strong> ${r.severity}</div>
+                        <div class="text-info text-break small">الرابط: <a href="${r.url}" target="_blank" class="text-light">${r.url}</a></div>
+                    </div>
+                `).join('');
+            });
         }
-
         function loadMonthlyLog() {
             showSection('monthly-section');
-            fetch('/monthly-log')
-                .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById('monthly-container');
-                    if(data.monthly_reports.length === 0) {
-                        container.innerHTML = '<p class="text-center text-muted">لا توجد نشاطات مسجلة.</p>';
-                        return;
-                    }
-                    let html = '<ul class="list-group list-group-flush">';
-                    data.monthly_reports.forEach(r => {
-                        html += `
-                            <li class="list-group-item bg-black text-light border-secondary d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="fw-bold" style="color: var(--cyber-cyan);">${r.report_id}</span> - ${r.officer} (${r.threatType})
-                                </div>
-                                <span class="badge bg-secondary">${r.date}</span>
-                            </li>
-                        `;
-                    });
-                    html += '</ul>';
-                    container.innerHTML = html;
-                });
-        }
-
-        document.getElementById('evidence-input').addEventListener('change', function(e) {
-            const preview = document.getElementById('image-preview');
-            preview.innerHTML = '';
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = document.createElement('img');
-                    img.src = event.target.result;
-                    img.style.width = '70px';
-                    img.style.height = '70px';
-                    img.style.objectFit = 'cover';
-                    img.style.borderRadius = '6px';
-                    img.style.border = '1px solid var(--cyber-cyan)';
-                    preview.appendChild(img);
-                }
-                reader.readAsDataURL(file);
+            fetch('/monthly-log').then(res => res.json()).then(data => {
+                const container = document.getElementById('monthly-container');
+                if(data.monthly_reports.length === 0) { container.innerHTML = '<p class="text-center text-muted">لا توجد نشاطات مسجلة.</p>'; return; }
+                container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
+                    <li class="list-group-item bg-black text-light border-secondary d-flex justify-content-between align-items-center">
+                        <div><span class="fw-bold" style="color: var(--cyber-cyan);">${r.report_id}</span> - ${r.officer} (${r.threatType})</div>
+                        <span class="badge bg-secondary">${r.date || r.timestamp}</span>
+                    </li>
+                `).join('') + '</ul>';
             });
-        });
+        }
     </script>
 </body>
 </html>
