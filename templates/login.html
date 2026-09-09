@@ -5,62 +5,79 @@
     <title>تسجيل الدخول - مديرية أمن وسلامة الوزارة</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         body { 
-            background-color: #030712; 
-            color: #f0f6fc; 
+            background-color: #010409; 
+            color: #ffffff; 
             font-family: 'Cairo', sans-serif;
-            background-image: radial-gradient(circle at 50% 10%, #0f172a 0%, #030712 80%);
+            background-image: 
+                radial-gradient(circle at 50% 10%, #0f172a 0%, #010409 85%),
+                linear-gradient(rgba(0, 242, 254, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px;
         }
         .card { 
-            background: rgba(11, 19, 38, 0.95); 
-            border: 1px solid rgba(0, 242, 254, 0.35); 
-            border-radius: 16px; 
-            box-shadow: 0 0 35px rgba(0, 242, 254, 0.12), 0 10px 30px rgba(0,0,0,0.8); 
-            backdrop-filter: blur(15px);
+            background: rgba(11, 19, 38, 0.96); 
+            border: 1px solid rgba(0, 242, 254, 0.4); 
+            border-radius: 18px; 
+            box-shadow: 0 0 40px rgba(0, 242, 254, 0.2), 0 15px 40px rgba(0,0,0,0.9); 
+            backdrop-filter: blur(20px);
         }
-        input { background: rgba(3, 7, 18, 0.9) !important; border: 1px solid rgba(0, 242, 254, 0.3) !important; color: #fff !important; border-radius: 10px !important; padding: 12px !important;}
-        input:focus { border-color: #00f2fe !important; box-shadow: 0 0 15px rgba(0, 242, 254, 0.4) !important; outline: none; }
+        label { color: #ffffff !important; font-weight: 700 !important; }
+        input { 
+            background: rgba(2, 6, 23, 0.95) !important; 
+            border: 1px solid rgba(0, 242, 254, 0.4) !important; 
+            color: #ffffff !important; 
+            border-radius: 12px !important; 
+            padding: 12px !important;
+            font-weight: 600 !important;
+        }
+        input:focus { 
+            border-color: #00f2fe !important; 
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.5) !important; 
+            outline: none; 
+            color: #ffffff !important;
+        }
         .btn-cyber {
             background: linear-gradient(135deg, #0072ff, #00f2fe);
             border: none;
             color: #030712;
-            font-weight: 800;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
-            transition: all 0.2s;
+            font-weight: 900;
+            border-radius: 12px;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.4);
+            transition: all 0.3s;
         }
         .btn-cyber:hover {
             background: linear-gradient(135deg, #005bc5, #00c6ff);
-            color: #fff;
-            box-shadow: 0 0 25px rgba(0, 242, 254, 0.6);
+            color: #ffffff;
+            box-shadow: 0 0 35px rgba(0, 242, 254, 0.8);
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body class="d-flex align-items-center justify-content-center vh-100">
-    <div class="card p-4 shadow-lg" style="width: 410px;">
+    <div class="card p-4 shadow-lg" style="width: 420px;">
         <div class="text-center mb-3 pt-2">
-            <i class="fa-solid fa-shield-halved fa-3x" style="color: #00f2fe; filter: drop-shadow(0 0 10px rgba(0,242,254,0.5));"></i>
+            <i class="fa-solid fa-shield-halved fa-3x" style="color: #00f2fe; filter: drop-shadow(0 0 15px rgba(0,242,254,0.8));"></i>
         </div>
-        <h4 class="text-center mb-1 fw-bold" style="color: #00f2fe;">مديرية أمن وسلامة الوزارة</h4>
-        <p class="text-center text-muted small mb-4">بوابة الدخول لنظام الرصد والتحقيقات</p>
+        <h4 class="text-center mb-1 fw-black text-white" style="letter-spacing: 0.5px;">مديرية أمن وسلامة الوزارة</h4>
+        <p class="text-center text-muted small mb-4">بوابة الدخول لنظام الرصد والتحقيقات السيبرانية</p>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'success' else 'info' }} p-2 text-center text-dark fw-bold mb-3" style="border-radius: 8px;">{{ message }}</div>
+                    <div class="alert alert-{{ category if category != 'success' else 'info' }} p-2 text-center text-white fw-bold mb-3" style="border-radius: 8px; background: rgba(15,23,42,0.95); border: 1px solid var(--cyber-cyan);">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
         <form method="POST">
             <div class="mb-3">
-                <label class="form-label fw-bold small">اسم المستخدم</label>
+                <label class="form-label small">اسم المستخدم</label>
                 <input type="text" name="username" class="form-control" required placeholder="أدخل اسم المستخدم...">
             </div>
             <div class="mb-4">
-                <label class="form-label fw-bold small">كلمة المرور</label>
+                <label class="form-label small">كلمة المرور</label>
                 <input type="password" name="password" class="form-control" required placeholder="••••••••">
             </div>
             <button type="submit" class="btn btn-cyber w-100 py-3 fw-bold">تسجيل الدخول للنظام</button>
