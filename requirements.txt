@@ -1,4 +1,5 @@
-
+Flask-SQLAlchemy
+Werkzeug
 flask-cors
 requests
 Flask==3.0.2
