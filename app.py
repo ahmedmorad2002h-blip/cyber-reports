@@ -53,14 +53,24 @@ def load_users():
         print(f"🚨 خطأ في تحميل المستخدمين: {e}")
         return {}
 
-def load_reports():
+def load_reports(user_filter=None, is_admin=False):
+    """تحميل البلاغات مع تصفيتها بناءً على صلاحية المستخدم"""
     try:
-        res = supabase.table('reports').select('*').order('created_at', desc=True).execute()
+        query = supabase.table('reports').select('*').order('created_at', desc=True)
+        res = query.execute()
         reports = []
-        for r in res.data:
+        
+        for r in res.data or []:
+            officer_info = r.get("officer", "") or ""
+            
+            # إذا لم يكن أدمن، يتم تصفية البلاغات ليظهر فقط ما يخص المستخدم الحالي
+            if not is_admin and user_filter:
+                if user_filter not in officer_info:
+                    continue
+
             reports.append({
                 "report_id": r.get("report_id"),
-                "officer": r.get("officer"),
+                "officer": officer_info,
                 "source": r.get("source"),
                 "platform": r.get("platform"),
                 "url": r.get("url"),
@@ -71,6 +81,7 @@ def load_reports():
                 "severity": r.get("severity"),
                 "recommendation": r.get("recommendation"),
                 "timestamp": r.get("timestamp"),
+                "status": r.get("status", "قيد المراجعة"),
                 "evidence": r.get("evidence", []) if isinstance(r.get("evidence"), list) else [],
                 "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
@@ -90,7 +101,6 @@ def login():
         
         if username in users:
             user_db_password = users[username].get('password', '')
-            # التحقق سواء كانت كلمة المرور مشفرة أو نص عادي
             is_valid = False
             try:
                 is_valid = check_password_hash(user_db_password, password)
@@ -117,7 +127,11 @@ def index():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    reports = load_reports()
+    current_user_fullname = session.get('fullname', session.get('user'))
+    is_admin = session.get('is_admin', False)
+    
+    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin)
+    
     total_reports = len(reports)
     critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
     monthly_count = sum(1 for r in reports if str(r.get('timestamp', '')).startswith(datetime.now().strftime('%Y-%m')))
@@ -128,7 +142,7 @@ def index():
         'monthly': monthly_count
     }
     
-    users = load_users() if session.get('is_admin') else {}
+    users = load_users() if is_admin else {}
     return render_template('index.html', stats=stats, users=users)
 
 @app.route('/submit-report', methods=['POST'])
@@ -167,6 +181,7 @@ def submit_report():
         "threat_type": request.form.get('m_threat_type'),
         "severity": request.form.get('m_severity'),
         "recommendation": request.form.get('m_recommendation'),
+        "status": "قيد المراجعة",
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "evidence": evidence_base64,
         "tech_indicators": {
@@ -182,11 +197,10 @@ def submit_report():
     }
     
     try:
-        res = supabase.table('reports').insert(db_payload).execute()
-        print("✅ تم حفظ البلاغ بنجاح:", res)
-        flash(f'تم حفظ وتوثيق البلاغ برقم: {report_id} بنجاح.', 'success')
+        supabase.table('reports').insert(db_payload).execute()
+        flash(f'تم رفع البلاغ بنجاح برقم {report_id} وهو قيد المراجعة.', 'success')
     except Exception as e:
-        print(f"🚨 خطأ أثناء حفظ البلاغ في Supabase: {e}")
+        print(f"🚨 خطأ أثناء حفظ البلاغ: {e}")
         flash(f'حدث خطأ أثناء حفظ البلاغ: {e}', 'danger')
 
     return redirect(url_for('index'))
@@ -195,14 +209,41 @@ def submit_report():
 def get_records():
     if 'user' not in session:
         return jsonify({'records': []})
-    reports = load_reports()
+    
+    current_user_fullname = session.get('fullname', session.get('user'))
+    is_admin = session.get('is_admin', False)
+    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin)
     return jsonify({'records': reports})
+
+@app.route('/approve-report/<report_id>', methods=['POST'])
+def approve_report(report_id):
+    if not session.get('is_admin'):
+        flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
+        return redirect(url_for('index'))
+    try:
+        supabase.table('reports').update({'status': 'تمت الموافقة'}).eq('report_id', report_id).execute()
+        flash(f'تمت الموافقة على البلاغ {report_id} بنجاح.', 'success')
+    except Exception as e:
+        flash(f'حدث خطأ أثناء الموافقة: {e}', 'danger')
+    return redirect(url_for('index'))
+
+@app.route('/reject-report/<report_id>', methods=['POST'])
+def reject_report(report_id):
+    if not session.get('is_admin'):
+        flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
+        return redirect(url_for('index'))
+    try:
+        supabase.table('reports').delete().eq('report_id', report_id).execute()
+        flash(f'تم رفض البلاغ {report_id} وحذفه من المنظومة.', 'info')
+    except Exception as e:
+        flash(f'حدث خطأ أثناء الرفض: {e}', 'danger')
+    return redirect(url_for('index'))
 
 @app.route('/monthly-log')
 def monthly_log():
-    if 'user' not in session:
+    if not session.get('is_admin'):
         return jsonify({'monthly_reports': []})
-    reports = load_reports()
+    reports = load_reports(is_admin=True)
     current_month = datetime.now().strftime('%Y-%m')
     filtered = [r for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
     return jsonify({'monthly_reports': filtered})
@@ -261,12 +302,10 @@ def add_user():
     }
     
     try:
-        res = supabase.table('users').insert(new_user_data).execute()
-        print("✅ تم حفظ المستخدم في Supabase:", res)
+        supabase.table('users').insert(new_user_data).execute()
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
     except Exception as e:
-        print(f"🚨 خطأ أثناء إضافة المستخدم إلى Supabase: {e}")
-        flash(f'حدث خطأ أثناء إضافة المستخدم إلى قاعدة البيانات: {e}', 'danger')
+        flash(f'حدث خطأ أثناء إضافة المستخدم: {e}', 'danger')
         
     return redirect(url_for('index'))
 
@@ -284,7 +323,6 @@ def delete_user(username):
         supabase.table('users').delete().eq('username', username).execute()
         flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
     except Exception as e:
-        print(f"🚨 خطأ أثناء حذف المستخدم: {e}")
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
         
     return redirect(url_for('index'))
@@ -299,7 +337,6 @@ def delete_report(report_id):
         supabase.table('reports').delete().eq('report_id', report_id).execute()
         flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
     except Exception as e:
-        print(f"🚨 خطأ أثناء حذف البلاغ: {e}")
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
         
     return redirect(url_for('index'))
