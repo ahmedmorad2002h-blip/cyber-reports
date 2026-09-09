@@ -9,12 +9,11 @@ from supabase import create_client, Client
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
 
-# إعداد الاتصال بقاعدة بيانات Supabase السحابية
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://kzjpmkndafsgdoakkjee.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI6MjEwNDU0NzgwMX0.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k")
+# الاتصال بقاعدة بيانات Supabase السحابية مع تنظيف القيم من أي مسافات أو علامات تنصيص
+SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "https://kzjpmkndafsgdoakkjee.supabase.co").strip().strip('"').strip("'")
+SUPABASE_KEY = (os.environ.get("SUPABASE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI6MjEwNDU0NzgwMX0.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k").strip().strip('"').strip("'")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 # --- دوال المساعدة للتعامل مع قاعدة البيانات ---
 
 def init_admin_user():
