@@ -3,191 +3,665 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة رصد وتحليل الأمن السيبراني</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>شعبة الأمن السيبراني - استمارة مخرجات الرصد الرسمية</title>
+    
+    <meta property="og:title" content="شعبة الأمن السيبراني - نظام توثيق مخرجات الرصد">
+    <meta property="og:description" content="منصة رسمية مؤمنة لتوثيق الحالات السيبرانية، تتبع المؤشرات الفنية، ومنع تكرار البلاغات وتخزينها في مستودع آمن.">
+    <meta property="og:type" content="website">
+
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; }
+        :root {
+            --bg-color: #030303;
+            --panel-bg: rgba(10, 10, 10, 0.95);
+            --primary-red: #ff1e38;
+            --dark-red: #990012;
+            --accent-glow: rgba(255, 30, 56, 0.5);
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --border-color: rgba(255, 30, 56, 0.35);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        #cyber-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, #150104 0%, #030303 100%);
+        }
+
+        .container { width: 100%; max-width: 850px; z-index: 10; position: relative; }
+
+        /* القائمة الجانبية (Sidebar Drawer) */
+        .sidebar {
+            position: fixed;
+            top: 0; right: -300px; width: 300px; height: 100%;
+            background: rgba(8, 8, 8, 0.98);
+            border-left: 1px solid var(--border-color);
+            z-index: 100;
+            transition: right 0.3s ease;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(15px);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+        }
+        .sidebar.open { right: 0; }
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 99; display: none;
+            backdrop-filter: blur(3px);
+        }
+        .sidebar-overlay.active { display: block; }
+
+        .menu-toggle-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(20,20,20,0.9); border: 1px solid var(--border-color);
+            color: var(--primary-red); padding: 8px 12px; border-radius: 8px;
+            cursor: pointer; z-index: 50; font-size: 16px; transition: 0.3s;
+        }
+        .menu-toggle-btn:hover { background: var(--primary-red); color: #fff; }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 0 45px rgba(0, 0, 0, 0.9), 0 0 25px var(--accent-glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-red), transparent);
+            animation: scanline 3s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .header-section { text-align: center; margin-bottom: 25px; }
+        .header-section i {
+            font-size: 45px; color: var(--primary-red); margin-bottom: 10px;
+            text-shadow: 0 0 15px var(--primary-red);
+        }
+
+        h1 {
+            font-family: 'Orbitron', 'Cairo', sans-serif;
+            font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 5px; letter-spacing: 1px;
+        }
+
+        .subtitle { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; }
+
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-size: 13px; margin-bottom: 6px; color: #ccc; font-weight: 600; }
+
+        input, select, textarea {
+            width: 100%; background: rgba(20, 20, 20, 0.9);
+            border: 1px solid var(--border-color); padding: 12px 15px;
+            border-radius: 8px; color: #fff; font-family: 'Cairo', sans-serif; font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: var(--primary-red); box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        input[type="file"] { padding: 10px; background: rgba(15, 15, 15, 0.9); cursor: pointer; }
+
+        .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px; }
+        @media (max-width: 600px) { .tech-grid { grid-template-columns: 1fr; } }
+
+        .btn {
+            width: 100%; background: var(--primary-red); color: #fff; border: none;
+            padding: 14px; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
+            transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(255, 30, 56, 0.4);
+            margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+        }
+        .btn:hover { background: #e01630; box-shadow: 0 0 25px var(--primary-red); transform: translateY(-2px); }
+
+        .btn-secondary { background: transparent; border: 1px solid var(--primary-red); color: var(--primary-red); box-shadow: none; }
+        .btn-secondary:hover { background: rgba(255, 30, 56, 0.1); color: #fff; }
+
+        .preview-images-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .preview-img-box {
+            position: relative; width: 90px; height: 90px;
+            border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; background: #111;
+        }
+        .preview-img-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        .action-btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        .whatsapp-share-btn { background: #25d366; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4); }
+        .whatsapp-share-btn:hover { background: #1ebc57; box-shadow: 0 0 25px #25d366; }
+        .copy-share-btn { background: #007bff; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4); }
+        .copy-share-btn:hover { background: #0056b3; box-shadow: 0 0 25px #007bff; }
+        .visit-target-btn { background: #ff9800; box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); color: #000; font-weight: 900; }
+        .visit-target-btn:hover { background: #e68900; box-shadow: 0 0 25px #ff9800; color: #000; }
+
+        .report-success-box {
+            background: rgba(15, 25, 15, 0.95); border: 1px solid #25d366;
+            padding: 20px; border-radius: 12px; margin-top: 15px; text-align: right;
+        }
+
+        .hidden { display: none !important; }
+        .alert-error {
+            background: rgba(255, 30, 56, 0.15); border: 1px solid var(--primary-red);
+            color: #ff8593; padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 15px; text-align: center;
+        }
+
+        .menu-options { display: flex; flex-direction: column; gap: 15px; }
+        .menu-btn {
+            background: rgba(15, 15, 15, 0.9); border: 1px solid var(--border-color);
+            padding: 16px 20px; border-radius: 10px; color: #fff; text-align: right; cursor: pointer;
+            display: flex; align-items: center; justify-content: space-between; font-weight: 600; transition: all 0.3s ease;
+        }
+        .menu-btn:hover { border-color: var(--primary-red); background: rgba(255, 30, 56, 0.08); transform: translateX(-5px); }
+        .menu-btn i { color: var(--primary-red); font-size: 18px; }
+
+        .footer-info { margin-top: 25px; text-align: center; font-size: 11px; color: var(--text-muted); font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
+
+        .print-header { display: none; }
+        #print-attachments-container { display: none; }
+
         @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; color: black !important; }
+            body { background: #fff; color: #000; display: block; padding: 0; }
+            #cyber-canvas, .no-print, .btn, .menu-options, .footer-info, #success-action-container, .preview-images-container, .menu-toggle-btn, .sidebar, .sidebar-overlay { display: none !important; }
+            .card { background: #fff; border: none; box-shadow: none; padding: 0; width: 100%; max-width: 100%; page-break-after: always; }
+            input, select, textarea { border: none !important; background: transparent !important; color: #000 !important; padding: 2px 0 !important; font-size: 13px !important; }
+            label { color: #333 !important; font-weight: bold; margin-top: 8px; }
+            .print-hidden-field { display: none !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            #print-attachments-container { display: block !important; }
+            .print-attachment-page { page-break-before: always; break-before: page; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 15px 0; box-sizing: border-box; text-align: center; }
+            .print-att-header { text-align: center; border-bottom: 2px solid #000; width: 100%; padding-bottom: 8px; margin-bottom: 5px; }
+            .print-att-header h2, .print-att-header h3, .print-att-header p { color: #000 !important; margin: 2px 0; font-size: 14px; }
+            .print-att-title { font-size: 18px; font-weight: 900; color: #000; margin: 5px 0 10px 0; background: #f0f0f0; padding: 6px 30px; border: 2px solid #000; border-radius: 6px; }
+            .print-att-img-box { flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; max-height: 78vh; }
+            .print-att-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid #000; background: #fff; padding: 4px; }
+            .print-att-footer { font-size: 12px; color: #000; margin-top: 10px; border-top: 1px solid #999; width: 100%; padding-top: 5px; font-weight: bold; }
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+<body>
 
-    <!-- شاشة تسجيل الدخول -->
-    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-shield-halved text-5xl text-blue-500 mb-3"></i>
-                <h1 class="text-2xl font-bold text-white">منصة الرصد السيبراني</h1>
-                <p class="text-slate-400 text-sm mt-1">تسجيل الدخول للنظام الرسمي</p>
-            </div>
-            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">اسم المستخدم</label>
-                    <input type="text" id="username" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">كلمة المرور</label>
-                    <input type="password" id="password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
-                </div>
-                <div id="loginError" class="text-red-400 text-sm hidden text-center"></div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition duration-200">تسجيل الدخول</button>
-            </form>
-            <div class="mt-6 text-xs text-slate-500 text-center">
-                الحسابات الافتتاحية: ahmed_jasem أو ali_hussein (كلمة المرور: 123)
-            </div>
+    <canvas id="cyber-canvas"></canvas>
+
+    <!-- زر القائمة الجانبية (يظهر بعد تسجيل الدخول) -->
+    <button id="menuToggleBtn" class="menu-toggle-btn hidden no-print" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars"></i> القائمة
+    </button>
+
+    <!-- الخلفية المعتمة للقائمة الجانبية -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- القائمة الجانبية المحدثة -->
+    <div id="sidebarDrawer" class="sidebar">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
+            <h3 style="font-size: 16px; color: #fff;"><i class="fa-solid fa-shield-halved" style="color: var(--primary-red);"></i> لوحة التحكم السريعة</h3>
+            <button onclick="toggleSidebar()" style="background:none; border:none; color:#888; font-size:18px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
         </div>
-    </div>
-
-    <!-- لوحة التحكم الرئيسية -->
-    <div id="appDashboard" class="hidden min-h-screen flex flex-col">
-        <!-- الشريط العلوي -->
-        <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center no-print">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-shield-halved text-2xl text-blue-500"></i>
-                <span class="font-bold text-lg text-white">نظام الرصد والمتابعة السيبرانية</span>
+        <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
+            <div style="background: rgba(255,30,56,0.08); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                <div id="sb-username" style="font-weight: bold; font-size: 14px; color: #fff;"></div>
+                <div id="sb-rank" style="font-size: 12px; color: var(--primary-red);"></div>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="text-left">
-                    <div id="userNameDisplay" class="font-semibold text-sm text-white"></div>
-                    <div id="userRankDisplay" class="text-xs text-blue-400"></div>
-                </div>
-                <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-sm transition">
-                    <i class="fa-solid fa-right-from-bracket ml-1"></i> خروج
-                </button>
-            </div>
-        </header>
-
-        <!-- المحتوى الرئيسي -->
-        <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+            <button class="menu-btn" onclick="toggleSidebar(); showForm();" style="padding: 12px;"><i class="fa-solid fa-file-shield"></i> استمارة رصد جديدة</button>
+            <button class="menu-btn" onclick="toggleSidebar(); viewSavedRecords();" style="padding: 12px;"><i class="fa-solid fa-database"></i> سجل البلاغات (الكل)</button>
+            <button class="menu-btn" onclick="toggleSidebar(); showMyReports();" style="padding: 12px;"><i class="fa-solid fa-user-shield"></i> بلاغاتي الشخصية</button>
             
-            <!-- أزرار التحكم -->
-            <div class="flex justify-between items-center no-print">
-                <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-blue-500"></i> سجل البلاغات المركزية
-                </h2>
-                <button onclick="openNewReportModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
-                    <i class="fa-solid fa-plus"></i> رصد بلاغ جديد
-                </button>
+            <!-- خيارات خاصة بالآدمن -->
+            <div id="admin-sidebar-section" class="hidden" style="display: flex; flex-direction: column; gap: 12px; border-top: 1px dashed var(--border-color); padding-top: 12px; margin-top: 5px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: bold;">أدوات الإدارة العليا:</div>
+                <button class="menu-btn" onclick="toggleSidebar(); openUserManagement();" style="padding: 12px; border-color: #007bff;"><i class="fa-solid fa-users-gear" style="color: #007bff;"></i> إدارة الحسابات (إضافة/حذف)</button>
+                <a href="/api/reports/export/monthly" target="_blank" class="menu-btn" style="padding: 12px; border-color: #25d366; text-decoration: none;"><i class="fa-solid fa-file-arrow-down" style="color: #25d366;"></i> سحب سجل النشاط الشهري</a>
             </div>
-
-            <!-- جدول البلاغات -->
-            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right border-collapse">
-                        <thead>
-                            <tr class="bg-slate-900/50 border-b border-slate-700 text-slate-400 text-sm">
-                                <th class="p-4">رقم البلاغ</th>
-                                <th class="p-4">الهدف / الرابط</th>
-                                <th class="p-4">نوع المخالفة</th>
-                                <th class="p-4">المنتسب القائم بالرصد</th>
-                                <th class="p-4">التاريخ</th>
-                                <th class="p-4 text-center no-print">الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportsTableBody" class="divide-y divide-slate-700 text-sm">
-                            <!-- يتم تعبئتها برمجياً -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+        </div>
+        <button class="btn btn-secondary" onclick="logout()" style="margin-top: auto; border-color: var(--primary-red); color: var(--primary-red);">
+            <i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج
+        </button>
     </div>
 
-    <!-- نافذة إضافة بلاغ جديد -->
-    <div id="reportModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 no-print">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                <h3 class="font-bold text-lg text-white">إدخال بلاغ رصد سيبراني جديد</h3>
-                <button onclick="closeNewReportModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="p-6 overflow-y-auto space-y-4 flex-1">
-                <form id="reportForm" onsubmit="submitReport(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-1">رابط الهدف / منصة النشر</label>
-                        <input type="url" id="targetUrl" required placeholder="https://example.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
+    <div class="container">
+        <div class="card" id="main-card">
+            
+            <!-- الخطوة 1: تسجيل الدخول المتصل بالباك إند -->
+            <div id="step-auth" class="auth-section">
+                <div class="header-section">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h1>شعبة الأمن السيبراني</h1>
+                    <div class="subtitle">بوابة الدخول الموحدة وتوثيق مخرجات الرصد</div>
+                </div>
+
+                <div id="auth-error" class="alert-error hidden">يرجى إدخال اسم المستخدم وكلمة المرور بشكل صحيح.</div>
+
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div class="form-group">
+                        <label>اسم المستخدم (Username)</label>
+                        <input type="text" id="login-username" required placeholder="أدخل اسم المستخدم...">
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-300 mb-1">نوع المخالفة / البلاغ</label>
-                            <select id="violationType" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
-                                <option value="ابتزاز إلكتروني">ابتزاز إلكتروني</option>
-                                <option value="تشهير وإساءة سمعة">تشهير وإساءة سمعة</option>
-                                <option value="صفحة وهمية تنتحل صفة">صفحة وهمية تنتحل صفة</option>
-                                <option value="تحريض وإرهاب رقمي">تحريض وإرهاب رقمي</option>
-                                <option value="تسريب بيانات">تسريب بيانات</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-300 mb-1">جهة الإحالة / الجهة المتضررة</label>
-                            <input type="text" id="targetEntity" required placeholder="مثال: مؤسسات الدولة / أفراد" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
-                        </div>
+                    <div class="form-group">
+                        <label>كلمة المرور (Password)</label>
+                        <input type="password" id="login-password" required placeholder="أدخل كلمة المرور...">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-1">تفاصيل الأدلة والمحتوى المرصد</label>
-                        <textarea id="reportDetails" rows="4" required placeholder="اكتب تفاصيل المخالفة والأدلة الرقمية المتوفرة..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500"></textarea>
-                    </div>
-                    <div class="pt-4 flex justify-end gap-3 border-t border-slate-700">
-                        <button type="button" onclick="closeNewReportModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm transition">إلغاء</button>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">حفظ البلاغ</button>
-                    </div>
+                    <button type="submit" class="btn">
+                        <span>دخول للنظام المركزي</span>
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
                 </form>
+                <div style="margin-top: 15px; font-size: 11px; color: var(--text-muted); text-align: center;">
+                    ادخل اسم المستخدم و كلمة المرور
+                </div>
+            </div>
+
+            <!-- الخطوة 2: القائمة الرئيسية -->
+            <div id="step-menu" class="hidden">
+                <div class="header-section">
+                    <i class="fa-solid fa-terminal"></i>
+                    <h1 id="welcome-title">مرحباً بك</h1>
+                    <div class="subtitle" id="welcome-subtitle">تم التحقق بنجاح // نظام الرصد السيبراني المركزي</div>
+                </div>
+
+                <div class="menu-options">
+                    <button class="menu-btn" onclick="showForm()">
+                        <div>
+                            <i class="fa-solid fa-file-shield" style="margin-left: 10px;"></i>
+                            ملء استمارة مخرجات الرصد الجديدة
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="menu-btn" onclick="viewSavedRecords()">
+                        <div>
+                            <i class="fa-solid fa-database" style="margin-left: 10px;"></i>
+                            السجلات المحفوظة مركزياً (منع التكرار)
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="menu-btn" onclick="showMyReports()">
+                        <div>
+                            <i class="fa-solid fa-user-shield" style="margin-left: 10px;"></i>
+                            البلاغات المقدمة من قبلي
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="menu-btn" onclick="logout()" style="border-color: rgba(255,30,56,0.6);">
+                        <div>
+                            <i class="fa-solid fa-right-from-bracket" style="margin-left: 10px;"></i>
+                            إنهاء الجلسة / تسجيل الخروج
+                        </div>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- الخطوة 3: استمارة مخرجات الرصد المحدثة -->
+            <div id="step-form" class="hidden">
+                <div class="print-header">
+                    <h2>جمهورية العراق</h2>
+                    <h3>شعبة الأمن السيبراني - مديرية امن وسلامة الوزارة</h3>
+                    <p>استمارة توثيق مخرجات الرصد الرسمية</p>
+                    <p id="print-officer-info" style="font-weight: bold; margin-top: 5px;"></p>
+                </div>
+
+                <div class="header-section no-print">
+                    <h1>استمارة مخرجات الرصد السيبراني</h1>
+                    <div class="subtitle">المعلومات الواجب تضمينها في مخرجات الرصد</div>
+                </div>
+
+                <div id="form-error" class="alert-error hidden">يرجى ملء الحقول الأساسية المطلوبة للبلاغ (رابط صالح ومفعل).</div>
+
+                <!-- 1. مصدر الرصد -->
+                <div class="form-group" id="grp-source">
+                    <label>1. مصدر الرصد</label>
+                    <input type="text" id="m-source" placeholder="مثال: رصد مباشر، بلاغ رسمي...">
+                </div>
+
+                <!-- خيارات المنصات -->
+                <div class="form-group" id="grp-platform">
+                    <label>المنصة أو التطبيق المستهدف بالرصد</label>
+                    <select id="m-platform">
+                        <option value="Telegram">Telegram (تيليجرام)</option>
+                        <option value="DarkWeb">DarkWeb (الانترنت المظلم)</option>
+                        <option value="Facebook">Facebook (فيسبوك)</option>
+                        <option value="Instagram">Instagram (انستغرام)</option>
+                        <option value="X (Twitter)">X / Twitter (إكس)</option>
+                        <option value="TikTok">TikTok (تيك توك)</option>
+                        <option value="Website / Domain">موقع إلكتروني / Domain خاص</option>
+                        <option value="أخرى">منصة أخرى</option>
+                    </select>
+                </div>
+
+                <!-- 2. رابط الموقع أو الصفحة -->
+                <div class="form-group" id="grp-url">
+                    <label>2. رابط الموقع أو الصفحة أو الحساب أو النطاق ذي العلاقة (يتم التحقق من صحة الرابط ومنع التكرار)</label>
+                    <input type="text" id="m-url" placeholder="https://...">
+                </div>
+
+                <!-- 3. اسم الحساب أو الصفحة -->
+                <div class="form-group" id="grp-account-name">
+                    <label>3. اسم الحساب أو الصفحة أو الجهة المرتبطة بالحالة (إن وجد)</label>
+                    <input type="text" id="m-account-name" placeholder="أدخل اسم الحساب أو الجهة...">
+                </div>
+
+                <!-- 4. تاريخ ووقت النشر -->
+                <div class="form-group" id="grp-datetime">
+                    <label>4. تاريخ ووقت النشر</label>
+                    <input type="datetime-local" id="m-datetime">
+                </div>
+
+                <!-- 5. وصف مختصر وواضح للحالة المرصودة -->
+                <div class="form-group" id="grp-description">
+                    <label>5. وصف مختصر وواضح للحالة المرصودة</label>
+                    <textarea id="m-description" rows="2" placeholder="اكتب وصفاً موجزاً وواضحاً لطبيعة الحالة..."></textarea>
+                </div>
+
+                <!-- 6. نوع التهديد أو النشاط السيبراني -->
+                <div class="form-group" id="grp-threat-type">
+                    <label>6. نوع التهديد أو النشاط السيبراني</label>
+                    <select id="m-threat-type">
+                        <option value="ابتزاز إلكتروني">ابتزاز إلكتروني</option>
+                        <option value="تسريب بيانات">تسريب بيانات</option>
+                        <option value="تشهير وإساءة">تشهير وإساءة</option>
+                        <option value="حساب مزيف / انتحال صفة">حساب مزيف / انتحال صفة</option>
+                        <option value="اختراق أو تسريب معلومات">اختراق أو تسريب معلومات</option>
+                        <option value="هجوم سيبراني / DDoS">هجوم سيبراني / DDoS</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                </div>
+
+                <!-- 7. المؤشرات الفنية المتوفرة -->
+                <div class="form-group" id="grp-technical">
+                    <label>7. المؤشرات الفنية المتوفرة (تملأ الحقول عند توفرها):</label>
+                    <div class="tech-grid">
+                        <input type="text" id="tech-ip" placeholder="عنوان IP">
+                        <input type="text" id="tech-domain" placeholder="اسم النطاق Domain">
+                        <input type="text" id="tech-url-ind" placeholder="الرابط URL">
+                        <input type="text" id="tech-email" placeholder="البريد الإلكتروني">
+                        <input type="text" id="tech-username" placeholder="اسم المستخدم أو المعرف">
+                        <input type="text" id="tech-hash" placeholder="قيمة التجزئة Hash">
+                        <input type="text" id="tech-ioc" placeholder="مؤشرات الاختراق IOC">
+                        <input type="text" id="tech-other" placeholder="أي معلومات فنية أخرى">
+                    </div>
+                </div>
+
+                <!-- 8. صور أو أدلة التوثيق المتوفرة -->
+                <div class="form-group" id="grp-evidence">
+                    <label>8. صور أو أدلة التوثيق المتوفرة (إرفاق لقطات شاشة أو أدلة)</label>
+                    <input type="file" id="m-evidence-file" accept="image/*" multiple>
+                    <div id="file-names" style="font-size: 11px; color: var(--primary-red); margin-top: 4px;"></div>
+                    <div id="image-preview-container" class="preview-images-container"></div>
+                </div>
+
+                <!-- 9. بيان أولي عن مستوى الخطورة -->
+                <div class="form-group" id="grp-severity">
+                    <label>9. بيان أولي عن مستوى الخطورة أو أهمية الحالة</label>
+                    <select id="m-severity">
+                        <option value="حرج / عالي الخطورة">حرج / عالي الخطورة</option>
+                        <option value="متوسط الخطورة">متوسط الخطورة</option>
+                        <option value="منخفض الخطورة">منخفض الخطورة</option>
+                    </select>
+                </div>
+
+                <!-- 10. التوصية الأولية أو الإجراء المقترح -->
+                <div class="form-group" id="grp-recommendation">
+                    <label>10. التوصية الأولية أو الإجراء المقترح (عند الحاجة)</label>
+                    <textarea id="m-recommendation" rows="2" placeholder="اكتب الإجراءات اللاحقة المناسبة أو التوصية الأمنية..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px;" class="no-print">
+                    <button class="btn btn-secondary" onclick="backToMenu()">رجوع</button>
+                    <button class="btn" id="submit-btn" onclick="submitAndPrintReport()">حفظ البلاغ وطباعته</button>
+                </div>
+
+                <div id="success-action-container"></div>
+            </div>
+
+            <!-- شاشة عرض البلاغ عند فتح الرابط القصير -->
+            <div id="step-shared-view" class="hidden">
+                <div class="header-section">
+                    <i class="fa-solid fa-shield-halved" style="color: #25d366;"></i>
+                    <h1>عرض تفاصيل بلاغ الرصد الرسمي</h1>
+                    <div class="subtitle" id="shared-subtitle">جاري استرجاع تفاصيل البلاغ...</div>
+                </div>
+                <div id="shared-report-content" style="background: rgba(20,20,20,0.9); border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; text-align: right;">
+                    <div style="text-align: center; padding: 20px; color: #ff8593;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 30px; margin-bottom: 10px;"></i>
+                        <p>جاري استرجاع البيانات من السيرفر المركزي...</p>
+                    </div>
+                </div>
+                <div id="shared-action-btn" style="margin-top: 20px;"></div>
+            </div>
+
+            <!-- الخطوة 4: السجلات المحفوظة -->
+            <div id="step-records" class="hidden">
+                <div class="header-section">
+                    <h1 id="records-title">سجل مخرجات الرصد</h1>
+                    <div class="subtitle" id="records-subtitle">استعراض الحالات المحفوظة مركزياً</div>
+                </div>
+
+                <div id="records-container" style="max-height: 350px; overflow-y: auto; margin-bottom: 20px; font-size: 13px;"></div>
+
+                <button class="btn btn-secondary" onclick="backToMenu()">العودة للقائمة</button>
+            </div>
+
+            <!-- شاشة إدارة الحسابات للآدمن -->
+            <div id="step-admin-users" class="hidden">
+                <div class="header-section">
+                    <h1>إدارة الحسابات والصلاحيات</h1>
+                    <div class="subtitle">إضافة أو حذف مستخدمي النظام</div>
+                </div>
+
+                <div id="user-alert" class="alert-error hidden"></div>
+
+                <div style="background: rgba(15,15,15,0.9); border: 1px solid var(--border-color); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="font-size: 14px; color: #fff; margin-bottom: 10px;"><i class="fa-solid fa-user-plus"></i> إضافة حساب جديد</h3>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="text" id="new-username" placeholder="اسم المستخدم (English e.g. officer_name)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="password" id="new-password" placeholder="كلمة المرور">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="text" id="new-name" placeholder="الاسم الكامل (مثال: نقيب سالم أحمد)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="text" id="new-rank" placeholder="الصفة أو الرتبة (مثال: مفوض / مشرف)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="new-isadmin" style="width: auto;">
+                        <label for="new-isadmin" style="margin-bottom: 0; cursor: pointer;">صلاحيات مشرف (Admin)</label>
+                    </div>
+                    <button class="btn" onclick="addNewUser()" style="padding: 10px;">حفظ وإضافة المستخدم</button>
+                </div>
+
+                <h3 style="font-size: 14px; color: #fff; margin-bottom: 10px;">الحسابات المسجلة حالياً:</h3>
+                <div id="users-list-container" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px; font-size: 13px;"></div>
+
+                <button class="btn btn-secondary" onclick="backToMenu()">العودة للقائمة</button>
+            </div>
+
+            <div class="footer-info">
+                SECURE CYBER OPERATIONS // RENDER BACKEND PROTOCOL
             </div>
         </div>
     </div>
 
-    <!-- نافذة عرض البلاغ للطباعة -->
-    <div id="viewReportModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-        <div class="bg-white text-slate-900 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-100 no-print">
-                <h3 class="font-bold text-lg">معاينة التقرير الرسمي</h3>
-                <div class="flex gap-2">
-                    <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>
-                    <button onclick="closeViewModal()" class="text-slate-500 hover:text-slate-800"><i class="fa-solid fa-xmark text-lg"></i></button>
-                </div>
-            </div>
-            <div id="printableArea" class="p-8 overflow-y-auto space-y-6 flex-1 text-right">
-                <div class="text-center border-b pb-4">
-                    <h2 class="text-xl font-bold">جمهورية العراق</h2>
-                    <h3 class="text-md font-semibold text-slate-700">منصة الرصد والتأمين السيبراني</h3>
-                    <p class="text-xs text-slate-500 mt-1">تقرير بلاغ رقمي رسمي</p>
-                </div>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div><strong>رقم البلاغ:</strong> <span id="pReportId"></span></div>
-                    <div><strong>تاريخ الرصد:</strong> <span id="pReportDate"></span></div>
-                    <div><strong>نوع المخالفة:</strong> <span id="pViolation"></span></div>
-                    <div><strong>القائم بالرصد:</strong> <span id="pAgent"></span></div>
-                </div>
-                <div>
-                    <strong>رابط الهدف المرصد:</strong>
-                    <p id="pUrl" class="text-blue-600 break-all bg-slate-50 p-2 rounded border mt-1"></p>
-                </div>
-                <div>
-                    <strong>التفاصيل والأدلة:</strong>
-                    <p id="pDetails" class="bg-slate-50 p-3 rounded border mt-1 whitespace-pre-wrap"></p>
-                </div>
-                <div class="pt-8 flex justify-between text-sm font-bold mt-12 border-t">
-                    <div>التوقيع والختم: ........................</div>
-                    <div>مديرية امن وسلامة الوزارة</div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- حاوية صفحة الطباعة للمرفقات -->
+    <div id="print-attachments-container"></div>
 
     <script>
-        let currentUser = null;
-        let reportsData = [];
+        const canvas = document.getElementById('cyber-canvas');
+        const ctx = canvas.getContext('2d');
 
-        // تسجيل الدخول
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const globe = { radius: Math.min(width, height) * 0.5 };
+        const nodes = [];
+        for (let i = 0; i < 75; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * globe.radius;
+            nodes.push({
+                x: width / 2 + Math.cos(angle) * dist,
+                y: height / 2 + Math.sin(angle) * dist,
+                targetX: width / 2 + (Math.random() - 0.5) * globe.radius * 2.5,
+                targetY: height / 2 + (Math.random() - 0.5) * globe.radius * 2.5,
+                progress: Math.random(),
+                speed: 0.003 + Math.random() * 0.009
+            });
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(3, 3, 3, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, globe.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 30, 56, 0.15)';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            nodes.forEach(node => {
+                node.progress += node.speed;
+                if (node.progress >= 1) {
+                    node.progress = 0;
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * globe.radius;
+                    node.x = centerX + Math.cos(angle) * dist;
+                    node.y = centerY + Math.sin(angle) * dist;
+                    node.targetX = centerX + (Math.random() - 0.5) * globe.radius * 2.5;
+                    node.targetY = centerY + (Math.random() - 0.5) * globe.radius * 2.5;
+                }
+                const currentX = node.x + (node.targetX - node.x) * node.progress;
+                const currentY = node.y + (node.targetY - node.y) * node.progress;
+
+                ctx.beginPath();
+                ctx.moveTo(node.x, node.y);
+                ctx.lineTo(currentX, currentY);
+                ctx.strokeStyle = 'rgba(255, 30, 56, 0.4)';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff1e38';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff1e38';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        let currentUser = null;
+        let uploadedImagesBase64 = [];
+
+        function toggleSidebar() {
+            document.getElementById('sidebarDrawer').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        function isValidUrl(string) {
+            try {
+                let url = new URL(string.includes('://') ? string : 'https://' + string);
+                return url.hostname.includes('.');
+            } catch (_) {
+                return false;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportId = urlParams.get('id');
+
+            if (reportId) {
+                document.getElementById('step-auth').classList.add('hidden');
+                document.getElementById('step-menu').classList.add('hidden');
+                document.getElementById('step-form').classList.add('hidden');
+                document.getElementById('step-records').classList.add('hidden');
+                document.getElementById('step-shared-view').classList.remove('hidden');
+
+                const contentDiv = document.getElementById('shared-report-content');
+                const actionDiv = document.getElementById('shared-action-btn');
+                const subtitleDiv = document.getElementById('shared-subtitle');
+
+                try {
+                    const res = await fetch('/api/reports');
+                    const savedRecords = await res.json();
+                    let rec = savedRecords.find(r => (r.report_id === reportId || r.id === reportId));
+
+                    if (rec) {
+                        subtitleDiv.innerText = `تم استرجاع البلاغ بنجاح من السيرفر المركزي`;
+                        displayReportContent(rec, contentDiv, actionDiv);
+                    } else {
+                        subtitleDiv.innerText = `خطأ في العثور على البلاغ`;
+                        contentDiv.innerHTML = `<h3 style="color: #ff1e38; text-align: center;">عذراً، لم يتم العثور على البلاغ في السجلات المركزية.</h3>`;
+                        actionDiv.innerHTML = `<button class="btn btn-secondary" onclick="window.location.href=window.location.pathname">الانتقال للرئيسية</button>`;
+                    }
+                } catch (err) {
+                    subtitleDiv.innerText = `خطأ في الاتصال بالخادم`;
+                }
+                return;
+            }
+
+            // استعادة الجلسة المحلية إن وجدت
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                setupUserSession();
+            }
+        });
+
+        function setupUserSession() {
+            document.getElementById('welcome-title',).innerText = `${currentUser.name}`;
+            document.getElementById('welcome-subtitle',).innerText = `تم توثيق الدخول باسم: ${currentUser.rank} // آمن`;
+            document.getElementById('print-officer-info').innerText = `القائم بالرصد: ${currentUser.name} (${currentUser.rank})`;
+
+            document.getElementById('sb-username').innerText = currentUser.name;
+            document.getElementById('sb-rank').innerText = currentUser.rank;
+
+            document.getElementById('menuToggleBtn').classList.remove('hidden');
+
+            if (currentUser.isAdmin) {
+                document.getElementById('admin-sidebar-section').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-sidebar-section').classList.add('hidden');
+            }
+
+            document.getElementById('step-auth').classList.add('hidden');
+            document.getElementById('step-menu').classList.remove('hidden');
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('loginError');
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const errorDiv = document.getElementById('auth-error');
 
             try {
                 const res = await fetch('/api/login', {
@@ -199,87 +673,133 @@
                 if (data.success) {
                     currentUser = data.user;
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    initDashboard();
+                    errorDiv.classList.add('hidden');
+                    setupUserSession();
                 } else {
-                    errorEl.textContent = data.message;
-                    errorEl.classList.remove('hidden');
+                    errorDiv.innerText = data.message;
+                    errorDiv.classList.remove('hidden');
                 }
             } catch (err) {
-                errorEl.textContent = 'حدث خطأ في الاتصال بالخادم';
-                errorEl.classList.remove('hidden');
+                errorDiv.innerText = 'حدث خطأ في الاتصال بالخادم';
+                errorDiv.classList.remove('hidden');
             }
         }
 
         function logout() {
             currentUser = null;
             localStorage.removeItem('currentUser');
-            document.getElementById('appDashboard').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('menuToggleBtn').classList.add('hidden');
+            document.getElementById('sidebarDrawer').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-form').classList.add('hidden');
+            document.getElementById('step-records').classList.add('hidden');
+            document.getElementById('step-admin-users').classList.add('hidden');
+            document.getElementById('step-auth').classList.remove('hidden');
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
         }
 
-        async function initDashboard() {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('appDashboard').classList.remove('hidden');
-            document.getElementById('userNameDisplay').textContent = currentUser.name;
-            document.getElementById('userRankDisplay').textContent = currentUser.rank;
-            await loadReports();
+        function showForm() {
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-records').classList.add('hidden');
+            document.getElementById('step-admin-users').classList.add('hidden');
+            document.getElementById('step-form').classList.remove('hidden');
+            document.getElementById('success-action-container').innerHTML = '';
+            document.getElementById('image-preview-container').innerHTML = '';
+            document.getElementById('file-names').innerText = '';
+            uploadedImagesBase64 = [];
         }
 
-        async function loadReports() {
-            try {
-                const res = await fetch('/api/reports');
-                reportsData = await res.json();
-                renderReportsTable();
-            } catch (err) {
-                console.error('فشل تحميل البلاغات');
+        function backToMenu() {
+            document.getElementById('step-form').classList.add('hidden');
+            document.getElementById('step-records').classList.add('hidden');
+            document.getElementById('step-admin-users').classList.add('hidden');
+            document.getElementById('step-menu').classList.remove('hidden');
+            document.getElementById('success-action-container').innerHTML = '';
+        }
+
+        document.getElementById('m-evidence-file').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const previewContainer = document.getElementById('image-preview-container');
+            previewContainer.innerHTML = '';
+            uploadedImagesBase64 = [];
+            let names = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                names.push(file.name);
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const base64String = event.target.result;
+                    uploadedImagesBase64.push(base64String);
+                    const imgBox = document.createElement('div');
+                    imgBox.className = 'preview-img-box';
+                    imgBox.innerHTML = `<img src="${base64String}" alt="دليل مرفق">`;
+                    previewContainer.appendChild(imgBox);
+                }
+                reader.readAsDataURL(file);
             }
-        }
+            document.getElementById('file-names').innerText = names.length > 0 ? 'الملفات المرفقة: ' + names.join(', ') : '';
+        });
 
-        function renderReportsTable() {
-            const tbody = document.getElementById('reportsTableBody');
-            tbody.innerHTML = '';
-            if (reportsData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">لا توجد بلاغات مسجلة حالياً</td></tr>`;
+        async function submitAndPrintReport() {
+            const errorDiv = document.getElementById('form-error');
+            const urlVal = document.getElementById('m-url').value.trim();
+            
+            if (!urlVal) {
+                errorDiv.innerText = 'يرجى إدخال الرابط الأساسي للبلاغ.';
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth' });
                 return;
             }
-            reportsData.forEach(rep => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-700/30 transition';
-                tr.innerHTML = `
-                    <td class="p-4 font-mono text-blue-400">${rep.report_id}</td>
-                    <td class="p-4 truncate max-w-xs"><a href="${rep.targetUrl}" target="_blank" class="text-blue-400 hover:underline">${rep.targetUrl}</a></td>
-                    <td class="p-4">${rep.violationType}</td>
-                    <td class="p-4">${rep.agentName}</td>
-                    <td class="p-4 text-slate-400">${rep.date}</td>
-                    <td class="p-4 text-center space-x-2 space-x-reverse no-print">
-                        <button onclick="viewReport('${rep.report_id}')" class="bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded hover:bg-blue-500/20"><i class="fa-solid fa-eye"></i></button>
-                        <button onclick="deleteReport('${rep.report_id}')" class="bg-red-500/10 text-red-400 px-2.5 py-1 rounded hover:bg-red-500/20"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
 
-        function openNewReportModal() {
-            document.getElementById('reportForm').reset();
-            document.getElementById('reportModal').classList.remove('hidden');
-        }
+            if (!isValidUrl(urlVal)) {
+                errorDiv.innerText = '⚠️ خطأ فني: الرابط المدخل غير صالح أو غير معتمد. يرجى إدخال رابط صحيح.';
+                errorDiv.classList.remove('hidden');
+                errorDiv.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
 
-        function closeNewReportModal() {
-            document.getElementById('reportModal').classList.add('hidden');
-        }
+            errorDiv.classList.add('hidden');
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري فحص وتوثيق البلاغ...`;
 
-        async function submitReport(e) {
-            e.preventDefault();
-            const reportId = 'CYBER-REC-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(1000 + Math.random() * 9000);
+            const fileInput = document.getElementById('m-evidence-file');
+            let filesList = [];
+            for(let i=0; i<fileInput.files.length; i++) {
+                filesList.push(fileInput.files[i].name);
+            }
+
+            let reportId = 'CYBER-REC-' + Math.floor(100000 + Math.random() * 900000);
+
             const reportData = {
                 report_id: reportId,
-                targetUrl: document.getElementById('targetUrl').value,
-                violationType: document.getElementById('violationType').value,
-                targetEntity: document.getElementById('targetEntity').value,
-                reportDetails: document.getElementById('reportDetails').value,
-                agentName: currentUser.name + ' (' + currentUser.rank + ')',
-                date: new Date().toLocaleDateString('ar-EG')
+                officer: `${currentUser.name} (${currentUser.rank})`,
+                username: currentUser.username,
+                source: document.getElementById('m-source').value.trim(),
+                platform: document.getElementById('m-platform').value,
+                url: urlVal,
+                accountName: document.getElementById('m-account-name').value.trim(),
+                datetime: document.getElementById('m-datetime').value,
+                description: document.getElementById('m-description').value.trim(),
+                threatType: document.getElementById('m-threat-type').value,
+                technicalIndicators: {
+                    ip: document.getElementById('tech-ip').value.trim(),
+                    domain: document.getElementById('tech-domain').value.trim(),
+                    url: document.getElementById('tech-url-ind').value.trim(),
+                    email: document.getElementById('tech-email').value.trim(),
+                    username: document.getElementById('tech-username').value.trim(),
+                    hash: document.getElementById('tech-hash').value.trim(),
+                    ioc: document.getElementById('tech-ioc').value.trim(),
+                    other: document.getElementById('tech-other').value.trim()
+                },
+                evidenceFiles: filesList,
+                evidenceImages: uploadedImagesBase64,
+                severity: document.getElementById('m-severity').value,
+                recommendation: document.getElementById('m-recommendation').value.trim(),
+                timestamp: new Date().toLocaleString()
             };
 
             try {
@@ -289,50 +809,295 @@
                     body: JSON.stringify(reportData)
                 });
                 const data = await res.json();
-                if (data.success) {
-                    closeNewReportModal();
-                    await loadReports();
+
+                if (!res.ok) {
+                    errorDiv.innerText = data.message || 'حدث خطأ أثناء حفظ البلاغ';
+                    errorDiv.classList.remove('hidden');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'حفظ البلاغ وطباعته';
+                    errorDiv.scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+
+                // تجهيز حقول الطباعة
+                const fieldsToCheck = [
+                    { id: 'm-source', grp: 'grp-source' },
+                    { id: 'm-account-name', grp: 'grp-account-name' },
+                    { id: 'm-datetime', grp: 'grp-datetime' },
+                    { id: 'm-description', grp: 'grp-description' },
+                    { id: 'm-recommendation', grp: 'grp-recommendation' }
+                ];
+                fieldsToCheck.forEach(item => {
+                    const val = document.getElementById(item.id).value.trim();
+                    const grpEl = document.getElementById(item.grp);
+                    if (!val) grpEl.classList.add('print-hidden-field');
+                    else grpEl.classList.remove('print-hidden-field');
+                });
+
+                const techValues = Object.values(reportData.technicalIndicators);
+                const hasTech = techValues.some(v => v !== '');
+                const techGrp = document.getElementById('grp-technical');
+                if (!hasTech) techGrp.classList.add('print-hidden-field');
+                else techGrp.classList.remove('print-hidden-field');
+
+                const printAttContainer = document.getElementById('print-attachments-container');
+                printAttContainer.innerHTML = '';
+                if (reportData.evidenceImages && reportData.evidenceImages.length > 0) {
+                    reportData.evidenceImages.forEach((imgBase64, idx) => {
+                        const pageDiv = document.createElement('div');
+                        pageDiv.className = 'print-attachment-page';
+                        pageDiv.innerHTML = `
+                            <div class="print-att-header">
+                                <h2>جمهورية العراق</h2>
+                                <h3>شعبة الأمن السيبراني - مديرية امن وسلامة الوزارة </h3>
+                                <p>استمارة توثيق مخرجات الرصد الرسمية - أدلة التوثيق البصري</p>
+                            </div>
+                            <div class="print-att-title">مرفق رقم (${idx + 1})</div>
+                            <div class="print-att-img-box"><img src="${imgBase64}" alt="مرفق ${idx + 1}"></div>
+                            <div class="print-att-footer">رقم البلاغ: ${reportId} | القائم بالرصد: ${reportData.officer}</div>
+                        `;
+                        printAttContainer.appendChild(pageDiv);
+                    });
+                }
+
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `حفظ البلاغ وطباعته`;
+
+                let shortLink = `${window.location.origin}${window.location.pathname}?id=${reportId}`;
+                let shareText = `🚨 *تقرير رصد سيبراني رسمي*\n\n` +
+                                `🆔 المعرف: ${reportId}\n` +
+                                `👤 القائم بالرصد: ${reportData.officer}\n` +
+                                `🌐 المنصة: ${reportData.platform}\n` +
+                                `⚠️ نوع التهديد: ${reportData.threatType}\n` +
+                                `🔴 مستوى الخطورة: ${reportData.severity}\n\n` +
+                                `🔗 *رابط البلاغ القصير (سجل دائم):*\n${shortLink}\n\n` +
+                                `🎯 *رابط الهدف المرصود مباشرة:* ${reportData.url}`;
+
+                let whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+                const successContainer = document.getElementById('success-action-container');
+                successContainer.innerHTML = `
+                    <div class="report-success-box">
+                        <h3 style="color: #25d366; margin-bottom: 8px;"><i class="fa-solid fa-circle-check"></i> تم التحقق وحفظ وتوثيق البلاغ مركزياً بنجاح!</h3>
+                        <p style="font-size: 13px; color: #ccc; margin-bottom: 12px;">اختر طريقة الإرسال المناسبة:</p>
+                        <div class="action-btn-group">
+                            <button class="btn copy-share-btn" onclick="navigator.clipboard.writeText(\`${shareText}\`); alert('تم نسخ نص البلاغ مع الرابط القصير بنجاح!');">
+                                <i class="fa-solid fa-copy"></i> نسخ نص التقرير مع الرابط (موصى به)
+                            </button>
+                            <a href="${whatsappUrl}" target="_blank" class="btn whatsapp-share-btn">
+                                <i class="fa-brands fa-whatsapp"></i> فتح واتساب ومشاركة التقرير مباشرة
+                            </a>
+                            <a href="${reportData.url}" target="_blank" class="btn visit-target-btn">
+                                <i class="fa-solid fa-external-link-alt"></i> 🔗 زيارة الصفحة المبلغ عنها فوراً
+                            </a>
+                        </div>
+                    </div>
+                `;
+                window.print();
+            } catch (err) {
+                alert('فشل الاتصال بالخادم لحفظ البلاغ');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'حفظ البلاغ وطباعته';
+            }
+        }
+
+        async function viewSavedRecords() {
+            await renderRecordsList(false);
+        }
+
+        async function showMyReports() {
+            await renderRecordsList(true);
+        }
+
+        async function renderRecordsList(onlyMine) {
+            const container = document.getElementById('records-container');
+            container.innerHTML = '<p style="text-align:center; color:#888;"><i class="fa-solid fa-spinner fa-spin"></i> جاري استرجاع السجلات...</p>';
+
+            try {
+                const res = await fetch('/api/reports');
+                let records = await res.json();
+
+                if (onlyMine) {
+                    records = records.filter(r => r.username === currentUser.username || r.officer.includes(currentUser.name));
+                    document.getElementById('records-title').innerText = 'بلاغاتي الشخصية';
+                    document.getElementById('records-subtitle').innerText = `البلاغات المقدمة من قبل: ${currentUser.name}`;
+                } else {
+                    document.getElementById('records-title').innerText = 'سجل مخرجات الرصد المركزي';
+                    document.getElementById('records-subtitle').innerText = 'استعراض كافة الحالات المحفوظة في السيرفر';
+                }
+
+                if (records.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:#888;">لا توجد سجلات رصد مطابقة حالياً.</p>';
+                } else {
+                    let html = '';
+                    records.forEach((rec) => {
+                        let imagesHtml = '';
+                        if (rec.evidenceImages && rec.evidenceImages.length > 0) {
+                            imagesHtml = `<div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;">`;
+                            rec.evidenceImages.forEach((imgSrc, idx) => {
+                                imagesHtml += `<img src="${imgSrc}" title="مرفق ${idx + 1}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #ff1e38;">`;
+                            });
+                            imagesHtml += `</div>`;
+                        }
+
+                        let recLink = `${window.location.origin}${window.location.pathname}?id=${rec.report_id || rec.id}`;
+
+                        html += `
+                            <div style="background:rgba(20,20,20,0.85); border:1px solid rgba(255,30,56,0.3); padding:12px; border-radius:6px; margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <strong style="color:#ff1e38;">${rec.report_id || rec.id}</strong>
+                                    <span style="color:#888; font-size:11px;">${rec.timestamp}</span>
+                                </div>
+                                <span style="color:#fff; font-weight:600;">القائم بالرصد: ${rec.officer}</span><br>
+                                <span style="color:#ccc; font-size:12px;">المنصة: ${rec.platform} | التهديد: ${rec.threatType} | الخطورة: ${rec.severity}</span><br>
+                                <span style="color:#ff8593; font-size:12px; word-break:break-all;">الرابط/الهدف: ${rec.url}</span><br>
+                                ${imagesHtml}
+                                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                                    <a href="${recLink}" target="_blank" style="background:#25d366; color:#000; padding:4px 10px; border-radius:4px; font-size:11px; text-decoration:none; font-weight:bold;"><i class="fa-solid fa-eye"></i> فتح الرابط القصير</a>
+                                    <a href="${rec.url}" target="_blank" style="background:#ff9800; color:#000; padding:4px 10px; border-radius:4px; font-size:11px; text-decoration:none; font-weight:bold;"><i class="fa-solid fa-external-link-alt"></i> زيارة الهدف</a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
                 }
             } catch (err) {
-                alert('فشل حفظ البلاغ');
+                container.innerHTML = '<p style="text-align:center; color:#ff8593;">فشل تحميل السجلات من السيرفر.</p>';
             }
+
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-form').classList.add('hidden');
+            document.getElementById('step-admin-users').classList.add('hidden');
+            document.getElementById('step-records').classList.remove('hidden');
         }
 
-        async function deleteReport(reportId) {
-            if (!confirm('هل أنت متأكد من حذف هذا البلاغ؟')) return;
+        async function openUserManagement() {
+            document.getElementById('step-menu').classList.add('hidden');
+            document.getElementById('step-form').classList.add('hidden');
+            document.getElementById('step-records').classList.add('hidden');
+            document.getElementById('step-admin-users').classList.remove('hidden');
+            await loadUsersList();
+        }
+
+        async function loadUsersList() {
+            const container = document.getElementById('users-list-container');
+            container.innerHTML = '<p style="text-align:center; color:#888;">جاري التحميل...</p>';
             try {
-                const res = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadReports();
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                let html = '';
+                users.forEach(u => {
+                    html += `
+                        <div style="background:rgba(20,20,20,0.85); border:1px solid rgba(255,30,56,0.3); padding:10px; border-radius:6px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong style="color:#fff;">${u.name}</strong> (${u.rank})<br>
+                                <span style="color:#888; font-size:11px;">المعرف: ${u.username} | ${u.isAdmin ? 'مشرف (Admin)' : 'مستخدم عادي'}</span>
+                            </div>
+                            ${u.username !== currentUser.username ? `<button onclick="deleteUser('${u.username}')" style="background:rgba(255,30,56,0.2); color:#ff8593; border:1px solid var(--primary-red); padding:5px 10px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-trash"></i> حذف</button>` : '<span style="color:#25d366; font-size:11px;">حسابك الحالي</span>'}
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
             } catch (err) {
-                alert('فشل حذف البلاغ');
+                container.innerHTML = '<p style="color:#ff8593;">فشل تحميل المستخدمين.</p>';
             }
         }
 
-        function viewReport(reportId) {
-            const rep = reportsData.find(r => r.report_id === reportId);
-            if (!rep) return;
-            document.getElementById('pReportId').textContent = rep.report_id;
-            document.getElementById('pReportDate').textContent = rep.date;
-            document.getElementById('pViolation').textContent = rep.violationType;
-            document.getElementById('pAgent').textContent = rep.agentName;
-            document.getElementById('pUrl').textContent = rep.targetUrl;
-            document.getElementById('pUrl').href = rep.targetUrl;
-            document.getElementById('pDetails').textContent = rep.reportDetails;
-            document.getElementById('viewReportModal').classList.remove('hidden');
-        }
+        async function addNewUser() {
+            const username = document.getElementById('new-username').value.trim();
+            const password = document.getElementById('new-password').value.trim();
+            const name = document.getElementById('new-name').value.trim();
+            const rank = document.getElementById('new-rank').value.trim();
+            const isAdmin = document.getElementById('new-isadmin').checked;
+            const alertEl = document.getElementById('user-alert');
 
-        function closeViewModal() {
-            document.getElementById('viewReportModal').classList.add('hidden');
-        }
-
-        window.onload = () => {
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                initDashboard();
+            if (!username || !password || !name || !rank) {
+                alertEl.innerText = 'يرجى ملء جميع حقول المستخدم الجديد.';
+                alertEl.classList.remove('hidden');
+                return;
             }
-        };
+
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, name, rank, isAdmin })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alertEl.classList.add('hidden');
+                    document.getElementById('new-username').value = '';
+                    document.getElementById('new-password').value = '';
+                    document.getElementById('new-name').value = '';
+                    document.getElementById('new-rank').value = '';
+                    document.getElementById('new-isadmin').checked = false;
+                    await loadUsersList();
+                    alert('تم إضافة المستخدم بنجاح');
+                } else {
+                    alertEl.innerText = data.message;
+                    alertEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                alertEl.innerText = 'حدث خطأ في الاتصال';
+                alertEl.classList.remove('hidden');
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`هل أنت متأكد من حذف المستخدم (${username})؟`)) return;
+            try {
+                const res = await fetch(`/api/users/${username}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    await loadUsersList();
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                alert('فشل حذف المستخدم');
+            }
+        }
+
+        function displayReportContent(rec, contentDiv, actionDiv) {
+            let techHtml = '';
+            if (rec.technicalIndicators) {
+                for (let [k, v] of Object.entries(rec.technicalIndicators)) {
+                    if (v) techHtml += `• <b>${k.toUpperCase()}:</b> ${v}<br>`;
+                }
+            }
+
+            let imagesHtml = '';
+            if (rec.evidenceImages && rec.evidenceImages.length > 0) {
+                imagesHtml = `<div style="margin-top:12px;"><strong style="color:#ff1e38;">المرفقات والأدلة المصورة:</strong><div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">`;
+                rec.evidenceImages.forEach((img, idx) => {
+                    imagesHtml += `<a href="${img}" target="_blank"><img src="${img}" style="width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ff1e38;" title="مرفق ${idx+1}"></a>`;
+                });
+                imagesHtml += `</div></div>`;
+            }
+
+            contentDiv.innerHTML = `
+                <div style="margin-bottom:8px;"><strong style="color:#ff1e38;">رقم البلاغ:</strong> ${rec.report_id || rec.id}</div>
+                <div style="margin-bottom:8px;"><strong>القائم بالرصد:</strong> ${rec.officer}</div>
+                <div style="margin-bottom:8px;"><strong>مصدر الرصد:</strong> ${rec.source || 'غير متوفر'}</div>
+                <div style="margin-bottom:8px;"><strong>المنصة المستهدفة:</strong> ${rec.platform}</div>
+                <div style="margin-bottom:8px;"><strong style="color:#ff8593;">رابط الهدف المبلغ عنه:</strong> <a href="${rec.url}" target="_blank" style="color:#ff9800; word-break:break-all;">${rec.url}</a></div>
+                <div style="margin-bottom:8px;"><strong>اسم الحساب أو الجهة:</strong> ${rec.accountName || 'غير متوفر'}</div>
+                <div style="margin-bottom:8px;"><strong>نوع التهديد:</strong> ${rec.threatType}</div>
+                <div style="margin-bottom:8px;"><strong>مستوى الخطورة:</strong> ${rec.severity}</div>
+                <div style="margin-bottom:8px;"><strong>تاريخ ووقت النشر:</strong> ${rec.datetime || 'غير متوفر'}</div>
+                <div style="margin-bottom:8px;"><strong>وصف الحالة:</strong> ${rec.description || 'لا يوجد وصف'}</div>
+                <div style="margin-bottom:8px;"><strong>التوصية المقترحة:</strong> ${rec.recommendation || 'لا توجد توصية'}</div>
+                ${techHtml ? `<div style="margin-top:10px; border-top:1px solid rgba(255,30,56,0.3); padding-top:8px;"><strong>المؤشرات الفنية:</strong><br>${techHtml}</div>` : ''}
+                ${imagesHtml}
+            `;
+
+            actionDiv.innerHTML = `
+                <a href="${rec.url}" target="_blank" class="btn visit-target-btn" style="margin-bottom: 10px;">
+                    <i class="fa-solid fa-external-link-alt"></i> 🔗 زيارة الصفحة المبلغ عنها فوراً
+                </a>
+                <button class="btn btn-secondary" onclick="window.location.href=window.location.pathname">الانتقال للرئيسية</button>
+            `;
+        }
     </script>
 </body>
 </html>
