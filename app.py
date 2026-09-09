@@ -1,99 +1,72 @@
+from flask import Flask, render_template, request, jsonify
 import os
-import base64
 import json
-import uuid
-from datetime import datetime
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import requests
 
 app = Flask(__name__)
-CORS(app)
 
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-GITHUB_REPO = os.environ.get("GITHUB_REPO")
+CASES_DIR = 'cases'
+USERS_FILE = 'users.json'
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "active", 
-        "version": "v2.0-uuid", 
-        "message": "Cyber Security GitHub Storage API is running."
-    })
+os.makedirs(CASES_DIR, exist_ok=True)
 
-@app.route("/submit-report", methods=["POST"])
-def submit_report():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+def init_users():
+    if not os.path.exists(USERS_FILE):
+        default_users = [
+            { "username": "ali_hussein", "password": "123", "name": "نقيب علي حسين", "rank": "مشرف (آدمن)", "isAdmin": True },
+            { "username": "ahmed_jasem", "password": "123", "name": "أحمد جاسم", "rank": "مشرف (آدمن رئيسي)", "isAdmin": True },
+            { "username": "mufawad1", "password": "123", "name": "مفوض كرار حاتم", "rank": "مفوض", "isAdmin": False },
+            { "username": "shurti1", "password": "123", "name": "شرطي حسن علي", "rank": "شرطي", "isAdmin": False }
+        ]
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(default_users, f, ensure_ascii=False, indent=4)
 
-        timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
-        random_suffix = uuid.uuid4().hex[:6].upper()
-        report_id = f"CYBER-REC-{timestamp_str}-{random_suffix}"
+init_users()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    with open(USERS_FILE, 'r', encoding='utf-8') as f:
+        users = json.load(f)
         
-        data["report_id"] = report_id
-        data["created_at"] = datetime.now().isoformat()
+    for user in users:
+        if user['username'] == username and user['password'] == password:
+            return jsonify({"success": True, "user": user})
+            
+    return jsonify({"success": False, "message": "اسم المستخدم أو كلمة المرور غير صحيحة"})
 
-        # الحفظ في مجلد cases الجديد
-        file_path = f"cases/{report_id}.json"
+@app.route('/api/reports', methods=['GET', 'POST'])
+def handle_reports():
+    if request.method == 'POST':
+        report_data = request.json
+        report_id = report_data.get('report_id')
+        file_path = os.path.join(CASES_DIR, f"{report_id}.json")
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(report_data, f, ensure_ascii=False, indent=4)
+        return jsonify({"success": True, "message": "تم حفظ البلاغ بنجاح"})
         
-        file_content = json.dumps(data, ensure_ascii=False, indent=4)
-        encoded_content = base64.b64encode(file_content.encode("utf-8")).decode("utf-8")
+    elif request.method == 'GET':
+        reports = []
+        if os.path.exists(CASES_DIR):
+            for filename in os.listdir(CASES_DIR):
+                if filename.endswith('.json'):
+                    with open(os.path.join(CASES_DIR, filename), 'r', encoding='utf-8') as f:
+                        reports.append(json.load(f))
+        return jsonify(reports)
 
-        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_path}"
-        headers = {
-            "Authorization": f"Bearer {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
-        payload = {
-            "message": f"Add cyber report {report_id}",
-            "content": encoded_content
-        }
+@app.route('/api/reports/<report_id>', methods=['DELETE'])
+def delete_report(report_id):
+    file_path = os.path.join(CASES_DIR, f"{report_id}.json")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return jsonify({"success": True, "message": "تم حذف البلاغ"})
+    return jsonify({"success": False, "message": "البلاغ غير موجود"})
 
-        response = requests.put(url, json=payload, headers=headers)
-
-        if response.status_code in [200, 201]:
-            return jsonify({
-                "success": True, 
-                "report_id": report_id, 
-                "message": "Report saved to GitHub successfully."
-            }), 200
-        else:
-            return jsonify({
-                "success": False, 
-                "error": response.json()
-            }), response.status_code
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route("/get-report/<report_id>", methods=["GET"])
-def get_report(report_id):
-    try:
-        # القراءة من مجلد cases أيضاً لتتطابق مع مسار الحفظ
-        file_path = f"cases/{report_id}.json"
-        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_path}"
-        headers = {
-            "Authorization": f"Bearer {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
-
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            file_data = response.json()
-            file_content = base64.b64decode(file_data["content"]).decode("utf-8")
-            report_json = json.loads(file_content)
-            return jsonify({"success": True, "data": report_json}), 200
-        else:
-            return jsonify({"success": False, "error": "Report not found"}), 404
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
