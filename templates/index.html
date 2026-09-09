@@ -13,7 +13,169 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-color: #030303;
+            --bg-color: #030303;<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>نظام البلاغات والتقارير الأمنية</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @media print {
+            body { background: #fff; color: #000; display: block; padding: 0; }
+            #cyber-canvas, .no-print, .btn, .menu-options, .footer-info, #success-action-container, .preview-images-container, .menu-toggle-btn, .sidebar, .sidebar-overlay, #grp-evidence { display: none !important; }
+            .card { background: #fff; border: none; box-shadow: none; padding: 0; width: 100%; max-width: 100%; page-break-after: always; }
+            input, select, textarea { border: none !important; background: transparent !important; color: #000 !important; padding: 2px 0 !important; font-size: 13px !important; }
+            label { color: #333 !important; font-weight: bold; margin-top: 8px; }
+            .print-hidden-field { display: none !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            #print-attachments-container { display: block !important; }
+            .print-attachment-page { page-break-before: always; break-before: page; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 15px 0; box-sizing: border-box; text-align: center; }
+            .print-att-header { text-align: center; border-bottom: 2px solid #000; width: 100%; padding-bottom: 8px; margin-bottom: 5px; }
+            .print-att-header h2, .print-att-header h3, .print-att-header p { color: #000 !important; margin: 2px 0; font-size: 14px; }
+            .print-att-title { font-size: 18px; font-weight: 900; color: #000; margin: 5px 0 10px 0; background: #f0f0f0; padding: 6px 30px; border: 2px solid #000; border-radius: 6px; }
+            .print-att-img-box { flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; max-height: 78vh; }
+            .print-att-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid #000; background: #fff; padding: 4px; }
+            .print-att-footer { font-size: 12px; color: #000; margin-top: 10px; border-top: 1px solid #999; width: 100%; padding-top: 5px; font-weight: bold; }
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -280px;
+            width: 280px;
+            height: 100%;
+            background: #fff;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            transition: 0.3s;
+            z-index: 1050;
+            padding: 20px;
+        }
+        .sidebar.active { right: 0; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 15px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark px-4">
+        <span class="navbar-brand mb-0 h1">نظام البلاغات والتقارير</span>
+        <button class="btn btn-outline-light" onclick="toggleSidebar()"><i class="fas fa-bars"></i> خيارات الحساب</button>
+    </nav>
+
+    <!-- الشريط الجانبي (Sidebar) لخيارات الحساب -->
+    <div id="options-sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h5 class="m-0">خيارات الحساب</h5>
+            <button type="button" class="close-btn" onclick="toggleSidebar()">&times;</button>
+        </div>
+        <div class="sidebar-body">
+            <ul class="list-unstyled">
+                <li class="mb-3">
+                    <a href="#" class="text-decoration-none text-dark d-block p-2 rounded bg-light" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="fas fa-key text-primary me-2"></i> تغيير كلمة السر
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger d-block p-2 rounded bg-light">
+                        <i class="fas fa-sign-out-alt me-2"></i> تسجيل الخروج
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container my-5">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} text-center">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('submit_report') }}" class="card p-4 shadow-sm" enctype="multipart/form-data">
+            <h3 class="mb-4 text-center">استمارة تقديم بلاغ جديد</h3>
+
+            <!-- اختيار الرتبة (مفوض، شرطي، منتسب) -->
+            <div class="mb-3">
+                <label class="form-label">الرتبة:</label>
+                <select name="user_rank" class="form-control" required>
+                    <option value="" disabled selected>اختر الرتبة</option>
+                    <option value="مفوض">مفوض</option>
+                    <option value="شرطي">شرطي</option>
+                    <option value="منتسب">منتسب</option>
+                </select>
+            </div>
+
+            <!-- الاسم الثلاثي -->
+            <div class="mb-3">
+                <label class="form-label">الاسم الثلاثي:</label>
+                <input type="text" name="user_full_name" class="form-control" placeholder="أدخل اسمك الصريح" required>
+            </div>
+
+            <!-- مستوى الخطورة -->
+            <div class="mb-3">
+                <label class="form-label">9. بيان أوّلي عن مستوى الخطورة أو أهمية الحالة</label>
+                <select name="severity" class="form-control">
+                    <option value="حرج / عالي الخطورة">حرج / عالي الخطورة</option>
+                    <option value="متوسط الخطورة">متوسط الخطورة</option>
+                    <option value="منخفض الخطورة">منخفض الخطورة</option>
+                </select>
+            </div>
+
+            <!-- النقطة الثامنة: مرفقات الصور (تخفى بالكامل عند الطباعة عبر id="grp-evidence") -->
+            <div class="mb-3" id="grp-evidence">
+                <label class="form-label">8. صور أو أدلة التوثيق المتوفرة (إرفاق لقطات شاشة أو أدلة)</label>
+                <input type="file" name="evidence_files" class="form-control" multiple accept="image/*">
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2">إرسال البلاغ</button>
+        </form>
+    </div>
+
+    <!-- نافذة منبثقة لتغيير كلمة السر -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('change_password') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">تغيير كلمة السر</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">كلمة المرور الحالية</label>
+                            <input type="password" name="current_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">كلمة المرور الجديدة</label>
+                            <input type="password" name="new_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">تأكيد كلمة المرور الجديدة</label>
+                            <input type="password" name="confirm_password" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('options-sidebar').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>
             --panel-bg: rgba(10, 10, 10, 0.95);
             --primary-red: #ff1e38;
             --dark-red: #990012;
