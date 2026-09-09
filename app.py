@@ -4,7 +4,6 @@ import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'cyber_security_ministry_secret_key_secure_2026'
@@ -70,7 +69,7 @@ def login():
             session['fullname'] = users[username].get('fullname', username)
             return redirect(url_for('index'))
         flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
-    return render_template('login.html')
+    return render_template('index1.html') # أو اسم ملف الـ html الخاص بك
 
 @app.route('/logout')
 def logout():
@@ -94,7 +93,7 @@ def index():
     }
     
     users = load_users() if session.get('is_admin') else {}
-    return render_template('index.html', stats=stats, users=users)
+    return render_template('index1.html', stats=stats, users=users)
 
 @app.route('/submit-report', methods=['POST'])
 def submit_report():
@@ -104,20 +103,20 @@ def submit_report():
     reports = load_reports()
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
-    # معالجة الصور وتحويلها لـ Base64 لكي تُحفظ حصرياً داخل ملف reports.json وتظل محفوظة على جيثب أو الاستضافة
+    # معالجة الصور وتحويلها لـ Base64 لكي تُحفظ داخل ملف reports.json حصرياً ولا تُحذف أبداً على الاستضافة
     files = request.files.getlist('evidence_files')
     evidence_base64 = []
     for file in files:
         if file and file.filename:
-            filename = secure_filename(file.filename)
             file_bytes = file.read()
             encoded = base64.b64encode(file_bytes).decode('utf-8')
+            filename = file.filename.lower()
             mime_type = 'image/jpeg'
-            if filename.lower().endswith('.png'):
+            if filename.endswith('.png'):
                 mime_type = 'image/png'
-            elif filename.lower().endswith('.gif'):
+            elif filename.endswith('.gif'):
                 mime_type = 'image/gif'
-            elif filename.lower().endswith('.webp'):
+            elif filename.endswith('.webp'):
                 mime_type = 'image/webp'
             data_url = f"data:{mime_type};base64,{encoded}"
             evidence_base64.append(data_url)
@@ -135,7 +134,7 @@ def submit_report():
         "severity": request.form.get('m_severity'),
         "recommendation": request.form.get('m_recommendation'),
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "evidence": evidence_base64,
+        "evidence": evidence_base64, # مصفوفة الصور المزبردة
         "tech_indicators": {
             "ip": request.form.get('tech_ip'),
             "domain": request.form.get('tech_domain'),
