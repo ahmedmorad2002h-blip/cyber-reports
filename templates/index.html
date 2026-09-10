@@ -167,14 +167,33 @@
 
         #globe-container {
             width: 100%;
-            height: 350px;
+            height: 380px;
             position: relative;
             margin: 15px 0;
             border-radius: 16px;
             overflow: hidden;
-            background: radial-gradient(circle, rgba(11,18,33,0.8) 0%, rgba(3,7,18,0.98) 100%);
+            background: radial-gradient(circle, rgba(11,18,33,0.85) 0%, rgba(2,6,18,0.99) 100%);
+            border: 1px solid rgba(0, 242, 254, 0.5);
+            box-shadow: inset 0 0 35px rgba(0, 242, 254, 0.25);
+        }
+
+        .threat-ticker {
+            position: absolute;
+            bottom: 12px;
+            left: 15px;
+            right: 15px;
+            background: rgba(3, 7, 18, 0.85);
             border: 1px solid rgba(0, 242, 254, 0.4);
-            box-shadow: inset 0 0 30px rgba(0, 242, 254, 0.2);
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-family: monospace;
+            font-size: 0.78rem;
+            color: #00f2fe;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            z-index: 10;
         }
 
         .hidden { display: none !important; }
@@ -332,9 +351,14 @@
             
             <div class="position-relative">
                 <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem;">
-                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live 3D Cyber Globe)
+                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live Threat Map)
                 </div>
-                <div id="globe-container"></div>
+                <div id="globe-container">
+                    <div class="threat-ticker">
+                        <span id="ticker-attack"><i class="fas fa-bolt text-warning me-1"></i> [DDoS Attack] 185.220.101.4 ➔ 192.168.1.1</span>
+                        <span class="text-danger fw-bold ms-2" id="ticker-status">HIGH SEVERITY</span>
+                    </div>
+                </div>
             </div>
 
             <div class="row g-3 mb-4">
@@ -779,17 +803,19 @@
             });
         }
 
-        // --- دالة أنيميشن الكرة الأرضية السيبرانية المتقدمة ---
+        // --- دالة رادار الهجمات السيبرانية الاحترافية ثلاثية الأبعاد (SOC Cyber Attack Map) ---
         function initCyberGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
 
-            // تنظيف الحاوية لمنع التكرار
+            // تنظيف الحاوية مع الحفاظ على التيكر
+            const ticker = container.querySelector('.threat-ticker');
             container.innerHTML = '';
+            if (ticker) container.appendChild(ticker);
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 16;
+            camera.position.z = 15;
 
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
@@ -799,86 +825,179 @@
             const globeGroup = new THREE.Group();
             scene.add(globeGroup);
 
-            // 1. الكرة الداخلية المضيئة
-            const innerGeo = new THREE.SphereGeometry(4.8, 32, 32);
-            const innerMat = new THREE.MeshBasicMaterial({
-                color: 0x051937,
+            // 1. مجسم الكرة الأرضية المظلم المضيء
+            const globeGeo = new THREE.SphereGeometry(4.5, 40, 40);
+            const globeMat = new THREE.MeshBasicMaterial({
+                color: 0x030d22,
                 transparent: true,
-                opacity: 0.85
+                opacity: 0.95
             });
-            const innerGlobe = new THREE.Mesh(innerGeo, innerMat);
-            globeGroup.add(innerGlobe);
+            const globeMesh = new THREE.Mesh(globeGeo, globeMat);
+            globeGroup.add(globeMesh);
 
-            // 2. الشبكة الخارجية السيبرانية
-            const outerGeo = new THREE.SphereGeometry(5, 30, 30);
-            const outerMat = new THREE.MeshBasicMaterial({
+            // 2. شبكة نيون سيبرانية للمحيط
+            const wireGeo = new THREE.SphereGeometry(4.53, 28, 28);
+            const wireMat = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
                 wireframe: true,
                 transparent: true,
-                opacity: 0.35
+                opacity: 0.25
             });
-            const outerGlobe = new THREE.Mesh(outerGeo, outerMat);
-            globeGroup.add(outerGlobe);
+            const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+            globeGroup.add(wireMesh);
 
-            // 3. نقاط رادار ومواقع سيبرانية على سطح الكرة
-            const pointsGeo = new THREE.BufferGeometry();
-            const pointsCount = 120;
-            const posArray = new Float32Array(pointsCount * 3);
-
-            for (let i = 0; i < pointsCount * 3; i += 3) {
-                const u = Math.random();
-                const v = Math.random();
-                const theta = u * 2.0 * Math.PI;
-                const phi = Math.acos(2.0 * v - 1.0);
-                const r = 5.05;
-
-                posArray[i] = r * Math.sin(phi) * Math.cos(theta);
-                posArray[i + 1] = r * Math.sin(phi) * Math.sin(theta);
-                posArray[i + 2] = r * Math.cos(phi);
+            // 3. تحويل الإحداثيات الجغرافية (خطوط الطول والعرض) إلى إحداثيات 3D
+            function latLongToVector3(lat, lon, radius) {
+                const phi = (90 - lat) * (Math.PI / 180);
+                const theta = (lon + 180) * (Math.PI / 180);
+                const x = -((radius) * Math.sin(phi) * Math.cos(theta));
+                const z = ((radius) * Math.sin(phi) * Math.sin(theta));
+                const y = ((radius) * Math.cos(phi));
+                return new THREE.Vector3(x, y, z);
             }
 
-            pointsGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const pointsMat = new THREE.PointsMaterial({
-                size: 0.2,
-                color: 0xff3366,
-                transparent: true,
-                opacity: 0.9
-            });
-            const cyberPoints = new THREE.Points(pointsGeo, pointsMat);
-            globeGroup.add(cyberPoints);
+            // موقع الهدف الرئيسي (العراق / بغداد كمثال)
+            const targetCoord = { lat: 33.3152, lon: 44.3661, name: "Iraq (Target)" };
+            const targetVec = latLongToVector3(targetCoord.lat, targetCoord.lon, 4.55);
 
-            // 4. حلقة مدارية خارجية
-            const ringGeo = new THREE.RingGeometry(6.2, 6.35, 64);
+            // موقع الهدف الرئيسي كمجسم مضيء باللون الأخضر/الأزرق
+            const targetMarkerGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const targetMarkerMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+            const targetMarker = new THREE.Mesh(targetMarkerGeo, targetMarkerMat);
+            targetMarker.position.copy(targetVec);
+            globeGroup.add(targetMarker);
+
+            // مواقع دول المهاجمين (المصادر)
+            const attackSources = [
+                { lat: 55.7558, lon: 37.6173, country: "Russia", ip: "185.220.101.4", type: "DDoS Attack" },
+                { lat: 39.9042, lon: 116.4074, country: "China", ip: "220.181.38.148", type: "SQL Injection" },
+                { lat: 37.7749, lon: -122.4194, country: "USA", ip: "104.244.42.1", type: "DarkWeb Leak" },
+                { lat: 52.5200, lon: 13.4050, country: "Germany", ip: "185.220.101.5", type: "Brute Force" },
+                { lat: 35.6762, lon: 139.6503, country: "Japan", ip: "133.242.181.1", type: "Botnet Probe" }
+            ];
+
+            const attackArcs = [];
+
+            // 4. رسم أقواس الهجمات والنبضات
+            attackSources.forEach((src) => {
+                const srcVec = latLongToVector3(src.lat, src.lon, 4.55);
+
+                // نقطة المصدر (أحمر النيون)
+                const srcGeo = new THREE.SphereGeometry(0.09, 12, 12);
+                const srcMat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+                const srcMesh = new THREE.Mesh(srcGeo, srcMat);
+                srcMesh.position.copy(srcVec);
+                globeGroup.add(srcMesh);
+
+                // حساب منحنى الهجوم ثلاثي الأبعاد فوق سطح الكرة
+                const distance = srcVec.distanceTo(targetVec);
+                const mid = srcVec.clone().add(targetVec).multiplyScalar(0.5);
+                const midLength = mid.length();
+                mid.normalize();
+                mid.multiplyScalar(midLength + distance * 0.45); // ارتفاع القوس بحسب المسافة
+
+                const curve = new THREE.QuadraticBezierCurve3(srcVec, mid, targetVec);
+                const points = curve.getPoints(50);
+                const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
+
+                // رسم خط القوس المضيء
+                const arcMat = new THREE.LineBasicMaterial({
+                    color: 0xff2a5f,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const arcLine = new THREE.Line(arcGeo, arcMat);
+                globeGroup.add(arcLine);
+
+                // نبضة الطاقة الليزرية المتحركة على القوس
+                const pulseGeo = new THREE.SphereGeometry(0.08, 10, 10);
+                const pulseMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
+                pulseMesh.position.copy(srcVec);
+                globeGroup.add(pulseMesh);
+
+                attackArcs.push({
+                    curve: curve,
+                    pulse: pulseMesh,
+                    progress: Math.random(),
+                    speed: 0.006 + Math.random() * 0.008,
+                    info: src
+                });
+            });
+
+            // 5. دوائر اصطدام متحركة عند الهدف
+            const impactGeo = new THREE.RingGeometry(0.05, 0.25, 24);
+            const impactMat = new THREE.MeshBasicMaterial({
+                color: 0xff0055,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            const impactRing = new THREE.Mesh(impactGeo, impactMat);
+            impactRing.position.copy(targetVec);
+            impactRing.lookAt(new THREE.Vector3(0,0,0));
+            globeGroup.add(impactRing);
+
+            // 6. حلقة المدار الخارجي المتوهجة
+            const ringGeo = new THREE.RingGeometry(5.8, 5.95, 64);
             const ringMat = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.5
+                opacity: 0.35
             });
             const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = Math.PI / 2.5;
+            ring.rotation.x = Math.PI / 2.3;
             scene.add(ring);
 
-            // ميلان خفيف للكرة
-            globeGroup.rotation.z = 0.25;
+            // تعديل زاوية الرؤية الابتدائية
+            globeGroup.rotation.y = 1.2;
+            globeGroup.rotation.x = 0.2;
 
-            // حلقة الدوران والأنيميشن
-            function animate() {
+            let lastTickerUpdate = 0;
+            let currentArcIndex = 0;
+
+            // حلقة الحركة والأنيميشن التفاعلي
+            function animate(time) {
                 requestAnimationFrame(animate);
 
-                globeGroup.rotation.y += 0.004;
-                outerGlobe.rotation.y += 0.002;
-                ring.rotation.z -= 0.003;
+                // دوران منتظم وهادئ للكرة الأرضية
+                globeGroup.rotation.y += 0.0025;
+                ring.rotation.z -= 0.0015;
 
-                // تأثير نبض للنقاط المضيئة
-                const time = Date.now() * 0.003;
-                pointsMat.size = 0.18 + Math.sin(time) * 0.05;
+                // تحريك نبضات الهجمات المباشرة عبر الأقواس
+                attackArcs.forEach((arc) => {
+                    arc.progress += arc.speed;
+                    if (arc.progress > 1) {
+                        arc.progress = 0;
+                    }
+                    const point = arc.curve.getPoint(arc.progress);
+                    arc.pulse.position.copy(point);
+                });
+
+                // تأثير نبض حلقة الاصطدام عند الهدف
+                const pulseScale = 1 + Math.sin(time * 0.008) * 0.6;
+                impactRing.scale.set(pulseScale, pulseScale, pulseScale);
+
+                // تحديث شريط التنبيهات اللحظي تلقائياً كل 3 ثوانٍ
+                if (time - lastTickerUpdate > 3000) {
+                    lastTickerUpdate = time;
+                    const attack = attackArcs[currentArcIndex].info;
+                    const tickerAttack = document.getElementById('ticker-attack');
+                    const tickerStatus = document.getElementById('ticker-status');
+                    if (tickerAttack && tickerStatus) {
+                        tickerAttack.innerHTML = `<i class="fas fa-bolt text-warning me-1"></i> [${attack.type}] ${attack.country} (${attack.ip}) ➔ Iraq Defense System`;
+                        tickerStatus.innerText = (currentArcIndex % 2 === 0) ? "CRITICAL THREAT" : "BLOCKED";
+                        tickerStatus.className = (currentArcIndex % 2 === 0) ? "text-danger fw-bold ms-2" : "text-success fw-bold ms-2";
+                    }
+                    currentArcIndex = (currentArcIndex + 1) % attackArcs.length;
+                }
 
                 renderer.render(scene, camera);
             }
-            animate();
+            animate(0);
 
-            // ضبط الحجم عند تغيير نافذة المتصفح
+            // استجابة الحجم التلقائية عند تغيير نافذة المتصفح
             window.addEventListener('resize', () => {
                 if (!container) return;
                 camera.aspect = container.clientWidth / container.clientHeight;
