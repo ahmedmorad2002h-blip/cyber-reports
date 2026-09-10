@@ -78,13 +78,11 @@ def compress_and_upload_image(file_obj):
 
 def load_reports(fetch_evidence=True):
     try:
-        is_admin_session = session.get('is_admin')
         current_username = str(session.get('user', '')).strip().lower()
+        is_admin_session = bool(session.get('is_admin', False))
         
-        if current_username == 'admin':
-            is_admin = True
-        else:
-            is_admin = bool(is_admin_session)
+        # التحقق الحاسم من صلاحيات الأدمن لضمان رؤية كافة السجلات
+        is_admin = (current_username == 'admin' or is_admin_session)
 
         res = supabase.table('reports').select('*').execute()
         raw_reports = res.data or []
@@ -182,7 +180,8 @@ def index():
             'monthly': monthly_count
         }
         
-        is_admin_check = (session.get('user') == 'admin' or bool(session.get('is_admin', False)))
+        current_user = session.get('user')
+        is_admin_check = (current_user == 'admin' or bool(session.get('is_admin', False)))
         users = load_users() if is_admin_check else {}
         return render_template('index.html', stats=stats, users=users)
     except Exception as e:
