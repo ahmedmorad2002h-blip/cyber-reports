@@ -1,10 +1,19 @@
 import os
 import json
 import base64
+import uuid
+from io import BytesIO
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client, Client
+
+# محاولة استيراد مكتبة Pillow للضغط الذكي للصور
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
@@ -27,7 +36,7 @@ else:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- دوال المساعدة للتعامل مع قاعدة البيانات ---
+# --- دوال المساعدة للتعامل مع قاعدة البيانات والتخزين ---
 
 def init_admin_user():
     """إنشاء حساب الأدمن الرئيسي تلقائياً عند أول تشغيل إذا لم يكن موجوداً"""
@@ -56,10 +65,53 @@ def load_users():
         print(f"🚨 خطأ في تحميل المستخدمين: {e}")
         return {}
 
+def compress_and_upload_image(file_obj):
+    """
+    ضغط الصورة وتقليل حجمها ثم رفعها إلى Supabase Storage Bucket (evidence)
+    وفي حال الفشل تعود للـ Base64 لضمان عدم توقف النظام.
+    """
+    try:
+        filename = f"{uuid.uuid4().hex}.jpg"
+        file_bytes = file_obj.read()
+        
+        # معالجة وضغط الصورة باستخدام Pillow إذا كانت متوفرة
+        if HAS_PIL:
+            try:
+                img = Image.open(BytesIO(file_bytes))
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                
+                # تصغير الأبعاد الكبيرة جداً للحفاظ على سرعة التحميل
+                max_size = (1920, 1080)
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                
+                output = BytesIO()
+                img.save(output, format="JPEG", quality=80, optimize=True)
+                file_bytes = output.getvalue()
+            except Exception as pe:
+                print(f"⚠️ فشل ضغط الصورة بـ Pillow، سيتم الرفع بالحجم الأصلي: {pe}")
+
+        # رفع الملف إلى Supabase Storage Bucket
+        bucket_name = "evidence"
+        res = supabase.storage.from_(bucket_name).upload(
+            path=filename,
+            file=file_bytes,
+            file_options={"content-type": "image/jpeg"}
+        )
+
+        # الحصول على الرابط العام المباشر للصورة
+        public_url = supabase.storage.from_(bucket_name).get_public_url(filename)
+        return public_url
+
+    except Exception as e:
+        print(f"⚠️ تعذر الرفع المباشر إلى Bucket (evidence)، جارٍ التحويل الآمن لـ Base64: {e}")
+        # طريقة احتياطية (Fallback) بحال عدم وجود الـ Bucket أو خطأ في الصلاحية
+        encoded = base64.b64encode(file_bytes).decode('utf-8')
+        return f"data:image/jpeg;base64,{encoded}"
+
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
     """تحميل البلاغات من Supabase مع معالجة مرنة للتصفية لضمان ظهور السجلات"""
     try:
-        # الترتيب حسب وقت الإنشاء أو التحديث
         query = supabase.table('reports').select('*')
         res = query.execute()
         reports = []
@@ -67,15 +119,11 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
         clean_filter = str(user_filter or '').strip().lower()
         username = str(session.get('user', '')).strip().lower()
 
-        # إزالة التصفية المتشددة للحسابات العادية حتى تظهر البلاغات الخاصة بالمستخدم بكل الحالات
         for r in res.data or []:
             officer_info = str(r.get("officer", "") or "").lower()
             
-            # فلترة مرنة: إذا لم يكن أدمن وكان هناك فلتر، يتم التحقق بشرط غير متشدد
             if not is_admin and clean_filter:
-                # التأكد من وجود أي تطابق جزئي في اسم الضابط أو اسم الحساب
                 if clean_filter not in officer_info and username not in officer_info:
-                    # في حال عدم التطابق التام يتم تجاوز السجل فقط إذا لم يكن ينتمي لنفس الحساب
                     if r.get("username") and username != str(r.get("username")).lower():
                         continue
 
@@ -97,7 +145,6 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
                 "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
             
-        # ترتيب السجلات تنازلياً حسب التاريخ
         reports.sort(key=lambda x: str(x.get('timestamp') or ''), reverse=True)
         return reports
     except Exception as e:
@@ -180,26 +227,18 @@ def submit_report():
 
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
+    # رفع ومعالجة الأدلة المصورة
     files = request.files.getlist('evidence_files')
-    evidence_base64 = []
+    evidence_urls = []
     for file in files:
         if file and file.filename:
-            file_bytes = file.read()
-            encoded = base64.b64encode(file_bytes).decode('utf-8')
-            filename = file.filename.lower()
-            mime_type = 'image/jpeg'
-            if filename.endswith('.png'):
-                mime_type = 'image/png'
-            elif filename.endswith('.gif'):
-                mime_type = 'image/gif'
-            elif filename.endswith('.webp'):
-                mime_type = 'image/webp'
-            data_url = f"data:{mime_type};base64,{encoded}"
-            evidence_base64.append(data_url)
+            image_link = compress_and_upload_image(file)
+            evidence_urls.append(image_link)
 
     db_payload = {
         "report_id": report_id,
         "officer": f"{request.form.get('user_rank', '')} {request.form.get('user_full_name', '')}".strip(),
+        "username": session.get('user'),
         "source": request.form.get('m_source'),
         "platform": request.form.get('m_platform'),
         "url": m_url,
@@ -211,7 +250,7 @@ def submit_report():
         "recommendation": request.form.get('m_recommendation'),
         "status": "قيد المراجعة",
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "evidence": evidence_base64,
+        "evidence": evidence_urls,
         "tech_indicators": {
             "ip": request.form.get('tech_ip'),
             "domain": request.form.get('tech_domain'),
