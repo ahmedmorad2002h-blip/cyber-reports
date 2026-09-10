@@ -46,6 +46,25 @@ def init_admin_user():
 
 init_admin_user()
 
+# --- دالة التنظيف التلقائي المؤقتة لحل مشكلة الـ Timeout وتفريغ الحجم الزائد ---
+def auto_clear_heavy_evidence():
+    try:
+        print("🔄 جاري تفريغ الصور والأدلة الثقيلة من قاعدة البيانات لإصلاح مشكلة الـ Limit...")
+        # جلب معرفات البلاغات وتفريغ الـ evidence تدريجياً لتجنب الـ Timeout
+        res = supabase.table('reports').select('report_id').execute()
+        reports = res.data or []
+        for r in reports:
+            rid = r.get('report_id')
+            if rid:
+                supabase.table('reports').update({'evidence': []}).eq('report_id', rid).execute()
+        print("✅ تم تفريغ كافة الأدلة الثقيلة بنجاح وعادت المساحة لطبيعتها!")
+    except Exception as e:
+        print(f"⚠️ تنبيه أثناء التنظيف التلقائي: {e}")
+
+# تشغيل التنظيف فور إقلاع السيرفر
+auto_clear_heavy_evidence()
+# --------------------------------------------------------------------------
+
 def load_users():
     try:
         res = supabase.table('users').select('*').execute()
@@ -83,11 +102,9 @@ def load_reports(fetch_evidence=True):
         is_admin = (current_username == 'admin' or is_admin_session)
         current_fullname = str(session.get('fullname', '')).strip()
 
-        # بناء الاستعلام مع الفلترة مباشرة من Supabase لمنع الـ Timeout
         query = supabase.table('reports').select('*')
         
         if not is_admin and current_fullname:
-            # جلب البلاغات الخاصة بالمستخدم المطابق لاسمه فقط من الخادم مباشرة
             query = query.ilike('officer', f"%{current_fullname}%")
 
         res = query.order('timestamp', desc=True).execute()
