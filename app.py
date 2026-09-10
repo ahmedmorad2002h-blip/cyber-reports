@@ -110,20 +110,27 @@ def compress_and_upload_image(file_obj):
         return f"data:image/jpeg;base64,{encoded}"
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات: الأدمن يرى الكل، والمستخدم العادي يرى بلاغاته فقط بدقة"""
+    """تحميل البلاغات: الأدمن يرى الكل، والمستخدم العادي يرى بلاغاته بمطابقة اسم المستخدم أو الاسم الصريح"""
     try:
         query = supabase.table('reports').select('*')
         res = query.execute()
         reports = []
         
         current_username = str(session.get('user', '')).strip().lower()
+        current_fullname = str(session.get('fullname', '')).strip().lower()
 
         for r in res.data or []:
-            # إذا لم يكن المستخدم مشرفاً، نتحقق أن البلاغ يخصه تماماً عبر اسم المستخدم
+            # إذا لم يكن المستخدم مشرفاً، نتحقق من تطابق اسم المستخدم أو جزء من اسم الضابط لضمان ظهور بلاغاته بدقة
             if not is_admin:
                 r_username = str(r.get("username", "")).strip().lower()
-                if r_username != current_username:
-                    continue  # تخطي البلاغ إذا لم يكن تابعاً لهذا المستخدم
+                r_officer = str(r.get("officer", "")).strip().lower()
+                
+                match_user = (current_username and r_username == current_username)
+                match_name = (current_fullname and current_fullname in r_officer)
+                
+                # إذا لم يتحقق أي تطابق، يتم تخطي السجل
+                if not (match_user or match_name):
+                    continue
 
             reports.append({
                 "report_id": r.get("report_id"),
