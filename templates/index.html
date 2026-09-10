@@ -803,12 +803,11 @@
             });
         }
 
-        // --- دالة رادار الهجمات السيبرانية الاحترافية ثلاثية الأبعاد (SOC Cyber Attack Map) ---
+        // --- دالة رادار الهجمات السيبرانية ثلاثية الأبعاد (SOC Cyber Attack Map) ---
         function initCyberGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
 
-            // تنظيف الحاوية مع الحفاظ على التيكر
             const ticker = container.querySelector('.threat-ticker');
             container.innerHTML = '';
             if (ticker) container.appendChild(ticker);
@@ -825,7 +824,6 @@
             const globeGroup = new THREE.Group();
             scene.add(globeGroup);
 
-            // 1. مجسم الكرة الأرضية المظلم المضيء
             const globeGeo = new THREE.SphereGeometry(4.5, 40, 40);
             const globeMat = new THREE.MeshBasicMaterial({
                 color: 0x030d22,
@@ -835,7 +833,6 @@
             const globeMesh = new THREE.Mesh(globeGeo, globeMat);
             globeGroup.add(globeMesh);
 
-            // 2. شبكة نيون سيبرانية للمحيط
             const wireGeo = new THREE.SphereGeometry(4.53, 28, 28);
             const wireMat = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
@@ -846,7 +843,6 @@
             const wireMesh = new THREE.Mesh(wireGeo, wireMat);
             globeGroup.add(wireMesh);
 
-            // 3. تحويل الإحداثيات الجغرافية (خطوط الطول والعرض) إلى إحداثيات 3D
             function latLongToVector3(lat, lon, radius) {
                 const phi = (90 - lat) * (Math.PI / 180);
                 const theta = (lon + 180) * (Math.PI / 180);
@@ -856,18 +852,15 @@
                 return new THREE.Vector3(x, y, z);
             }
 
-            // موقع الهدف الرئيسي (العراق / بغداد كمثال)
             const targetCoord = { lat: 33.3152, lon: 44.3661, name: "Iraq (Target)" };
             const targetVec = latLongToVector3(targetCoord.lat, targetCoord.lon, 4.55);
 
-            // موقع الهدف الرئيسي كمجسم مضيء باللون الأخضر/الأزرق
             const targetMarkerGeo = new THREE.SphereGeometry(0.12, 16, 16);
             const targetMarkerMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
             const targetMarker = new THREE.Mesh(targetMarkerGeo, targetMarkerMat);
             targetMarker.position.copy(targetVec);
             globeGroup.add(targetMarker);
 
-            // مواقع دول المهاجمين (المصادر)
             const attackSources = [
                 { lat: 55.7558, lon: 37.6173, country: "Russia", ip: "185.220.101.4", type: "DDoS Attack" },
                 { lat: 39.9042, lon: 116.4074, country: "China", ip: "220.181.38.148", type: "SQL Injection" },
@@ -878,29 +871,25 @@
 
             const attackArcs = [];
 
-            // 4. رسم أقواس الهجمات والنبضات
             attackSources.forEach((src) => {
                 const srcVec = latLongToVector3(src.lat, src.lon, 4.55);
 
-                // نقطة المصدر (أحمر النيون)
                 const srcGeo = new THREE.SphereGeometry(0.09, 12, 12);
                 const srcMat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
                 const srcMesh = new THREE.Mesh(srcGeo, srcMat);
                 srcMesh.position.copy(srcVec);
                 globeGroup.add(srcMesh);
 
-                // حساب منحنى الهجوم ثلاثي الأبعاد فوق سطح الكرة
                 const distance = srcVec.distanceTo(targetVec);
                 const mid = srcVec.clone().add(targetVec).multiplyScalar(0.5);
                 const midLength = mid.length();
                 mid.normalize();
-                mid.multiplyScalar(midLength + distance * 0.45); // ارتفاع القوس بحسب المسافة
+                mid.multiplyScalar(midLength + distance * 0.45);
 
                 const curve = new THREE.QuadraticBezierCurve3(srcVec, mid, targetVec);
                 const points = curve.getPoints(50);
                 const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
 
-                // رسم خط القوس المضيء
                 const arcMat = new THREE.LineBasicMaterial({
                     color: 0xff2a5f,
                     transparent: true,
@@ -909,7 +898,6 @@
                 const arcLine = new THREE.Line(arcGeo, arcMat);
                 globeGroup.add(arcLine);
 
-                // نبضة الطاقة الليزرية المتحركة على القوس
                 const pulseGeo = new THREE.SphereGeometry(0.08, 10, 10);
                 const pulseMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
                 const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
@@ -925,7 +913,6 @@
                 });
             });
 
-            // 5. دوائر اصطدام متحركة عند الهدف
             const impactGeo = new THREE.RingGeometry(0.05, 0.25, 24);
             const impactMat = new THREE.MeshBasicMaterial({
                 color: 0xff0055,
@@ -938,7 +925,6 @@
             impactRing.lookAt(new THREE.Vector3(0,0,0));
             globeGroup.add(impactRing);
 
-            // 6. حلقة المدار الخارجي المتوهجة
             const ringGeo = new THREE.RingGeometry(5.8, 5.95, 64);
             const ringMat = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
@@ -950,22 +936,18 @@
             ring.rotation.x = Math.PI / 2.3;
             scene.add(ring);
 
-            // تعديل زاوية الرؤية الابتدائية
             globeGroup.rotation.y = 1.2;
             globeGroup.rotation.x = 0.2;
 
             let lastTickerUpdate = 0;
             let currentArcIndex = 0;
 
-            // حلقة الحركة والأنيميشن التفاعلي
             function animate(time) {
                 requestAnimationFrame(animate);
 
-                // دوران منتظم وهادئ للكرة الأرضية
                 globeGroup.rotation.y += 0.0025;
                 ring.rotation.z -= 0.0015;
 
-                // تحريك نبضات الهجمات المباشرة عبر الأقواس
                 attackArcs.forEach((arc) => {
                     arc.progress += arc.speed;
                     if (arc.progress > 1) {
@@ -975,11 +957,9 @@
                     arc.pulse.position.copy(point);
                 });
 
-                // تأثير نبض حلقة الاصطدام عند الهدف
                 const pulseScale = 1 + Math.sin(time * 0.008) * 0.6;
                 impactRing.scale.set(pulseScale, pulseScale, pulseScale);
 
-                // تحديث شريط التنبيهات اللحظي تلقائياً كل 3 ثوانٍ
                 if (time - lastTickerUpdate > 3000) {
                     lastTickerUpdate = time;
                     const attack = attackArcs[currentArcIndex].info;
@@ -997,7 +977,6 @@
             }
             animate(0);
 
-            // استجابة الحجم التلقائية عند تغيير نافذة المتصفح
             window.addEventListener('resize', () => {
                 if (!container) return;
                 camera.aspect = container.clientWidth / container.clientHeight;
@@ -1010,7 +989,6 @@
             initCyberGlobe();
             monitorNewReports();
 
-            // معاينة الصور فور اختيارها في استمارة الرفع
             document.getElementById('evidence-input')?.addEventListener('change', function(e) {
                 const previewContainer = document.getElementById('image-preview');
                 previewContainer.innerHTML = '';
@@ -1028,7 +1006,6 @@
                 });
             });
 
-            // ربط زر مشاركة الرابط مع المدير
             document.getElementById('share-report-btn')?.addEventListener('click', function() {
                 if (currentSelectedReport) {
                     copyLink(currentSelectedReport.url, this);
@@ -1155,11 +1132,12 @@
                 </table>
             `;
 
+            // المعالجة الذكية لدعم الروابط العادية المباشرة (HTTPS) والصيغ القديمة (Base64)
             if (report.evidence && report.evidence.length > 0) {
                 attachmentsContainer.innerHTML = `
                     <h5 class="fw-bold mt-4 mb-3 text-info no-print-section"><i class="fas fa-paperclip me-2"></i>الأدلة المرفقة (${report.evidence.length})</h5>
                     <div class="d-flex flex-wrap gap-3 no-print-section mb-4">
-                        ${report.evidence.map(img => `<img src="${img}" style="max-width: 200px; border-radius: 8px; border: 1px solid var(--cyber-cyan);">`).join('')}
+                        ${report.evidence.map(img => `<a href="${img}" target="_blank"><img src="${img}" style="max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--cyber-cyan);"></a>`).join('')}
                     </div>
                     <div class="d-none d-print-block">
                         ${report.evidence.map((img, index) => `
