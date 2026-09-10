@@ -9,6 +9,9 @@ from supabase import create_client, Client
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
 
+# حد أقصى لحجم الصور المرفوعة (16 ميجابايت) لحماية الذاكرة على Render
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
+
 # معالجة رابط وقاعدة بيانات Supabase
 raw_url = os.environ.get("SUPABASE_URL", "").strip().strip('"').strip("'")
 if raw_url and raw_url.startswith("http"):
@@ -342,4 +345,5 @@ def delete_report(report_id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
