@@ -32,7 +32,7 @@ raw_key = os.environ.get("SUPABASE_KEY", "").strip().strip('"').strip("'")
 if raw_key and len(raw_key) > 20:
     SUPABASE_KEY = raw_key
 else:
-    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI6MjEwNDU0NzgwMX0.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k"
+    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI62104547801f.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -66,22 +66,17 @@ def load_users():
         return {}
 
 def compress_and_upload_image(file_obj):
-    """
-    ضغط الصورة وتقليل حجمها ثم رفعها إلى Supabase Storage Bucket (evidence)
-    وفي حال الفشل تعود للـ Base64 لضمان عدم توقف النظام.
-    """
+    """ضغط الصورة وتقليل حجمها ثم رفعها إلى Supabase Storage Bucket"""
     try:
         filename = f"{uuid.uuid4().hex}.jpg"
         file_bytes = file_obj.read()
         
-        # معالجة وضغط الصورة باستخدام Pillow إذا كانت متوفرة
         if HAS_PIL:
             try:
                 img = Image.open(BytesIO(file_bytes))
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
                 
-                # تصغير الأبعاد الكبيرة جداً للحفاظ على سرعة التحميل
                 max_size = (1920, 1080)
                 img.thumbnail(max_size, Image.Resampling.LANCZOS)
                 
@@ -89,9 +84,8 @@ def compress_and_upload_image(file_obj):
                 img.save(output, format="JPEG", quality=80, optimize=True)
                 file_bytes = output.getvalue()
             except Exception as pe:
-                print(f"⚠️ فشل ضغط الصورة بـ Pillow، سيتم الرفع بالحجم الأصلي: {pe}")
+                print(f"⚠️ فشل ضغط الصورة بـ Pillow: {pe}")
 
-        # رفع الملف إلى Supabase Storage Bucket
         bucket_name = "evidence"
         res = supabase.storage.from_(bucket_name).upload(
             path=filename,
@@ -99,18 +93,16 @@ def compress_and_upload_image(file_obj):
             file_options={"content-type": "image/jpeg"}
         )
 
-        # الحصول على الرابط العام المباشر للصورة
         public_url = supabase.storage.from_(bucket_name).get_public_url(filename)
         return public_url
 
     except Exception as e:
-        print(f"⚠️ تعذر الرفع المباشر إلى Bucket (evidence)، جارٍ التحويل الآمن لـ Base64: {e}")
-        # طريقة احتياطية (Fallback) بحال عدم وجود الـ Bucket أو خطأ في الصلاحية
+        print(f"⚠️ تحويل احتياطي لـ Base64: {e}")
         encoded = base64.b64encode(file_bytes).decode('utf-8')
         return f"data:image/jpeg;base64,{encoded}"
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات من Supabase مع معالجة مرنة للتصفية لضمان ظهور السجلات"""
+    """تحميل البلاغات من Supabase مع ضمان جلب كافة السجلات للأدمن بدون فلترة"""
     try:
         query = supabase.table('reports').select('*')
         res = query.execute()
@@ -122,6 +114,7 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
         for r in res.data or []:
             officer_info = str(r.get("officer", "") or "").lower()
             
+            # تم تحسين الشرط: إذا كان الأدمن متصل فلن تنطبق أي تصفية إطلاقاً
             if not is_admin and clean_filter:
                 if clean_filter not in officer_info and username not in officer_info:
                     if r.get("username") and username != str(r.get("username")).lower():
@@ -170,7 +163,9 @@ def login():
 
             if is_valid:
                 session['user'] = username
-                session['is_admin'] = users[username].get('is_admin', False)
+                # تحديد صلاحية الأدمن بشكل صريح كـ Boolean أو بالتحقق من الحساب الرئيسي
+                is_admin_flag = bool(users[username].get('is_admin', False)) or (username == 'admin')
+                session['is_admin'] = is_admin_flag
                 session['fullname'] = users[username].get('fullname', username)
                 return redirect(url_for('index'))
                 
@@ -189,7 +184,7 @@ def index():
         return redirect(url_for('login'))
     
     current_user_fullname = session.get('fullname', session.get('user'))
-    is_admin = session.get('is_admin', False)
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
     
     reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=False)
     
@@ -213,7 +208,6 @@ def submit_report():
     
     m_url = request.form.get('m_url', '').strip()
     
-    # 🔍 فحص ما إذا كان الرابط مرصوداً أو تم الإبلاغ عنه مسبقاً
     if m_url:
         try:
             existing_report = supabase.table('reports').select('report_id, status').eq('url', m_url).execute()
@@ -227,7 +221,6 @@ def submit_report():
 
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
-    # رفع ومعالجة الأدلة المصورة
     files = request.files.getlist('evidence_files')
     evidence_urls = []
     for file in files:
@@ -278,13 +271,19 @@ def get_records():
         return jsonify({'records': []})
     
     current_user_fullname = session.get('fullname', session.get('user'))
-    is_admin = session.get('is_admin', False)
-    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=True)
+    # التأكد بشكل صريح ومباشر من صلاحية الأدمن
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    
+    # تحييد الفلتر نهائياً للأدمن
+    user_filter = None if is_admin else current_user_fullname
+    
+    reports = load_reports(user_filter=user_filter, is_admin=is_admin, fetch_evidence=True)
     return jsonify({'records': reports})
 
 @app.route('/approve-report/<report_id>', methods=['POST'])
 def approve_report(report_id):
-    if not session.get('is_admin'):
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    if not is_admin:
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
     try:
@@ -296,7 +295,8 @@ def approve_report(report_id):
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
 def reject_report(report_id):
-    if not session.get('is_admin'):
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    if not is_admin:
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
     try:
@@ -308,7 +308,8 @@ def reject_report(report_id):
 
 @app.route('/monthly-log')
 def monthly_log():
-    if not session.get('is_admin'):
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    if not is_admin:
         return jsonify({'monthly_reports': []})
     reports = load_reports(is_admin=True, fetch_evidence=False)
     current_month = datetime.now().strftime('%Y-%m')
@@ -342,7 +343,8 @@ def change_password():
 
 @app.route('/add-user', methods=['POST'])
 def add_user():
-    if not session.get('is_admin'):
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    if not is_admin:
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
@@ -378,7 +380,8 @@ def add_user():
 
 @app.route('/delete-user/<username>', methods=['POST'])
 def delete_user(username):
-    if not session.get('is_admin'):
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    if not is_admin:
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
@@ -396,7 +399,8 @@ def delete_user(username):
 
 @app.route('/delete-report/<report_id>', methods=['POST'])
 def delete_report(report_id):
-    if not session.get('is_admin'):
+    is_admin = bool(session.get('is_admin', False)) or (session.get('user') == 'admin')
+    if not is_admin:
         flash('غير مسموح لك بحذف السجلات.', 'danger')
         return redirect(url_for('index'))
         
