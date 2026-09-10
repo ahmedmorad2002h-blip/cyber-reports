@@ -53,7 +53,7 @@ def init_admin_user():
             supabase.table('users').insert(admin_data).execute()
             print("✅ تم إنشاء حساب الأدمن الرئيسي بنجاح.")
         else:
-            # ضمان تحديث صلاحية الأدمن لتكون True دائماً في حال كانت مسجلة مسبقاً بشكل خاطئ
+            # ضمان تحديث صلاحية الأدمن لتكون True دائماً في قاعدة البيانات
             supabase.table('users').update({"is_admin": True}).eq('username', 'admin').execute()
     except Exception as e:
         print(f"🚨 خطأ في تهيئة حساب الأدمن: {e}")
@@ -69,51 +69,39 @@ def load_users():
         return {}
 
 def compress_and_upload_image(file_obj):
-    """
-    ضغط الصورة وتقليل حجمها ثم رفعها إلى Supabase Storage Bucket (evidence)
-    وفي حال الفشل تعود للـ Base64 لضمان عدم توقف النظام.
-    """
     try:
         filename = f"{uuid.uuid4().hex}.jpg"
         file_bytes = file_obj.read()
         
-        # معالجة وضغط الصورة باستخدام Pillow إذا كانت متوفرة
         if HAS_PIL:
             try:
                 img = Image.open(BytesIO(file_bytes))
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
-                
-                # تصغير الأبعاد الكبيرة جداً للحفاظ على سرعة التحميل
                 max_size = (1920, 1080)
                 img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
                 output = BytesIO()
                 img.save(output, format="JPEG", quality=80, optimize=True)
                 file_bytes = output.getvalue()
             except Exception as pe:
-                print(f"⚠️ فشل ضغط الصورة بـ Pillow، سيتم الرفع بالحجم الأصلي: {pe}")
+                print(f"⚠️ فشل ضغط الصورة بـ Pillow: {pe}")
 
-        # رفع الملف إلى Supabase Storage Bucket
         bucket_name = "evidence"
-        res = supabase.storage.from_(bucket_name).upload(
+        supabase.storage.from_(bucket_name).upload(
             path=filename,
             file=file_bytes,
             file_options={"content-type": "image/jpeg"}
         )
-
-        # الحصول على الرابط العام المباشر للصورة
         public_url = supabase.storage.from_(bucket_name).get_public_url(filename)
         return public_url
 
     except Exception as e:
-        print(f"⚠️ تعذر الرفع المباشر إلى Bucket (evidence)، جارٍ التحويل الآمن لـ Base64: {e}")
-        # طريقة احتياطية (Fallback) بحال عدم وجود الـ Bucket أو خطأ في الصلاحية
+        print(f"⚠️ تعذر الرفع المباشر، جارٍ التحويل الآمن لـ Base64: {e}")
         encoded = base64.b64encode(file_bytes).decode('utf-8')
         return f"data:image/jpeg;base64,{encoded}"
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات: الأدمن يرى الكل، والمستخدم العادي يرى بلاغاته فقط"""
+    """تحميل البلاغات: إذا كان المشرف هو من يطلبها (is_admin=True)، يتم جلب كافة السجلات دون تصفية"""
     try:
         query = supabase.table('reports').select('*')
         res = query.execute()
@@ -123,7 +111,7 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
         current_fullname = str(session.get('fullname', '')).strip().lower()
 
         for r in res.data or []:
-            # إذا لم يكن المستخدم مشرفاً، نتحقق من تطابق اسم المستخدم أو الاسم الكامل للضابط
+            # تطبيق الفلترة فقط إذا لم يكن المستخدم مشرفاً
             if not is_admin:
                 r_username = str(r.get("username", "")).strip().lower()
                 r_officer = str(r.get("officer", "")).strip().lower()
@@ -177,6 +165,7 @@ def login():
 
             if is_valid:
                 session['user'] = username
+                # حفظ الصلاحية بشكل صريح كقيمة بولينية لمنع أي خطأ في الجلسة
                 session['is_admin'] = bool(users[username].get('is_admin', False))
                 session['fullname'] = users[username].get('fullname', username)
                 return redirect(url_for('index'))
@@ -198,6 +187,7 @@ def index():
     current_user_fullname = session.get('fullname', session.get('user'))
     is_admin = bool(session.get('is_admin', False))
     
+    # تمرير قيمة is_admin بدقة لدالة جلب البلاغات
     reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=False)
     
     total_reports = len(reports)
@@ -226,7 +216,7 @@ def submit_report():
             if existing_report.data:
                 prior_id = existing_report.data[0].get('report_id')
                 prior_status = existing_report.data[0].get('status', 'قيد المراجعة')
-                flash(f'⚠️ تنبيه: هذا الرابط مرصود ومُبلغ عنه مسبقاً برقم البلاغ ({prior_id}) وحالته الحالية: [{prior_status}]. لم يتم تكرار التسجيل.', 'warning')
+                flash(f'⚠️ تنبيه: هذا الرابط مرصود ومُبلغ عنه مسبقاً برقم البلاغ ({prior_id}) وحالته الحالية: [{prior_status}].', 'warning')
                 return redirect(url_for('index'))
         except Exception as e:
             print(f"🚨 خطأ أثناء التحقق من الرابط: {e}")
@@ -410,8 +400,7 @@ def delete_report(report_id):
         flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
     except Exception as e:
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
-        
-    return redirect(url_for('index'))
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
