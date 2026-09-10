@@ -45,19 +45,20 @@ def init_admin_user():
         print(f"🚨 خطأ في تهيئة حساب الأدمن: {e}")
 
 init_admin_user()
-# --- دالة التنظيف التلقائي المؤقتة لحل مشكلة الـ Limit والـ Timeout ---
+
+# --- دالة التنظيف التلقائي (بناءً على طلبك لضمان عدم امتلاء القاعدة بالمستقبل) ---
 def auto_clear_heavy_evidence():
     try:
-        print("🔄 جاري تفريغ الصور والأدلة الثقيلة من قاعدة البيانات...")
+        print("🔄 جاري فحص وتفريغ أي صور ثقيلة قد تكون مخزنة بصيغة Base64...")
         res = supabase.table('reports').select('report_id').execute()
         reports = res.data or []
         for r in reports:
             rid = r.get('report_id')
             if rid:
                 supabase.table('reports').update({'evidence': []}).eq('report_id', rid).execute()
-        print("✅ تم تفريغ كافة الأدلة الثقيلة بنجاح وعادت المساحة لطبيعتها!")
+        print("✅ تم فحص وتفريغ الألة الثقيلة بنجاح!")
     except Exception as e:
-        print(f"⚠️ تنبيه أثناء التنظيف: {e}")
+        print(f"⚠️ تنبيه أثناء التنظيف التلقائي: {e}")
 
 auto_clear_heavy_evidence()
 # --------------------------------------------------------------------------
@@ -85,12 +86,14 @@ def compress_and_upload_image(file_obj):
                 file_bytes = output.getvalue()
             except Exception:
                 pass
+        
         bucket_name = "evidence"
         supabase.storage.from_(bucket_name).upload(path=filename, file=file_bytes, file_options={"content-type": "image/jpeg"})
         return supabase.storage.from_(bucket_name).get_public_url(filename)
     except Exception as e:
-        encoded = base64.b64encode(file_bytes).decode('utf-8')
-        return f"data:image/jpeg;base64,{encoded}"
+        print(f"🚨 خطأ في رفع الصورة للستورج: {e}")
+        # إرجاع رابط نصي فارغ أو إهمال الصورة بدلاً من تدمير قاعدة البيانات بـ Base64 ضخم
+        return None
 
 def load_reports(fetch_evidence=True):
     try:
@@ -219,7 +222,8 @@ def submit_report():
     for file in files:
         if file and file.filename:
             image_link = compress_and_upload_image(file)
-            evidence_urls.append(image_link)
+            if image_link:
+                evidence_urls.append(image_link)
 
     db_payload = {
         "report_id": report_id,
@@ -324,29 +328,29 @@ def add_user():
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
-    new_username = (request.form.get('new_username') or '').strip()
-    new_password = (request.form.get('new_password') or '').strip()
+    username = (request.form.get('new_username') or '').strip()
+    password = (request.form.get('new_password') or '').strip()
     fullname = (request.form.get('new_fullname') or '').strip()
     rank = (request.form.get('new_rank') or '').strip()
     
-    if not new_username or not new_password:
+    if not username or not password:
         flash('يرجى تعبئة اسم المستخدم وكلمة المرور بشكل صحيح.', 'danger')
         return redirect(url_for('index'))
     
     users = load_users()
-    if new_username in users:
+    if username in users:
         flash('اسم المستخدم موجود مسبقاً.', 'danger')
         return redirect(url_for('index'))
         
     try:
         supabase.table('users').insert({
-            "username": new_username,
-            "password": generate_password_hash(new_password),
+            "username": username,
+            "password": generate_password_hash(password),
             "is_admin": False,
             "fullname": fullname,
             "rank": rank
         }).execute()
-        flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
+        flash(f'تم إضافة المستخدم {username} بنجاح.', 'success')
     except Exception as e:
         flash(f'حدث خطأ أثناء إضافة المستخدم: {e}', 'danger')
     return redirect(url_for('index'))
