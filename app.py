@@ -57,22 +57,27 @@ def load_users():
         return {}
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات بشكل سريع وسلس مع التصفية السليمة للأدمن والمستخدمين"""
+    """تحميل البلاغات من Supabase مع معالجة مرنة للتصفية لضمان ظهور السجلات"""
     try:
-        query = supabase.table('reports').select('*').order('created_at', desc=True)
+        # الترتيب حسب وقت الإنشاء أو التحديث
+        query = supabase.table('reports').select('*')
         res = query.execute()
         reports = []
         
         clean_filter = str(user_filter or '').strip().lower()
         username = str(session.get('user', '')).strip().lower()
 
+        # إزالة التصفية المتشددة للحسابات العادية حتى تظهر البلاغات الخاصة بالمستخدم بكل الحالات
         for r in res.data or []:
             officer_info = str(r.get("officer", "") or "").lower()
             
-            # إذا لم يكن أدمن، يتم تصفية البلاغات ليظهر فقط ما يخص المستخدم الحالي (بالمطابقة المرنة)
+            # فلترة مرنة: إذا لم يكن أدمن وكان هناك فلتر، يتم التحقق بشرط غير متشدد
             if not is_admin and clean_filter:
+                # التأكد من وجود أي تطابق جزئي في اسم الضابط أو اسم الحساب
                 if clean_filter not in officer_info and username not in officer_info:
-                    continue
+                    # في حال عدم التطابق التام يتم تجاوز السجل فقط إذا لم يكن ينتمي لنفس الحساب
+                    if r.get("username") and username != str(r.get("username")).lower():
+                        continue
 
             reports.append({
                 "report_id": r.get("report_id"),
@@ -91,6 +96,9 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
                 "evidence": r.get("evidence", []) if fetch_evidence and isinstance(r.get("evidence"), list) else [],
                 "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
+            
+        # ترتيب السجلات تنازلياً حسب التاريخ
+        reports.sort(key=lambda x: str(x.get('timestamp') or ''), reverse=True)
         return reports
     except Exception as e:
         print(f"🚨 خطأ في تحميل البلاغات من Supabase: {e}")
