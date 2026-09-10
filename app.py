@@ -56,24 +56,24 @@ def load_users():
         print(f"🚨 خطأ في تحميل المستخدمين: {e}")
         return {}
 
-def load_reports(user_filter=None, is_admin=False):
-    """تحميل البلاغات مع تصفيتها بناءً على صلاحية المستخدم"""
+def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
+    """تحميل البلاغات بشكل سريع مع تصفيتها مباشرة عبر استعلامات Supabase"""
     try:
         query = supabase.table('reports').select('*').order('created_at', desc=True)
+        
+        # تصفية سريعة ومستهدفة داخل قاعدة البيانات دون حمل الذاكرة
+        if not is_admin and user_filter:
+            clean_filter = str(user_filter).strip()
+            username = session.get('user', '')
+            query = query.or_(f"officer.ilike.%{clean_filter}%,officer.ilike.%{username}%")
+
         res = query.execute()
         reports = []
         
         for r in res.data or []:
-            officer_info = r.get("officer", "") or ""
-            
-            # إذا لم يكن أدمن، يتم تصفية البلاغات ليظهر فقط ما يخص المستخدم الحالي
-            if not is_admin and user_filter:
-                if user_filter not in officer_info:
-                    continue
-
             reports.append({
                 "report_id": r.get("report_id"),
-                "officer": officer_info,
+                "officer": r.get("officer", ""),
                 "source": r.get("source"),
                 "platform": r.get("platform"),
                 "url": r.get("url"),
@@ -85,7 +85,7 @@ def load_reports(user_filter=None, is_admin=False):
                 "recommendation": r.get("recommendation"),
                 "timestamp": r.get("timestamp"),
                 "status": r.get("status", "قيد المراجعة"),
-                "evidence": r.get("evidence", []) if isinstance(r.get("evidence"), list) else [],
+                "evidence": r.get("evidence", []) if fetch_evidence and isinstance(r.get("evidence"), list) else [],
                 "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
         return reports
@@ -133,7 +133,7 @@ def index():
     current_user_fullname = session.get('fullname', session.get('user'))
     is_admin = session.get('is_admin', False)
     
-    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin)
+    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=False)
     
     total_reports = len(reports)
     critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
@@ -153,6 +153,20 @@ def submit_report():
     if 'user' not in session:
         return redirect(url_for('login'))
     
+    m_url = request.form.get('m_url', '').strip()
+    
+    # 🔍 فحص ما إذا كان الرابط مرصوداً أو تم الإبلاغ عنه مسبقاً
+    if m_url:
+        try:
+            existing_report = supabase.table('reports').select('report_id, status').eq('url', m_url).execute()
+            if existing_report.data:
+                prior_id = existing_report.data[0].get('report_id')
+                prior_status = existing_report.data[0].get('status', 'قيد المراجعة')
+                flash(f'⚠️ تنبيه: هذا الرابط مرصود ومُبلغ عنه مسبقاً برقم البلاغ ({prior_id}) وحالته الحالية: [{prior_status}]. لم يتم تكرار التسجيل.', 'warning')
+                return redirect(url_for('index'))
+        except Exception as e:
+            print(f"🚨 خطأ أثناء التحقق من الرابط: {e}")
+
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     files = request.files.getlist('evidence_files')
@@ -177,7 +191,7 @@ def submit_report():
         "officer": f"{request.form.get('user_rank', '')} {request.form.get('user_full_name', '')}".strip(),
         "source": request.form.get('m_source'),
         "platform": request.form.get('m_platform'),
-        "url": request.form.get('m_url'),
+        "url": m_url,
         "account_name": request.form.get('m_account_name'),
         "datetime": request.form.get('m_datetime'),
         "description": request.form.get('m_description'),
@@ -215,7 +229,7 @@ def get_records():
     
     current_user_fullname = session.get('fullname', session.get('user'))
     is_admin = session.get('is_admin', False)
-    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin)
+    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=True)
     return jsonify({'records': reports})
 
 @app.route('/approve-report/<report_id>', methods=['POST'])
@@ -246,7 +260,7 @@ def reject_report(report_id):
 def monthly_log():
     if not session.get('is_admin'):
         return jsonify({'monthly_reports': []})
-    reports = load_reports(is_admin=True)
+    reports = load_reports(is_admin=True, fetch_evidence=False)
     current_month = datetime.now().strftime('%Y-%m')
     filtered = [r for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
     return jsonify({'monthly_reports': filtered})
