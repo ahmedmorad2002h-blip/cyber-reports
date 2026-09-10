@@ -39,21 +39,24 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # --- دوال المساعدة للتعامل مع قاعدة البيانات والتخزين ---
 
 def init_admin_user():
-    """إنشاء حساب الأدمن الرئيسي تلقائياً عند أول تشغيل إذا لم يكن موجوداً"""
+    """إنشاء أو تحديث حساب الأدمن الرئيسي تلقائياً لضمان صلاحيات المشرف الكاملة"""
     try:
         res = supabase.table('users').select('*').eq('username', 'admin').execute()
+        admin_data = {
+            "username": "admin",
+            "password": generate_password_hash("07816141614"),
+            "is_admin": True,
+            "fullname": "مدير النظام الرئيسي",
+            "rank": "مدير فني"
+        }
         if not res.data:
-            admin_user = {
-                "username": "admin",
-                "password": generate_password_hash("07816141614"),
-                "is_admin": True,
-                "fullname": "مدير النظام الرئيسي",
-                "rank": "مدير فني"
-            }
-            supabase.table('users').insert(admin_user).execute()
+            supabase.table('users').insert(admin_data).execute()
             print("✅ تم إنشاء حساب الأدمن الرئيسي بنجاح.")
+        else:
+            # ضمان تحديث صلاحية الأدمن لتكون True دائماً في حال كانت مسجلة مسبقاً بشكل خاطئ
+            supabase.table('users').update({"is_admin": True}).eq('username', 'admin').execute()
     except Exception as e:
-        print(f"🚨 خطأ في إنشاء حساب الأدمن: {e}")
+        print(f"🚨 خطأ في تهيئة حساب الأدمن: {e}")
 
 init_admin_user()
 
@@ -110,7 +113,7 @@ def compress_and_upload_image(file_obj):
         return f"data:image/jpeg;base64,{encoded}"
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات: الأدمن يرى الكل، والمستخدم العادي يرى بلاغاته بمطابقة اسم المستخدم أو الاسم الصريح"""
+    """تحميل البلاغات: الأدمن يرى الكل، والمستخدم العادي يرى بلاغاته فقط"""
     try:
         query = supabase.table('reports').select('*')
         res = query.execute()
@@ -120,7 +123,7 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
         current_fullname = str(session.get('fullname', '')).strip().lower()
 
         for r in res.data or []:
-            # إذا لم يكن المستخدم مشرفاً، نتحقق من تطابق اسم المستخدم أو جزء من اسم الضابط لضمان ظهور بلاغاته بدقة
+            # إذا لم يكن المستخدم مشرفاً، نتحقق من تطابق اسم المستخدم أو الاسم الكامل للضابط
             if not is_admin:
                 r_username = str(r.get("username", "")).strip().lower()
                 r_officer = str(r.get("officer", "")).strip().lower()
@@ -128,7 +131,6 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
                 match_user = (current_username and r_username == current_username)
                 match_name = (current_fullname and current_fullname in r_officer)
                 
-                # إذا لم يتحقق أي تطابق، يتم تخطي السجل
                 if not (match_user or match_name):
                     continue
 
@@ -175,7 +177,7 @@ def login():
 
             if is_valid:
                 session['user'] = username
-                session['is_admin'] = users[username].get('is_admin', False)
+                session['is_admin'] = bool(users[username].get('is_admin', False))
                 session['fullname'] = users[username].get('fullname', username)
                 return redirect(url_for('index'))
                 
@@ -194,7 +196,7 @@ def index():
         return redirect(url_for('login'))
     
     current_user_fullname = session.get('fullname', session.get('user'))
-    is_admin = session.get('is_admin', False)
+    is_admin = bool(session.get('is_admin', False))
     
     reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=False)
     
@@ -281,13 +283,13 @@ def get_records():
         return jsonify({'records': []})
     
     current_user_fullname = session.get('fullname', session.get('user'))
-    is_admin = session.get('is_admin', False)
+    is_admin = bool(session.get('is_admin', False))
     reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=True)
     return jsonify({'records': reports})
 
 @app.route('/approve-report/<report_id>', methods=['POST'])
 def approve_report(report_id):
-    if not session.get('is_admin'):
+    if not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
     try:
@@ -299,7 +301,7 @@ def approve_report(report_id):
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
 def reject_report(report_id):
-    if not session.get('is_admin'):
+    if not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
     try:
@@ -311,7 +313,7 @@ def reject_report(report_id):
 
 @app.route('/monthly-log')
 def monthly_log():
-    if not session.get('is_admin'):
+    if not bool(session.get('is_admin', False)):
         return jsonify({'monthly_reports': []})
     reports = load_reports(is_admin=True, fetch_evidence=False)
     current_month = datetime.now().strftime('%Y-%m')
@@ -345,7 +347,7 @@ def change_password():
 
 @app.route('/add-user', methods=['POST'])
 def add_user():
-    if not session.get('is_admin'):
+    if not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
@@ -381,7 +383,7 @@ def add_user():
 
 @app.route('/delete-user/<username>', methods=['POST'])
 def delete_user(username):
-    if not session.get('is_admin'):
+    if not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
@@ -399,7 +401,7 @@ def delete_user(username):
 
 @app.route('/delete-report/<report_id>', methods=['POST'])
 def delete_report(report_id):
-    if not session.get('is_admin'):
+    if not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بحذف السجلات.', 'danger')
         return redirect(url_for('index'))
         
