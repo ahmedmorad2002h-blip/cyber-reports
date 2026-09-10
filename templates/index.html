@@ -293,6 +293,7 @@
             <span class="navbar-brand mb-0 h1 fw-black" style="letter-spacing: 1px; font-size: 1.2rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-OPS v2.6]</span></span>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();" title="تحديث الصفحة وعدد البلاغات يدوياً"><i class="fas fa-sync-alt me-1"></i> تحديث الصفحة</button>
             <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
@@ -557,22 +558,6 @@
 
     </div>
 
-    <!-- نافذة التنبيه الصوتي والبصري -->
-    <div id="cyber-alert-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999; display: none;">
-        <div class="toast show text-white p-3 shadow-lg" style="background: rgba(3, 7, 18, 0.98); border: 2px solid #ef4444; border-radius: 14px; box-shadow: 0 0 30px rgba(239, 68, 68, 0.8) !important;">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-bell fa-bounce text-danger fs-3 me-3"></i>
-                    <div>
-                        <h6 class="mb-0 fw-bold text-danger">🚨 تنبيه سيبراني عاجل!</h6>
-                        <small class="fw-bold text-white" id="cyber-alert-msg">تم تسجيل بلاغ جديد في المنظومة الآن.</small>
-                    </div>
-                </div>
-                <button type="button" class="btn-close btn-close-white ms-3" onclick="document.getElementById('cyber-alert-toast').style.display='none'"></button>
-            </div>
-        </div>
-    </div>
-
     <!-- نافذة عرض تفاصيل البلاغ والطباعة -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
@@ -739,60 +724,6 @@
 
         let allGlobalRecords = [];
         let currentSelectedReport = null;
-        let lastKnownTotalReports = null;
-
-        function playCyberAlertSound() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc1 = audioCtx.createOscillator();
-                const gain1 = audioCtx.createGain();
-                osc1.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(880, audioCtx.currentTime);
-                osc1.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.25);
-                gain1.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                osc1.connect(gain1);
-                gain1.connect(audioCtx.destination);
-                osc1.start();
-                osc1.stop(audioCtx.currentTime + 0.25);
-            } catch (e) {
-                console.log("الصوت محجوب:", e);
-            }
-        }
-
-        function triggerNewReportNotification(reportId) {
-            playCyberAlertSound();
-            const toast = document.getElementById('cyber-alert-toast');
-            const msg = document.getElementById('cyber-alert-msg');
-            if (msg) msg.innerText = `تم تسجيل بلاغ جديد برقم (${reportId}) الآن!`;
-            if (toast) toast.style.display = 'block';
-            setTimeout(() => { if (toast) toast.style.display = 'none'; }, 7000);
-        }
-
-        function monitorNewReports() {
-            fetch('/get-records')
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.records) {
-                        const currentCount = data.records.length;
-                        if (lastKnownTotalReports !== null && currentCount > lastKnownTotalReports) {
-                            const newestReport = data.records[0];
-                            if (IS_ADMIN || (newestReport.officer && newestReport.officer.includes(CURRENT_USER_FULLNAME))) {
-                                triggerNewReportNotification(newestReport.report_id);
-                            }
-                            const recordsSection = document.getElementById('records-section');
-                            if (recordsSection && !recordsSection.classList.contains('hidden')) {
-                                loadRecords();
-                            }
-                        }
-                        lastKnownTotalReports = currentCount;
-                    }
-                })
-                .catch(err => console.error("خطأ المراقبة:", err));
-        }
-
-        // تم ضبط وقت الفحص التلقائي هنا إلى 15 دقيقة (900000 مللي ثانية) لحماية خادم Supabase
-        setInterval(monitorNewReports, 900000);
 
         function copyLink(url, btnElement) {
             if (!url) return;
@@ -1048,7 +979,6 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             initCyberGlobe();
-            monitorNewReports();
 
             document.getElementById('evidence-input')?.addEventListener('change', function(e) {
                 const previewContainer = document.getElementById('image-preview');
