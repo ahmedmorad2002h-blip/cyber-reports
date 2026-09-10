@@ -110,22 +110,20 @@ def compress_and_upload_image(file_obj):
         return f"data:image/jpeg;base64,{encoded}"
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات من Supabase مع إلغاء الفلترة تماماً للمشرف (Admin) لضمان ظهور كافة السجلات"""
+    """تحميل البلاغات: الأدمن يرى الكل، والمستخدم العادي يرى بلاغاته فقط بدقة"""
     try:
         query = supabase.table('reports').select('*')
         res = query.execute()
         reports = []
         
-        clean_filter = str(user_filter or '').strip().lower()
-        username = str(session.get('user', '')).strip().lower()
+        current_username = str(session.get('user', '')).strip().lower()
 
         for r in res.data or []:
-            # إذا كان المستخدم أدمن، نتخطى شروط الفلترة ونضيف السجل مباشرة
+            # إذا لم يكن المستخدم مشرفاً، نتحقق أن البلاغ يخصه تماماً عبر اسم المستخدم
             if not is_admin:
-                officer_info = str(r.get("officer", "") or "").lower()
-                if clean_filter not in officer_info and username not in officer_info:
-                    if r.get("username") and username != str(r.get("username")).lower():
-                        continue
+                r_username = str(r.get("username", "")).strip().lower()
+                if r_username != current_username:
+                    continue  # تخطي البلاغ إذا لم يكن تابعاً لهذا المستخدم
 
             reports.append({
                 "report_id": r.get("report_id"),
