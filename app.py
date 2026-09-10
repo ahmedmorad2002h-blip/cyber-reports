@@ -8,7 +8,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client, Client
 
-# محاولة استيراد مكتبة Pillow للضغط الذكي للصور
 try:
     from PIL import Image
     HAS_PIL = True
@@ -18,28 +17,17 @@ except ImportError:
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
 
-# حد أقصى لحجم الصور المرفوعة (16 ميجابايت) لحماية الذاكرة على Render
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
 
-# معالجة رابط وقاعدة بيانات Supabase
 raw_url = os.environ.get("SUPABASE_URL", "").strip().strip('"').strip("'")
-if raw_url and raw_url.startswith("http"):
-    SUPABASE_URL = raw_url
-else:
-    SUPABASE_URL = "https://kzjpmkndafsgdoakkjee.supabase.co"
+SUPABASE_URL = raw_url if (raw_url and raw_url.startswith("http")) else "https://kzjpmkndafsgdoakkjee.supabase.co"
 
 raw_key = os.environ.get("SUPABASE_KEY", "").strip().strip('"').strip("'")
-if raw_key and len(raw_key) > 20:
-    SUPABASE_KEY = raw_key
-else:
-    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI6MjEwNDU0NzgwMX0.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k"
+SUPABASE_KEY = raw_key if (raw_key and len(raw_key) > 20) else "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anBta25kYWZzZ2RvYWtramVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzE4MDEsImV4cCI6MjEwNDU0NzgwMX0.BWuqCd6sQU9eSQMhnQDTiJceM34aVw7FJlqqrU2No3k"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- دوال المساعدة للتعامل مع قاعدة البيانات والتخزين ---
-
 def init_admin_user():
-    """إنشاء أو تحديث حساب الأدمن الرئيسي تلقائياً لضمان صلاحيات المشرف الكاملة"""
     try:
         res = supabase.table('users').select('*').eq('username', 'admin').execute()
         admin_data = {
@@ -51,9 +39,7 @@ def init_admin_user():
         }
         if not res.data:
             supabase.table('users').insert(admin_data).execute()
-            print("✅ تم إنشاء حساب الأدمن الرئيسي بنجاح.")
         else:
-            # ضمان تحديث صلاحية الأدمن لتكون True دائماً في قاعدة البيانات
             supabase.table('users').update({"is_admin": True}).eq('username', 'admin').execute()
     except Exception as e:
         print(f"🚨 خطأ في تهيئة حساب الأدمن: {e}")
@@ -63,7 +49,7 @@ init_admin_user()
 def load_users():
     try:
         res = supabase.table('users').select('*').execute()
-        return {u['username']: u for u in res.data}
+        return {u['username']: u for u in (res.data or [])}
     except Exception as e:
         print(f"🚨 خطأ في تحميل المستخدمين: {e}")
         return {}
@@ -72,46 +58,48 @@ def compress_and_upload_image(file_obj):
     try:
         filename = f"{uuid.uuid4().hex}.jpg"
         file_bytes = file_obj.read()
-        
         if HAS_PIL:
             try:
                 img = Image.open(BytesIO(file_bytes))
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
-                max_size = (1920, 1080)
-                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
                 output = BytesIO()
                 img.save(output, format="JPEG", quality=80, optimize=True)
                 file_bytes = output.getvalue()
-            except Exception as pe:
-                print(f"⚠️ فشل ضغط الصورة بـ Pillow: {pe}")
-
+            except Exception:
+                pass
         bucket_name = "evidence"
-        supabase.storage.from_(bucket_name).upload(
-            path=filename,
-            file=file_bytes,
-            file_options={"content-type": "image/jpeg"}
-        )
-        public_url = supabase.storage.from_(bucket_name).get_public_url(filename)
-        return public_url
-
+        supabase.storage.from_(bucket_name).upload(path=filename, file=file_bytes, file_options={"content-type": "image/jpeg"})
+        return supabase.storage.from_(bucket_name).get_public_url(filename)
     except Exception as e:
-        print(f"⚠️ تعذر الرفع المباشر، جارٍ التحويل الآمن لـ Base64: {e}")
         encoded = base64.b64encode(file_bytes).decode('utf-8')
         return f"data:image/jpeg;base64,{encoded}"
 
-def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات: إذا كان المشرف هو من يطلبها (is_admin=True)، يتم جلب كافة السجلات دون تصفية"""
+def load_reports(fetch_evidence=True):
+    """
+    دالة موحدة ومحصنة لجلب البلاغات. 
+    تقوم بالتحقق التلقائي من صلاحية الأدمن مباشرة من قاعدة البيانات أو الجلسة لمنع أي اختفاء للسجلات.
+    """
     try:
-        query = supabase.table('reports').select('*')
-        res = query.execute()
+        # فحص صارم لصلاحية الأدمن
+        is_admin_session = session.get('is_admin')
+        current_username = str(session.get('user', '')).strip().lower()
+        
+        # إذا كان اسم المستخدم هو admin حصرياً، نعتبره مشرفاً بشكل قاطع لضمان عدم ضياع الصلاحية
+        if current_username == 'admin':
+            is_admin = True
+        else:
+            is_admin = bool(is_admin_session)
+
+        res = supabase.table('reports').select('*').execute()
+        raw_reports = res.data or []
         reports = []
         
-        current_username = str(session.get('user', '')).strip().lower()
         current_fullname = str(session.get('fullname', '')).strip().lower()
 
-        for r in res.data or []:
-            # تطبيق الفلترة فقط إذا لم يكن المستخدم مشرفاً
+        for r in raw_reports:
+            # إذا لم يكن مشرفاً، نقوم بفلترة البلاغات الخاصة به فقط
             if not is_admin:
                 r_username = str(r.get("username", "")).strip().lower()
                 r_officer = str(r.get("officer", "")).strip().lower()
@@ -143,35 +131,40 @@ def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
         reports.sort(key=lambda x: str(x.get('timestamp') or ''), reverse=True)
         return reports
     except Exception as e:
-        print(f"🚨 خطأ في تحميل البلاغات من Supabase: {e}")
+        print(f"🚨 خطأ فادح في تحميل البلاغات: {e}")
         return []
-
-# --- مسارات التطبيق (Routes) ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        users = load_users()
-        
-        if username in users:
-            user_db_password = users[username].get('password', '')
-            is_valid = False
-            try:
-                is_valid = check_password_hash(user_db_password, password)
-            except Exception:
-                is_valid = (user_db_password == password)
+        try:
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            users = load_users()
+            
+            if username in users:
+                user_record = users[username]
+                user_db_password = user_record.get('password', '')
+                is_valid = False
+                try:
+                    is_valid = check_password_hash(user_db_password, password)
+                except Exception:
+                    is_valid = (user_db_password == password)
 
-            if is_valid:
-                session['user'] = username
-                # حفظ الصلاحية بشكل صريح كقيمة بولينية لمنع أي خطأ في الجلسة
-                session['is_admin'] = bool(users[username].get('is_admin', False))
-                session['fullname'] = users[username].get('fullname', username)
-                return redirect(url_for('index'))
-                
-        flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
-    
+                if is_valid:
+                    session.clear()
+                    session['user'] = username
+                    # تحديد صلاحية الأدمن بقوة
+                    is_adm = True if username == 'admin' else bool(user_record.get('is_admin', False))
+                    session['is_admin'] = is_adm
+                    session['fullname'] = user_record.get('fullname', username)
+                    return redirect(url_for('index'))
+                    
+            flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
+        except Exception as e:
+            print(f"🚨 خطأ في تسجيل الدخول: {e}")
+            flash('حدث خطأ تقني أثناء تسجيل الدخول، يجدر المحاولة مجدداً.', 'danger')
+            
     return render_template('login.html')
 
 @app.route('/logout')
@@ -184,24 +177,26 @@ def index():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    current_user_fullname = session.get('fullname', session.get('user'))
-    is_admin = bool(session.get('is_admin', False))
-    
-    # تمرير قيمة is_admin بدقة لدالة جلب البلاغات
-    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=False)
-    
-    total_reports = len(reports)
-    critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
-    monthly_count = sum(1 for r in reports if str(r.get('timestamp', '')).startswith(datetime.now().strftime('%Y-%m')))
-    
-    stats = {
-        'total': total_reports,
-        'critical': critical_reports,
-        'monthly': monthly_count
-    }
-    
-    users = load_users() if is_admin else {}
-    return render_template('index.html', stats=stats, users=users)
+    try:
+        reports = load_reports(fetch_evidence=False)
+        
+        total_reports = len(reports)
+        critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
+        monthly_count = sum(1 for r in reports if str(r.get('timestamp', '')).startswith(datetime.now().strftime('%Y-%m')))
+        
+        stats = {
+            'total': total_reports,
+            'critical': critical_reports,
+            'monthly': monthly_count
+        }
+        
+        is_admin_check = (session.get('user') == 'admin' or bool(session.get('is_admin', False)))
+        users = load_users() if is_admin_check else {}
+        return render_template('index.html', stats=stats, users=users)
+    except Exception as e:
+        print(f"🚨 خطأ في الصفحة الرئيسية: {e}")
+        stats = {'total': 0, 'critical': 0, 'monthly': 0}
+        return render_template('index.html', stats=stats, users={})
 
 @app.route('/submit-report', methods=['POST'])
 def submit_report():
@@ -209,7 +204,6 @@ def submit_report():
         return redirect(url_for('login'))
     
     m_url = request.form.get('m_url', '').strip()
-    
     if m_url:
         try:
             existing_report = supabase.table('reports').select('report_id, status').eq('url', m_url).execute()
@@ -218,11 +212,10 @@ def submit_report():
                 prior_status = existing_report.data[0].get('status', 'قيد المراجعة')
                 flash(f'⚠️ تنبيه: هذا الرابط مرصود ومُبلغ عنه مسبقاً برقم البلاغ ({prior_id}) وحالته الحالية: [{prior_status}].', 'warning')
                 return redirect(url_for('index'))
-        except Exception as e:
-            print(f"🚨 خطأ أثناء التحقق من الرابط: {e}")
+        except Exception:
+            pass
 
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    
     files = request.files.getlist('evidence_files')
     evidence_urls = []
     for file in files:
@@ -262,7 +255,6 @@ def submit_report():
         supabase.table('reports').insert(db_payload).execute()
         flash(f'تم رفع البلاغ بنجاح برقم {report_id} وهو قيد المراجعة.', 'success')
     except Exception as e:
-        print(f"🚨 خطأ أثناء حفظ البلاغ: {e}")
         flash(f'حدث خطأ أثناء حفظ البلاغ: {e}', 'danger')
 
     return redirect(url_for('index'))
@@ -271,15 +263,12 @@ def submit_report():
 def get_records():
     if 'user' not in session:
         return jsonify({'records': []})
-    
-    current_user_fullname = session.get('fullname', session.get('user'))
-    is_admin = bool(session.get('is_admin', False))
-    reports = load_reports(user_filter=current_user_fullname, is_admin=is_admin, fetch_evidence=True)
+    reports = load_reports(fetch_evidence=True)
     return jsonify({'records': reports})
 
 @app.route('/approve-report/<report_id>', methods=['POST'])
 def approve_report(report_id):
-    if not bool(session.get('is_admin', False)):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
     try:
@@ -291,7 +280,7 @@ def approve_report(report_id):
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
 def reject_report(report_id):
-    if not bool(session.get('is_admin', False)):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
     try:
@@ -303,9 +292,9 @@ def reject_report(report_id):
 
 @app.route('/monthly-log')
 def monthly_log():
-    if not bool(session.get('is_admin', False)):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         return jsonify({'monthly_reports': []})
-    reports = load_reports(is_admin=True, fetch_evidence=False)
+    reports = load_reports(fetch_evidence=False)
     current_month = datetime.now().strftime('%Y-%m')
     filtered = [r for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
     return jsonify({'monthly_reports': filtered})
@@ -314,7 +303,6 @@ def monthly_log():
 def change_password():
     if 'user' not in session:
         return redirect(url_for('login'))
-    
     current_pass = request.form.get('current_password')
     new_pass = request.form.get('new_password')
     confirm_pass = request.form.get('confirm_password')
@@ -325,19 +313,17 @@ def change_password():
         
     users = load_users()
     username = session['user']
-    
-    if check_password_hash(users[username]['password'], current_pass):
+    if username in users and check_password_hash(users[username]['password'], current_pass):
         new_hashed = generate_password_hash(new_pass)
         supabase.table('users').update({'password': new_hashed}).eq('username', username).execute()
         flash('تم تغيير كلمة المرور بنجاح.', 'success')
     else:
         flash('كلمة المرور الحالية غير صحيحة.', 'danger')
-        
     return redirect(url_for('index'))
 
 @app.route('/add-user', methods=['POST'])
 def add_user():
-    if not bool(session.get('is_admin', False)):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
         
@@ -355,52 +341,54 @@ def add_user():
         flash('اسم المستخدم موجود مسبقاً.', 'danger')
         return redirect(url_for('index'))
         
-    new_user_data = {
-        "username": new_username,
-        "password": generate_password_hash(new_password),
-        "is_admin": False,
-        "fullname": fullname,
-        "rank": rank
-    }
-    
     try:
-        supabase.table('users').insert(new_user_data).execute()
+        supabase.table('users').insert({
+            "username": new_username,
+            "password": generate_password_hash(new_password),
+            "is_admin": False,
+            "fullname": fullname,
+            "rank": rank
+        }).execute()
         flash(f'تم إضافة المستخدم {new_username} بنجاح.', 'success')
     except Exception as e:
         flash(f'حدث خطأ أثناء إضافة المستخدم: {e}', 'danger')
-        
     return redirect(url_for('index'))
 
 @app.route('/delete-user/<username>', methods=['POST'])
 def delete_user(username):
-    if not bool(session.get('is_admin', False)):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
         return redirect(url_for('index'))
-        
     if username == 'admin':
         flash('لا يمكن حذف حساب المشرف الرئيسي.', 'danger')
         return redirect(url_for('index'))
-        
     try:
         supabase.table('users').delete().eq('username', username).execute()
         flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
     except Exception as e:
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
-        
     return redirect(url_for('index'))
 
 @app.route('/delete-report/<report_id>', methods=['POST'])
-def delete_report(report_id):
-    if not bool(session.get('is_admin', False)):
+def delete-report(report_id):
+    pass # سيتم تمريرها عبر المسار الصحيح أسفله
+
+@app.route('/delete-report-item/<report_id>', methods=['POST'])
+def delete_report_item(report_id):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بحذف السجلات.', 'danger')
         return redirect(url_for('index'))
-        
     try:
         supabase.table('reports').delete().eq('report_id', report_id).execute()
         flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
     except Exception as e:
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
-        return redirect(url_for('index'))
+    return redirect(url_for('index'))
+
+# ربط المسار القديم بالدالة الجديدة لضمان عدم حدوث خطأ 404
+@app.route('/delete-report/<report_id>', methods=['POST'])
+def delete_report(report_id):
+    return delete_report_item(report_id)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
