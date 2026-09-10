@@ -92,13 +92,13 @@ def load_reports(fetch_evidence=True):
 
         for r in raw_reports:
             if not is_admin:
-                r_username = str(r.get("username", "")).strip().lower()
                 r_officer = str(r.get("officer", "")).strip().lower()
                 
-                match_user = (current_username and r_username == current_username)
+                # مطابقة البلاغ بناءً على الاسم الثلاثي أو اسم الحساب ضمن حقل officer
                 match_name = (current_fullname and current_fullname in r_officer)
+                match_username = (current_username and current_username in r_officer)
                 
-                if not (match_user or match_name):
+                if not (match_name or match_username):
                     continue
 
             reports.append({
@@ -217,7 +217,6 @@ def submit_report():
     db_payload = {
         "report_id": report_id,
         "officer": f"{request.form.get('user_rank', '')} {request.form.get('user_full_name', '')}".strip(),
-        "username": session.get('user'),
         "source": request.form.get('m_source'),
         "platform": request.form.get('m_platform'),
         "url": m_url,
