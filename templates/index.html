@@ -791,8 +791,8 @@
                 .catch(err => console.error("خطأ المراقبة:", err));
         }
 
-        // تم تعديل زمن الفحص من 5 ثوانٍ إلى 60 ثانية (60000 ميلي ثانية) لتقليل الضغط على قاعدة البيانات
-        setInterval(monitorNewReports, 60000);
+        // تم ضبط وقت الفحص التلقائي هنا إلى 15 دقيقة (900000 مللي ثانية) لحماية خادم Supabase
+        setInterval(monitorNewReports, 900000);
 
         function copyLink(url, btnElement) {
             if (!url) return;
