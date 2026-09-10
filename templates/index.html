@@ -175,6 +175,10 @@
             background: radial-gradient(circle, rgba(11,18,33,0.85) 0%, rgba(2,6,18,0.99) 100%);
             border: 1px solid rgba(0, 242, 254, 0.5);
             box-shadow: inset 0 0 35px rgba(0, 242, 254, 0.25);
+            cursor: grab;
+        }
+        #globe-container:active {
+            cursor: grabbing;
         }
 
         .threat-ticker {
@@ -194,6 +198,7 @@
             align-items: center;
             backdrop-filter: blur(8px);
             z-index: 10;
+            pointer-events: none;
         }
 
         .hidden { display: none !important; }
@@ -350,8 +355,8 @@
             <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار (شامل Dark Web)</p>
             
             <div class="position-relative">
-                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem;">
-                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Live Threat Map)
+                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem; pointer-events: none;">
+                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Interactive Neon Map)
                 </div>
                 <div id="globe-container">
                     <div class="threat-ticker">
@@ -832,12 +837,13 @@
             const globeMesh = new THREE.Mesh(globeGeo, globeMat);
             globeGroup.add(globeMesh);
 
-            const wireGeo = new THREE.SphereGeometry(4.53, 28, 28);
+            const wireGeo = new THREE.SphereGeometry(4.53, 32, 32);
             const wireMat = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
                 wireframe: true,
                 transparent: true,
-                opacity: 0.25
+                opacity: 0.35,
+                blending: THREE.AdditiveBlending
             });
             const wireMesh = new THREE.Mesh(wireGeo, wireMat);
             globeGroup.add(wireMesh);
@@ -854,27 +860,39 @@
             const targetCoord = { lat: 33.3152, lon: 44.3661, name: "Iraq (Target)" };
             const targetVec = latLongToVector3(targetCoord.lat, targetCoord.lon, 4.55);
 
-            const targetMarkerGeo = new THREE.SphereGeometry(0.12, 16, 16);
-            const targetMarkerMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+            const targetMarkerGeo = new THREE.SphereGeometry(0.15, 16, 16);
+            const targetMarkerMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe, blending: THREE.AdditiveBlending });
             const targetMarker = new THREE.Mesh(targetMarkerGeo, targetMarkerMat);
             targetMarker.position.copy(targetVec);
             globeGroup.add(targetMarker);
 
+            // زيادة مصادر الهجمات السيبرانية لتكون أكثر كثافة وتنوعاً
             const attackSources = [
                 { lat: 55.7558, lon: 37.6173, country: "Russia", ip: "185.220.101.4", type: "DDoS Attack" },
                 { lat: 39.9042, lon: 116.4074, country: "China", ip: "220.181.38.148", type: "SQL Injection" },
                 { lat: 37.7749, lon: -122.4194, country: "USA", ip: "104.244.42.1", type: "DarkWeb Leak" },
                 { lat: 52.5200, lon: 13.4050, country: "Germany", ip: "185.220.101.5", type: "Brute Force" },
-                { lat: 35.6762, lon: 139.6503, country: "Japan", ip: "133.242.181.1", type: "Botnet Probe" }
+                { lat: 35.6762, lon: 139.6503, country: "Japan", ip: "133.242.181.1", type: "Botnet Probe" },
+                { lat: 51.5074, lon: -0.1278, country: "UK", ip: "212.58.244.20", type: "Malware C2" },
+                { lat: 48.8566, lon: 2.3522, country: "France", ip: "193.104.22.1", type: "Phishing Wave" },
+                { lat: -33.8688, lon: 151.2093, country: "Australia", ip: "139.130.4.5", type: "Zero-Day Exploit" },
+                { lat: 28.6139, lon: 77.2090, country: "India", ip: "103.25.14.8", type: "API Brute Force" },
+                { lat: -23.5505, lon: -46.6333, country: "Brazil", ip: "177.185.12.9", type: "Ransomware Node" },
+                { lat: 37.5665, lon: 126.9780, country: "South Korea", ip: "211.234.3.2", type: "SYN Flood" },
+                { lat: 30.0444, lon: 31.2357, country: "Egypt", ip: "197.45.21.9", type: "Web Defacement" }
             ];
 
             const attackArcs = [];
+            const neonColors = [0x00f2fe, 0xff2a5f, 0xc084fc, 0x38bdf8, 0xf43f5e, 0x10b981];
 
-            attackSources.forEach((src) => {
+            attackSources.forEach((src, index) => {
                 const srcVec = latLongToVector3(src.lat, src.lon, 4.55);
 
-                const srcGeo = new THREE.SphereGeometry(0.09, 12, 12);
-                const srcMat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+                const srcGeo = new THREE.SphereGeometry(0.08, 10, 10);
+                const srcMat = new THREE.MeshBasicMaterial({ 
+                    color: neonColors[index % neonColors.length],
+                    blending: THREE.AdditiveBlending 
+                });
                 const srcMesh = new THREE.Mesh(srcGeo, srcMat);
                 srcMesh.position.copy(srcVec);
                 globeGroup.add(srcMesh);
@@ -883,22 +901,29 @@
                 const mid = srcVec.clone().add(targetVec).multiplyScalar(0.5);
                 const midLength = mid.length();
                 mid.normalize();
-                mid.multiplyScalar(midLength + distance * 0.45);
+                mid.multiplyScalar(midLength + distance * (0.35 + (index % 3) * 0.12));
 
                 const curve = new THREE.QuadraticBezierCurve3(srcVec, mid, targetVec);
-                const points = curve.getPoints(50);
+                const points = curve.getPoints(60);
                 const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
 
+                // إعطاء خطوط الهجمات ضوء نيون قوي مع AdditiveBlending
                 const arcMat = new THREE.LineBasicMaterial({
-                    color: 0xff2a5f,
+                    color: neonColors[index % neonColors.length],
                     transparent: true,
-                    opacity: 0.6
+                    opacity: 0.85,
+                    blending: THREE.AdditiveBlending
                 });
                 const arcLine = new THREE.Line(arcGeo, arcMat);
                 globeGroup.add(arcLine);
 
-                const pulseGeo = new THREE.SphereGeometry(0.08, 10, 10);
-                const pulseMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                const pulseGeo = new THREE.SphereGeometry(0.1, 12, 12);
+                const pulseMat = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.95,
+                    blending: THREE.AdditiveBlending
+                });
                 const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
                 pulseMesh.position.copy(srcVec);
                 globeGroup.add(pulseMesh);
@@ -906,37 +931,71 @@
                 attackArcs.push({
                     curve: curve,
                     pulse: pulseMesh,
+                    line: arcLine,
                     progress: Math.random(),
-                    speed: 0.006 + Math.random() * 0.008,
+                    speed: 0.006 + Math.random() * 0.01,
                     info: src
                 });
             });
 
-            const impactGeo = new THREE.RingGeometry(0.05, 0.25, 24);
+            const impactGeo = new THREE.RingGeometry(0.05, 0.4, 32);
             const impactMat = new THREE.MeshBasicMaterial({
-                color: 0xff0055,
+                color: 0x00f2fe,
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending
             });
             const impactRing = new THREE.Mesh(impactGeo, impactMat);
             impactRing.position.copy(targetVec);
             impactRing.lookAt(new THREE.Vector3(0,0,0));
             globeGroup.add(impactRing);
 
-            const ringGeo = new THREE.RingGeometry(5.8, 5.95, 64);
-            const ringMat = new THREE.MeshBasicMaterial({
-                color: 0x00f2fe,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.35
-            });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = Math.PI / 2.3;
-            scene.add(ring);
+            // تفعيل التفاعل مع الماوس واللمس (تدوير الكرة والخطوط بالحرية)
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
 
-            globeGroup.rotation.y = 1.2;
-            globeGroup.rotation.x = 0.2;
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                globeGroup.rotation.y += deltaX * 0.006;
+                globeGroup.rotation.x += deltaY * 0.006;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            container.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                if (e.touches.length > 0) {
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length === 0) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                const deltaY = e.touches[0].clientY - previousMousePosition.y;
+
+                globeGroup.rotation.y += deltaX * 0.006;
+                globeGroup.rotation.x += deltaY * 0.006;
+
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+
+            window.addEventListener('touchend', () => {
+                isDragging = false;
+            });
 
             let lastTickerUpdate = 0;
             let currentArcIndex = 0;
@@ -944,29 +1003,36 @@
             function animate(time) {
                 requestAnimationFrame(animate);
 
-                globeGroup.rotation.y += 0.0025;
-                ring.rotation.z -= 0.0015;
+                // استمرار الدوران التلقائي ببطء إذا لم يكن المستخدم يسحب الكرة
+                if (!isDragging) {
+                    globeGroup.rotation.y += 0.002;
+                }
 
-                attackArcs.forEach((arc) => {
+                attackArcs.forEach((arc, idx) => {
                     arc.progress += arc.speed;
                     if (arc.progress > 1) {
                         arc.progress = 0;
+                        arc.speed = 0.006 + Math.random() * 0.01;
                     }
                     const point = arc.curve.getPoint(arc.progress);
                     arc.pulse.position.copy(point);
+
+                    // وميض نيون تفاعلي على الخطوط
+                    const lineOpacity = 0.5 + Math.sin(time * 0.006 + idx) * 0.4;
+                    arc.line.material.opacity = lineOpacity;
                 });
 
-                const pulseScale = 1 + Math.sin(time * 0.008) * 0.6;
+                const pulseScale = 1 + Math.sin(time * 0.012) * 0.8;
                 impactRing.scale.set(pulseScale, pulseScale, pulseScale);
 
-                if (time - lastTickerUpdate > 3000) {
+                if (time - lastTickerUpdate > 2500) {
                     lastTickerUpdate = time;
                     const attack = attackArcs[currentArcIndex].info;
                     const tickerAttack = document.getElementById('ticker-attack');
                     const tickerStatus = document.getElementById('ticker-status');
                     if (tickerAttack && tickerStatus) {
-                        tickerAttack.innerHTML = `<i class="fas fa-bolt text-warning me-1"></i> [${attack.type}] ${attack.country} (${attack.ip}) ➔ Iraq Defense System`;
-                        tickerStatus.innerText = (currentArcIndex % 2 === 0) ? "CRITICAL THREAT" : "BLOCKED";
+                        tickerAttack.innerHTML = `<i class="fas fa-bolt text-warning me-1"></i> [${attack.type}] ${attack.country} (${attack.ip}) ➔ Iraq Defense Grid`;
+                        tickerStatus.innerText = (currentArcIndex % 2 === 0) ? "CRITICAL THREAT" : "INTERCEPTED";
                         tickerStatus.className = (currentArcIndex % 2 === 0) ? "text-danger fw-bold ms-2" : "text-success fw-bold ms-2";
                     }
                     currentArcIndex = (currentArcIndex + 1) % attackArcs.length;
