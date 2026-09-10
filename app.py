@@ -77,16 +77,10 @@ def compress_and_upload_image(file_obj):
         return f"data:image/jpeg;base64,{encoded}"
 
 def load_reports(fetch_evidence=True):
-    """
-    دالة موحدة ومحصنة لجلب البلاغات. 
-    تقوم بالتحقق التلقائي من صلاحية الأدمن مباشرة من قاعدة البيانات أو الجلسة لمنع أي اختفاء للسجلات.
-    """
     try:
-        # فحص صارم لصلاحية الأدمن
         is_admin_session = session.get('is_admin')
         current_username = str(session.get('user', '')).strip().lower()
         
-        # إذا كان اسم المستخدم هو admin حصرياً، نعتبره مشرفاً بشكل قاطع لضمان عدم ضياع الصلاحية
         if current_username == 'admin':
             is_admin = True
         else:
@@ -99,7 +93,6 @@ def load_reports(fetch_evidence=True):
         current_fullname = str(session.get('fullname', '')).strip().lower()
 
         for r in raw_reports:
-            # إذا لم يكن مشرفاً، نقوم بفلترة البلاغات الخاصة به فقط
             if not is_admin:
                 r_username = str(r.get("username", "")).strip().lower()
                 r_officer = str(r.get("officer", "")).strip().lower()
@@ -154,7 +147,6 @@ def login():
                 if is_valid:
                     session.clear()
                     session['user'] = username
-                    # تحديد صلاحية الأدمن بقوة
                     is_adm = True if username == 'admin' else bool(user_record.get('is_admin', False))
                     session['is_admin'] = is_adm
                     session['fullname'] = user_record.get('fullname', username)
@@ -163,7 +155,7 @@ def login():
             flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
         except Exception as e:
             print(f"🚨 خطأ في تسجيل الدخول: {e}")
-            flash('حدث خطأ تقني أثناء تسجيل الدخول، يجدر المحاولة مجدداً.', 'danger')
+            flash('حدث خطأ تقني أثناء تسجيل الدخول، يرجى المحاولة مجدداً.', 'danger')
             
     return render_template('login.html')
 
@@ -370,11 +362,7 @@ def delete_user(username):
     return redirect(url_for('index'))
 
 @app.route('/delete-report/<report_id>', methods=['POST'])
-def delete-report(report_id):
-    pass # سيتم تمريرها عبر المسار الصحيح أسفله
-
-@app.route('/delete-report-item/<report_id>', methods=['POST'])
-def delete_report_item(report_id):
+def delete_report(report_id):
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         flash('غير مسموح لك بحذف السجلات.', 'danger')
         return redirect(url_for('index'))
@@ -384,11 +372,6 @@ def delete_report_item(report_id):
     except Exception as e:
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
     return redirect(url_for('index'))
-
-# ربط المسار القديم بالدالة الجديدة لضمان عدم حدوث خطأ 404
-@app.route('/delete-report/<report_id>', methods=['POST'])
-def delete_report(report_id):
-    return delete_report_item(report_id)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
