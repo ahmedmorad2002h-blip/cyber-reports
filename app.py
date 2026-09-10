@@ -45,12 +45,10 @@ def init_admin_user():
         print(f"🚨 خطأ في تهيئة حساب الأدمن: {e}")
 
 init_admin_user()
-
-# --- دالة التنظيف التلقائي المؤقتة لحل مشكلة الـ Timeout وتفريغ الحجم الزائد ---
+# --- دالة التنظيف التلقائي المؤقتة لحل مشكلة الـ Limit والـ Timeout ---
 def auto_clear_heavy_evidence():
     try:
-        print("🔄 جاري تفريغ الصور والأدلة الثقيلة من قاعدة البيانات لإصلاح مشكلة الـ Limit...")
-        # جلب معرفات البلاغات وتفريغ الـ evidence تدريجياً لتجنب الـ Timeout
+        print("🔄 جاري تفريغ الصور والأدلة الثقيلة من قاعدة البيانات...")
         res = supabase.table('reports').select('report_id').execute()
         reports = res.data or []
         for r in reports:
@@ -59,9 +57,8 @@ def auto_clear_heavy_evidence():
                 supabase.table('reports').update({'evidence': []}).eq('report_id', rid).execute()
         print("✅ تم تفريغ كافة الأدلة الثقيلة بنجاح وعادت المساحة لطبيعتها!")
     except Exception as e:
-        print(f"⚠️ تنبيه أثناء التنظيف التلقائي: {e}")
+        print(f"⚠️ تنبيه أثناء التنظيف: {e}")
 
-# تشغيل التنظيف فور إقلاع السيرفر
 auto_clear_heavy_evidence()
 # --------------------------------------------------------------------------
 
