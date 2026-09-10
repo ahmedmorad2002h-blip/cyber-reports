@@ -791,7 +791,8 @@
                 .catch(err => console.error("خطأ المراقبة:", err));
         }
 
-        setInterval(monitorNewReports, 5000);
+        // تم تعديل زمن الفحص من 5 ثوانٍ إلى 60 ثانية (60000 ميلي ثانية) لتقليل الضغط على قاعدة البيانات
+        setInterval(monitorNewReports, 60000);
 
         function copyLink(url, btnElement) {
             if (!url) return;
@@ -866,7 +867,6 @@
             targetMarker.position.copy(targetVec);
             globeGroup.add(targetMarker);
 
-            // زيادة مصادر الهجمات السيبرانية لتكون أكثر كثافة وتنوعاً
             const attackSources = [
                 { lat: 55.7558, lon: 37.6173, country: "Russia", ip: "185.220.101.4", type: "DDoS Attack" },
                 { lat: 39.9042, lon: 116.4074, country: "China", ip: "220.181.38.148", type: "SQL Injection" },
@@ -907,7 +907,6 @@
                 const points = curve.getPoints(60);
                 const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
 
-                // إعطاء خطوط الهجمات ضوء نيون قوي مع AdditiveBlending
                 const arcMat = new THREE.LineBasicMaterial({
                     color: neonColors[index % neonColors.length],
                     transparent: true,
@@ -951,7 +950,6 @@
             impactRing.lookAt(new THREE.Vector3(0,0,0));
             globeGroup.add(impactRing);
 
-            // تفعيل التفاعل مع الماوس واللمس (تدوير الكرة والخطوط بالحرية)
             let isDragging = false;
             let previousMousePosition = { x: 0, y: 0 };
 
@@ -1003,7 +1001,6 @@
             function animate(time) {
                 requestAnimationFrame(animate);
 
-                // استمرار الدوران التلقائي ببطء إذا لم يكن المستخدم يسحب الكرة
                 if (!isDragging) {
                     globeGroup.rotation.y += 0.002;
                 }
@@ -1017,7 +1014,6 @@
                     const point = arc.curve.getPoint(arc.progress);
                     arc.pulse.position.copy(point);
 
-                    // وميض نيون تفاعلي على الخطوط
                     const lineOpacity = 0.5 + Math.sin(time * 0.006 + idx) * 0.4;
                     arc.line.material.opacity = lineOpacity;
                 });
