@@ -57,20 +57,23 @@ def load_users():
         return {}
 
 def load_reports(user_filter=None, is_admin=False, fetch_evidence=True):
-    """تحميل البلاغات بشكل سريع مع تصفيتها مباشرة عبر استعلامات Supabase"""
+    """تحميل البلاغات بشكل سريع وسلس مع التصفية السليمة للأدمن والمستخدمين"""
     try:
         query = supabase.table('reports').select('*').order('created_at', desc=True)
-        
-        # تصفية سريعة ومستهدفة داخل قاعدة البيانات دون حمل الذاكرة
-        if not is_admin and user_filter:
-            clean_filter = str(user_filter).strip()
-            username = session.get('user', '')
-            query = query.or_(f"officer.ilike.%{clean_filter}%,officer.ilike.%{username}%")
-
         res = query.execute()
         reports = []
         
+        clean_filter = str(user_filter or '').strip().lower()
+        username = str(session.get('user', '')).strip().lower()
+
         for r in res.data or []:
+            officer_info = str(r.get("officer", "") or "").lower()
+            
+            # إذا لم يكن أدمن، يتم تصفية البلاغات ليظهر فقط ما يخص المستخدم الحالي (بالمطابقة المرنة)
+            if not is_admin and clean_filter:
+                if clean_filter not in officer_info and username not in officer_info:
+                    continue
+
             reports.append({
                 "report_id": r.get("report_id"),
                 "officer": r.get("officer", ""),
