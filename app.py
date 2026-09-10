@@ -80,27 +80,21 @@ def load_reports(fetch_evidence=True):
     try:
         current_username = str(session.get('user', '')).strip().lower()
         is_admin_session = bool(session.get('is_admin', False))
-        
-        # التحقق الحاسم من صلاحيات الأدمن لضمان رؤية كافة السجلات
         is_admin = (current_username == 'admin' or is_admin_session)
+        current_fullname = str(session.get('fullname', '')).strip()
 
-        res = supabase.table('reports').select('*').execute()
+        # بناء الاستعلام مع الفلترة مباشرة من Supabase لمنع الـ Timeout
+        query = supabase.table('reports').select('*')
+        
+        if not is_admin and current_fullname:
+            # جلب البلاغات الخاصة بالمستخدم المطابق لاسمه فقط من الخادم مباشرة
+            query = query.ilike('officer', f"%{current_fullname}%")
+
+        res = query.order('timestamp', desc=True).execute()
         raw_reports = res.data or []
         reports = []
-        
-        current_fullname = str(session.get('fullname', '')).strip().lower()
 
         for r in raw_reports:
-            if not is_admin:
-                r_officer = str(r.get("officer", "")).strip().lower()
-                
-                # مطابقة البلاغ بناءً على الاسم الثلاثي أو اسم الحساب ضمن حقل officer
-                match_name = (current_fullname and current_fullname in r_officer)
-                match_username = (current_username and current_username in r_officer)
-                
-                if not (match_name or match_username):
-                    continue
-
             reports.append({
                 "report_id": r.get("report_id"),
                 "officer": r.get("officer", ""),
@@ -119,7 +113,6 @@ def load_reports(fetch_evidence=True):
                 "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
             
-        reports.sort(key=lambda x: str(x.get('timestamp') or ''), reverse=True)
         return reports
     except Exception as e:
         print(f"🚨 خطأ فادح في تحميل البلاغات: {e}")
