@@ -10,26 +10,25 @@
     
     <style>
         :root {
-            --bg-color: #030712;
-            --panel-bg: rgba(11, 18, 33, 0.98);
+            --bg-color: #02040a;
+            --panel-bg: rgba(8, 14, 28, 0.92);
             --cyber-cyan: #00f2fe;
             --cyber-blue: #4facfe;
-            --cyber-purple: #c084fc;
-            --cyber-glow: rgba(0, 242, 254, 0.6);
-            --border-color: rgba(0, 242, 254, 0.6);
-            --text-main: #ffffff;
-            --text-muted: #e2e8f0;
+            --cyber-purple: #a855f7;
+            --cyber-pink: #ec4899;
+            --border-glow: rgba(0, 242, 254, 0.6);
+            --text-main: #f8fafc;
         }
 
-        @keyframes neonPulse {
-            0% { box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.5); }
-            50% { box-shadow: 0 0 40px rgba(0, 242, 254, 0.8), inset 0 0 25px rgba(0, 242, 254, 0.3); border-color: #00f2fe; }
-            100% { box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.5); }
+        @keyframes hyperNeonPulse {
+            0% { box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.4); }
+            50% { box-shadow: 0 0 50px rgba(0, 242, 254, 0.7), inset 0 0 30px rgba(168, 85, 247, 0.3); border-color: var(--cyber-cyan); }
+            100% { box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.4); }
         }
 
         @keyframes titleGlow {
-            0%, 100% { text-shadow: 0 0 10px rgba(0,242,254,0.5), 0 0 20px rgba(0,242,254,0.3); }
-            50% { text-shadow: 0 0 20px rgba(0,242,254,0.9), 0 0 40px rgba(192,132,252,0.6); }
+            0%, 100% { text-shadow: 0 0 15px rgba(0,242,254,0.6), 0 0 30px rgba(0,242,254,0.3); }
+            50% { text-shadow: 0 0 25px rgba(0,242,254,0.9), 0 0 50px rgba(168,85,247,0.7), 0 0 80px rgba(236,72,153,0.4); }
         }
 
         body { 
@@ -37,78 +36,106 @@
             color: var(--text-main); 
             font-family: 'Cairo', sans-serif; 
             min-height: 100vh;
-            background-image: radial-gradient(circle at 50% 0%, #0f172a 0%, #030712 80%), linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px);
-            background-size: 100% 100%, 40px 40px;
+            background-image: 
+                radial-gradient(circle at 50% -20%, #1e1b4b 0%, #02040a 70%), 
+                linear-gradient(rgba(0, 242, 254, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 254, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
             overflow-x: hidden;
         }
 
         .card { 
             background: var(--panel-bg); 
-            border: 2px solid var(--border-color); 
-            border-radius: 20px; 
+            border: 2px solid var(--border-glow); 
+            border-radius: 24px; 
             padding: 35px; 
-            animation: neonPulse 3s infinite ease-in-out;
-            backdrop-filter: blur(25px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+            animation: hyperNeonPulse 4s infinite ease-in-out;
+            backdrop-filter: blur(30px);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95);
         }
 
         .stat-card {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.9));
-            border: 2px solid rgba(0, 242, 254, 0.5);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.85));
+            border: 2px solid rgba(0, 242, 254, 0.4);
             border-radius: 16px;
-            padding: 22px;
+            padding: 20px;
             text-align: center;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
-            transition: all 0.3s;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .stat-card:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 0 35px var(--cyber-cyan); border-color: var(--cyber-cyan); }
+        .stat-card:hover { 
+            transform: translateY(-6px) scale(1.03); 
+            box-shadow: 0 0 40px var(--cyber-cyan), inset 0 0 15px rgba(0,242,254,0.4); 
+            border-color: var(--cyber-cyan); 
+        }
 
         h1, h2, h3, h4, .navbar-brand { animation: titleGlow 4s infinite ease-in-out; color: #ffffff !important; font-weight: 900 !important; }
         p, span, label, .form-label, .text-muted { color: #f1f5f9 !important; font-weight: 600 !important; }
 
         input, select, textarea { 
-            background: rgba(2, 6, 23, 0.98) !important; 
-            border: 2px solid rgba(0, 242, 254, 0.5) !important; 
+            background: rgba(3, 7, 18, 0.95) !important; 
+            border: 2px solid rgba(0, 242, 254, 0.4) !important; 
             color: #ffffff !important; 
-            border-radius: 12px !important;
-            padding: 12px 16px !important;
+            border-radius: 14px !important;
+            padding: 12px 18px !important;
             font-weight: 700 !important;
+            transition: all 0.3s ease;
         }
-        input:focus, select:focus, textarea:focus { border-color: var(--cyber-cyan) !important; box-shadow: 0 0 25px var(--cyber-cyan) !important; outline: none; }
-        select option { background-color: #0b1326; color: #ffffff; }
+        input:focus, select:focus, textarea:focus { 
+            border-color: var(--cyber-cyan) !important; 
+            box-shadow: 0 0 30px var(--cyber-cyan), inset 0 0 10px rgba(0,242,254,0.2) !important; 
+            outline: none; 
+        }
+        select option { background-color: #080e1c; color: #ffffff; }
 
         .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 5px; }
         
         .sidebar {
-            position: fixed; top: 0; right: -380px; width: 380px; height: 100%;
-            background: rgba(5, 11, 24, 0.99); box-shadow: -20px 0 50px rgba(0,0,0,0.98); 
-            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1050; padding: 35px;
+            position: fixed; top: 0; right: -400px; width: 400px; height: 100%;
+            background: rgba(4, 8, 18, 0.98); box-shadow: -25px 0 60px rgba(0,0,0,0.99); 
+            transition: 0.45s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1050; padding: 35px;
             border-left: 3px solid var(--cyber-cyan); overflow-y: auto;
+            backdrop-filter: blur(25px);
         }
         .sidebar.active { right: 0; }
         .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0, 242, 254, 0.4); padding-bottom: 18px; margin-bottom: 25px; }
-        .close-btn { background: none; border: none; font-size: 32px; color: var(--cyber-cyan); cursor: pointer; }
+        .close-btn { background: none; border: none; font-size: 34px; color: var(--cyber-cyan); cursor: pointer; transition: 0.2s; }
+        .close-btn:hover { color: var(--cyber-pink); transform: scale(1.1); }
 
         .btn-cyber {
             background: linear-gradient(135deg, #0072ff, #00f2fe); border: none; color: #030712; font-weight: 900;
-            box-shadow: 0 0 30px rgba(0, 242, 254, 0.6); transition: all 0.3s; border-radius: 12px;
+            box-shadow: 0 0 35px rgba(0, 242, 254, 0.6); transition: all 0.3s ease; border-radius: 14px;
         }
-        .btn-cyber:hover { background: linear-gradient(135deg, #005bc5, #00c6ff); color: #ffffff; box-shadow: 0 0 45px var(--cyber-cyan); }
+        .btn-cyber:hover { 
+            background: linear-gradient(135deg, #005bc5, #00c6ff); 
+            color: #ffffff; 
+            box-shadow: 0 0 50px var(--cyber-cyan), 0 0 20px rgba(168,85,247,0.5); 
+            transform: translateY(-2px);
+        }
 
         .btn-outline-cyber {
-            border: 2px solid var(--cyber-cyan); color: var(--cyber-cyan); background: rgba(0, 242, 254, 0.1); font-weight: 800; border-radius: 12px;
+            border: 2px solid var(--cyber-cyan); color: var(--cyber-cyan); background: rgba(0, 242, 254, 0.08); font-weight: 800; border-radius: 14px;
+            transition: all 0.3s ease;
         }
-        .btn-outline-cyber:hover { background: rgba(0, 242, 254, 0.3); color: #ffffff; border-color: #ffffff; }
+        .btn-outline-cyber:hover { 
+            background: rgba(0, 242, 254, 0.25); 
+            color: #ffffff; 
+            border-color: #ffffff; 
+            box-shadow: 0 0 25px var(--cyber-cyan);
+            transform: translateY(-2px);
+        }
 
         #globe-container {
-            width: 100%; height: 380px; position: relative; margin: 15px 0; border-radius: 16px; overflow: hidden;
-            background: radial-gradient(circle, rgba(11,18,33,0.85) 0%, rgba(2,6,18,0.99) 100%);
-            border: 1px solid rgba(0, 242, 254, 0.5); cursor: grab;
+            width: 100%; height: 400px; position: relative; margin: 20px 0; border-radius: 20px; overflow: hidden;
+            background: radial-gradient(circle, rgba(15,23,42,0.9) 0%, rgba(2,4,10,0.98) 100%);
+            border: 2px solid rgba(0, 242, 254, 0.5); box-shadow: inset 0 0 40px rgba(0,242,254,0.2);
+            cursor: grab;
         }
 
         .threat-ticker {
-            position: absolute; bottom: 12px; left: 15px; right: 15px; background: rgba(3, 7, 18, 0.85);
-            border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 8px; padding: 6px 14px; font-family: monospace; font-size: 0.78rem; color: #00f2fe; display: flex; justify-content: space-between; z-index: 10; pointer-events: none;
+            position: absolute; bottom: 12px; left: 15px; right: 15px; background: rgba(2, 6, 23, 0.9);
+            border: 1px solid rgba(0, 242, 254, 0.5); border-radius: 10px; padding: 8px 16px; font-family: monospace; font-size: 0.8rem; color: #00f2fe; display: flex; justify-content: space-between; z-index: 10; pointer-events: none;
+            box-shadow: 0 0 15px rgba(0,242,254,0.3);
         }
 
         .hidden { display: none !important; }
@@ -122,14 +149,14 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important;">
+    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important; background: rgba(2,4,10,0.95) !important; backdrop-filter: blur(20px);">
         <div class="d-flex align-items-center">
-            <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan);"></i>
-            <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.2rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-OPS v2.8]</span></span>
+            <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 10px var(--cyber-cyan));"></i>
+            <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.25rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-WAROC v3.0]</span></span>
         </div>
         <div class="d-flex align-items-center gap-2">
             <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();"><i class="fas fa-sync-alt me-1"></i> تحديث</button>
-            <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
+            <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5); box-shadow: 0 0 15px rgba(0,242,254,0.2);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
         </div>
@@ -141,14 +168,14 @@
             <button type="button" class="close-btn" onclick="toggleSidebar()">&times;</button>
         </div>
         <div class="sidebar-body">
-            <div class="mb-4 p-3 rounded text-center" style="background: rgba(0,242,254,0.08); border: 2px solid rgba(0,242,254,0.4);">
+            <div class="mb-4 p-3 rounded text-center" style="background: rgba(0,242,254,0.08); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 20px rgba(0,242,254,0.15);">
                 <div class="text-white fw-bold mb-1 fs-5" style="color: var(--cyber-cyan) !important;">{{ session.get('fullname') }}</div>
                 <div class="text-white small">الصلاحية: {% if session.get('is_admin') or session.get('user') == 'admin' %}<span class="text-danger fw-bold">مشرف نظام (Admin)</span>{% else %}<span class="text-info fw-bold">مستخدم مخول</span>{% endif %}</div>
             </div>
 
             <ul class="list-unstyled">
                 <li class="mb-3">
-                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(0,242,254,0.4);" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 15px rgba(0,242,254,0.1);" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
                         <i class="fas fa-key text-info me-2"></i> تغيير كلمة السر
                     </a>
                 </li>
@@ -173,28 +200,28 @@
         </div>
     </div>
 
-    <div class="container my-5" style="max-width: 920px;">
+    <div class="container my-5" style="max-width: 940px;">
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'success' else 'info' }} text-center text-white fw-bold shadow-lg mb-4" style="border-radius: 12px; background: rgba(15,23,42,0.98); border: 2px solid var(--cyber-cyan);">{{ message }}</div>
+                    <div class="alert alert-{{ category if category != 'success' else 'info' }} text-center text-white fw-bold shadow-lg mb-4" style="border-radius: 14px; background: rgba(15,23,42,0.98); border: 2px solid var(--cyber-cyan); box-shadow: 0 0 30px rgba(0,242,254,0.3);">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
         <div id="menu-section" class="card shadow-lg text-center">
             <div class="mb-2 pt-1">
-                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan);"></i>
+                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 15px var(--cyber-cyan));"></i>
             </div>
             <h2 class="mb-1 fw-black text-white">منظومة مخرجات الرصد والتحقيقات السيبرانية</h2>
-            <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار</p>
+            <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - غرفة العمليات السيبرانية المشتركة</p>
             
             <div class="position-relative">
                 <div id="globe-container">
                     <div class="threat-ticker">
                         <span id="ticker-attack"><i class="fas fa-satellite-dish text-danger me-1"></i> [APTMission] Cross-border SYN-Flood attack redirected</span>
-                        <span class="text-danger fw-bold ms-2" id="ticker-status">WAR-OPS ACTIVE</span>
+                        <span class="text-danger fw-bold ms-2" id="ticker-status">DEFCON-2 ACTIVE</span>
                     </div>
                 </div>
             </div>
@@ -203,24 +230,24 @@
                 <div class="col-4">
                     <div class="stat-card">
                         <div class="text-white small mb-1 fw-bold">إجمالي السجلات</div>
-                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan);">{{ stats.total }}</h3>
+                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan); text-shadow: 0 0 10px var(--cyber-cyan);">{{ stats.total }}</h3>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-card">
                         <div class="text-white small mb-1 fw-bold">حالات حرجة</div>
-                        <h3 class="m-0 fw-bold text-danger">{{ stats.critical }}</h3>
+                        <h3 class="m-0 fw-bold text-danger" style="text-shadow: 0 0 10px #ef4444;">{{ stats.critical }}</h3>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-card">
                         <div class="text-white small mb-1 fw-bold">نشاط الشهر الحالي</div>
-                        <h3 class="m-0 fw-bold text-warning">{{ stats.monthly }}</h3>
+                        <h3 class="m-0 fw-bold text-warning" style="text-shadow: 0 0 10px #f59e0b;">{{ stats.monthly }}</h3>
                     </div>
                 </div>
             </div>
 
-            <div class="d-grid gap-3" style="max-width: 480px; margin: 0 auto;">
+            <div class="d-grid gap-3" style="max-width: 500px; margin: 0 auto;">
                 <button class="btn btn-cyber py-3 fw-bold fs-6" onclick="showSection('form-section')">
                     <i class="fa-solid fa-file-shield me-2"></i> ملء استمارة مخرجات رصد جديدة
                 </button>
@@ -327,7 +354,7 @@
 
             <ul class="nav nav-pills mb-3 gap-2" id="recordsTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.2); border: 1px solid var(--cyber-cyan);">البلاغات الجديدة وقيد المراجعة</button>
+                    <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.25); border: 1px solid var(--cyber-cyan); box-shadow: 0 0 15px rgba(0,242,254,0.2);">البلاغات الجديدة وقيد المراجعة</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">البلاغات الموافق عليها (السجل الكامل)</button>
@@ -335,7 +362,7 @@
             </ul>
 
             {% if session.get('is_admin') or session.get('user') == 'admin' %}
-            <div class="d-flex gap-2 mb-3 p-2 rounded" style="background: rgba(2,6,23,0.9); border: 1px solid rgba(0,242,254,0.3);" id="bulk-actions-bar">
+            <div class="d-flex gap-2 mb-3 p-2 rounded" style="background: rgba(2,6,23,0.95); border: 1px solid rgba(0,242,254,0.4);" id="bulk-actions-bar">
                 <button class="btn btn-sm btn-success fw-bold" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
                 <button class="btn btn-sm btn-outline-danger fw-bold ms-auto" onclick="deleteAllApproved()"><i class="fas fa-trash-alt me-1"></i> حذف كافة البلاغات الموافق عليها بضغطة زر</button>
             </div>
@@ -355,7 +382,7 @@
                 <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
             </div>
             <div class="mb-3">
-                <button class="btn btn-danger fw-bold" onclick="deleteMonthlyApproved()"><i class="fas fa-broom me-1"></i> تصفية وحذف كافة البلاغات الموافق عليها لهذا الشهر</button>
+                <button class="btn btn-danger fw-bold shadow" onclick="deleteMonthlyApproved()"><i class="fas fa-broom me-1"></i> تصفية وحذف كافة البلاغات الموافق عليها لهذا الشهر</button>
             </div>
             <div id="monthly-container" style="max-height: 450px; overflow-y: auto;"></div>
         </div>
@@ -366,7 +393,7 @@
     <!-- Modal تفاصيل البلاغ والطباعة -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important; box-shadow: 0 0 50px rgba(0,242,254,0.4);">
                 <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2" style="color: var(--cyber-cyan);"></i> تفاصيل البلاغ الكاملة والمؤشرات الفنية</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -395,7 +422,7 @@
     {% if session.get('is_admin') or session.get('user') == 'admin' %}
     <div class="modal fade" id="manageUsersModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #ef4444 !important;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid #ef4444 !important; box-shadow: 0 0 50px rgba(239,68,68,0.4);">
                 <div class="modal-header border-bottom">
                     <h5 class="modal-title text-danger fw-bold"><i class="fas fa-users-cog me-2"></i> إدارة وتعديل حسابات المستخدمين</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -439,7 +466,7 @@
 
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important;">
                 <form method="POST" action="{{ url_for('change_password') }}">
                     <div class="modal-header"><h5 class="modal-title text-white">تغيير كلمة السر</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                     <div class="modal-body">
@@ -455,7 +482,7 @@
 
     <div class="modal fade" id="addUserModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #f59e0b !important;">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid #f59e0b !important; box-shadow: 0 0 40px rgba(245,158,11,0.3);">
                 <form method="POST" action="{{ url_for('add_user') }}">
                     <div class="modal-header"><h5 class="modal-title text-warning">إضافة مستخدم جديد</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                     <div class="modal-body">
@@ -478,8 +505,8 @@
 
         function switchTab(status) {
             currentTabStatus = status;
-            document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.2)' : 'rgba(15,23,42,0.8)';
-            document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.2)' : 'rgba(15,23,42,0.8)';
+            document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
+            document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             renderRecordsList(allGlobalRecords);
         }
 
@@ -510,14 +537,14 @@
             }
 
             container.innerHTML = filteredByTab.map(r => `
-                <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4);">
+                <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 15px rgba(0,242,254,0.1);">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex align-items-center gap-2">
                             ${IS_ADMIN && currentTabStatus === 'قيد المراجعة' ? `<input type="checkbox" class="form-check-input report-checkbox" value="${r.report_id}">` : ''}
-                            <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
+                            <span class="fw-bold fs-6" style="color: var(--cyber-cyan); text-shadow: 0 0 8px var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success">تمت الموافقة</span>' : '<span class="badge bg-warning text-dark">قيد المراجعة</span>'}
+                            ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success shadow">تمت الموافقة</span>' : '<span class="badge bg-warning text-dark shadow">قيد المراجعة</span>'}
                             <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> تفاصيل</button>
                             
                             ${IS_ADMIN && r.status === 'قيد المراجعة' ? `
@@ -663,7 +690,7 @@
 
         function toggleSidebar() { document.getElementById('options-sidebar').classList.toggle('active'); }
 
-        // تشغيل أنميشن الكرة الأرضية وتحليق خطوط الهجمات السيبرانية (Three.js)
+        // تشغيل أنميشن الكرة الأرضية وتحليق خطوط الهجمات السيبرانية (Three.js الاحترافي للغاية)
         function initGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
@@ -675,21 +702,32 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            // 1. إنشاء الكرة الأرضية الهيكلية
-            const radius = 2.2;
-            const geometry = new THREE.SphereGeometry(radius, 36, 36);
+            // 1. الكرة الأرضية السيبرانية مع طبقة شبكية مزدوجة وتوهج نيون
+            const radius = 2.1;
+            const geometry = new THREE.SphereGeometry(radius, 40, 40);
             const material = new THREE.MeshBasicMaterial({ 
                 color: 0x00f2fe, 
                 wireframe: true, 
                 transparent: true, 
-                opacity: 0.18 
+                opacity: 0.22 
             });
             const globe = new THREE.Mesh(geometry, material);
             scene.add(globe);
 
-            // 2. عقد وعقد مراقبة السيبر (Nodes)
+            // غلاف جوي نيون خارجي محيط بالكرة
+            const atmosGeo = new THREE.SphereGeometry(radius * 1.08, 32, 32);
+            const atmosMat = new THREE.MeshBasicMaterial({
+                color: 0xa855f7,
+                transparent: true,
+                opacity: 0.08,
+                wireframe: true
+            });
+            const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
+            scene.add(atmosphere);
+
+            // 2. عقد وعقد مراقبة السيبر (Nodes) المضيئة باللون الأرجواني والسيان
             const nodesGeometry = new THREE.BufferGeometry();
-            const nodesCount = 80;
+            const nodesCount = 100;
             const posArray = new Float32Array(nodesCount * 3);
             for(let i = 0; i < nodesCount * 3; i+=3) {
                 const phi = Math.acos(-1 + (2 * Math.random()));
@@ -699,33 +737,55 @@
                 posArray[i+2] = radius * Math.cos(phi);
             }
             nodesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const nodesMaterial = new THREE.PointsMaterial({ color: 0xc084fc, size: 0.07, transparent: true, opacity: 0.8 });
+            const nodesMaterial = new THREE.PointsMaterial({ color: 0x00ffcc, size: 0.08, transparent: true, opacity: 0.9 });
             const nodesSystem = new THREE.Points(nodesGeometry, nodesMaterial);
             scene.add(nodesSystem);
 
-            // 3. محاكاة خطوط الهجمات السيبرانية المتبادلة بين الدول (Arc Lines)
+            // 3. محاكاة خطوط الهجمات السيبرانية الباليستية العابرة للقارات والهجمات المرتدة النيونية
             const attacksGroup = new THREE.Group();
             scene.add(attacksGroup);
 
             function createAttackArc(startVec, endVec, colorHex) {
                 const distance = startVec.distanceTo(endVec);
-                const controlPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5).normalize().multiplyScalar(radius + distance * 0.4);
+                const controlPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5).normalize().multiplyScalar(radius + distance * 0.45);
                 
                 const curve = new THREE.QuadraticBezierCurve3(startVec, controlPoint, endVec);
-                const points = curve.getPoints(30);
+                const points = curve.getPoints(40);
                 const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const arcMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.7 });
+                const arcMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.85 });
                 const arcLine = new THREE.Line(arcGeo, arcMat);
                 
                 attacksGroup.add(arcLine);
+
+                // تأثير هالة نبضية لحظة الوصول للهدف
+                const ringGeo = new THREE.RingGeometry(0.02, 0.08, 16);
+                const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                ringMesh.position.copy(endVec);
+                ringMesh.lookAt(scene.position);
+                attacksGroup.add(ringMesh);
+
+                let scale = 1;
+                const pulseInterval = setInterval(() => {
+                    scale += 0.15;
+                    ringMesh.scale.set(scale, scale, scale);
+                    ringMat.opacity -= 0.1;
+                    if (ringMat.opacity <= 0) {
+                        clearInterval(pulseInterval);
+                        attacksGroup.remove(ringMesh);
+                        ringGeo.dispose();
+                        ringMat.dispose();
+                    }
+                }, 50);
 
                 setTimeout(() => {
                     attacksGroup.remove(arcLine);
                     arcGeo.dispose();
                     arcMat.dispose();
-                }, 3500);
+                }, 3000);
             }
 
+            // مولد هجمات مستمر عشوائي بين العقد
             setInterval(() => {
                 if (nodesGeometry.attributes.position.count > 5) {
                     const positions = nodesGeometry.attributes.position.array;
@@ -735,34 +795,42 @@
                     const vStart = new THREE.Vector3(positions[idx1], positions[idx1+1], positions[idx1+2]);
                     const vEnd = new THREE.Vector3(positions[idx2], positions[idx2+1], positions[idx2+2]);
 
-                    const attackColor = Math.random() > 0.4 ? 0xff3333 : 0x00ffcc;
+                    // تدرج ألوان نيون بين الأحمر الخطير والأزرق/الأخضر السيبراني للدفاع والمرتدات
+                    const rand = Math.random();
+                    let attackColor = 0xff2a6d; // نيون أحمر وردي خطير
+                    if (rand > 0.6) attackColor = 0x05d9e8; // نيون سيان أزرق
+                    else if (rand > 0.3) attackColor = 0x39ff14; // أخضر رادار
+
                     createAttackArc(vStart, vEnd, attackColor);
                 }
-            }, 700);
+            }, 600);
 
-            camera.position.z = 5.5;
+            camera.position.z = 5.2;
 
+            // حركة ودوران مستمر سلس للمنظومة
             function animate() {
                 requestAnimationFrame(animate);
-                globe.rotation.y += 0.002;
-                nodesSystem.rotation.y += 0.002;
-                attacksGroup.rotation.y += 0.002;
+                globe.rotation.y += 0.0018;
+                atmosphere.rotation.y -= 0.001;
+                nodesSystem.rotation.y += 0.0018;
+                attacksGroup.rotation.y += 0.0018;
                 renderer.render(scene, camera);
             }
             animate();
 
+            // شريط التهديدات الحية السفلي
             const attacksList = [
-                "[APTMission] Cross-border SYN-Flood attack redirected ➔ [Mitigated]",
-                "[Cyber-Warfare] Malware payload detected from external node ➔ [Isolated]",
-                "[Counter-Strike] Automated firewall retaliated against attacking IP subnet",
-                "[BGP Hijack Alert] Routing anomaly intercepted and normalized by SOC"
+                "[APTMission] Cross-border SYN-Flood attack intercepted & neutralized ➔ [DEFCON-2]",
+                "[Cyber-Warfare] Malware payload isolated from external subnet node ➔ [Mitigated]",
+                "[Counter-Strike] Firewall automated retaliation successfully executed against IP",
+                "[BGP Hijack Alert] Routing anomaly normalized by Central Security Operations Center"
             ];
             let index = 0;
             setInterval(() => {
                 index = (index + 1) % attacksList.length;
                 const tickerEl = document.getElementById('ticker-attack');
                 if(tickerEl) tickerEl.innerHTML = `<i class="fas fa-satellite-dish text-danger me-1"></i> ${attacksList[index]}`;
-            }, 3500);
+            }, 3200);
         }
 
         window.addEventListener('DOMContentLoaded', () => {
