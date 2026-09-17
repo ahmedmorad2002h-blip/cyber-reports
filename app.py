@@ -1,23 +1,12 @@
 import os
 import json
-import base64
-import uuid
-from io import BytesIO
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client, Client
 
-try:
-    from PIL import Image
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_ministry_secret_key_secure_2026')
-
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
 
 raw_url = os.environ.get("SUPABASE_URL", "").strip().strip('"').strip("'")
 SUPABASE_URL = raw_url if (raw_url and raw_url.startswith("http")) else "https://kzjpmkndafsgdoakkjee.supabase.co"
@@ -46,23 +35,6 @@ def init_admin_user():
 
 init_admin_user()
 
-# --- دالة التنظيف التلقائي (بناءً على طلبك لضمان عدم امتلاء القاعدة بالمستقبل) ---
-def auto_clear_heavy_evidence():
-    try:
-        print("🔄 جاري فحص وتفريغ أي صور ثقيلة قد تكون مخزنة بصيغة Base64...")
-        res = supabase.table('reports').select('report_id').execute()
-        reports = res.data or []
-        for r in reports:
-            rid = r.get('report_id')
-            if rid:
-                supabase.table('reports').update({'evidence': []}).eq('report_id', rid).execute()
-        print("✅ تم فحص وتفريغ الألة الثقيلة بنجاح!")
-    except Exception as e:
-        print(f"⚠️ تنبيه أثناء التنظيف التلقائي: {e}")
-
-auto_clear_heavy_evidence()
-# --------------------------------------------------------------------------
-
 def load_users():
     try:
         res = supabase.table('users').select('*').execute()
@@ -71,31 +43,7 @@ def load_users():
         print(f"🚨 خطأ في تحميل المستخدمين: {e}")
         return {}
 
-def compress_and_upload_image(file_obj):
-    try:
-        filename = f"{uuid.uuid4().hex}.jpg"
-        file_bytes = file_obj.read()
-        if HAS_PIL:
-            try:
-                img = Image.open(BytesIO(file_bytes))
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
-                img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
-                output = BytesIO()
-                img.save(output, format="JPEG", quality=80, optimize=True)
-                file_bytes = output.getvalue()
-            except Exception:
-                pass
-        
-        bucket_name = "evidence"
-        supabase.storage.from_(bucket_name).upload(path=filename, file=file_bytes, file_options={"content-type": "image/jpeg"})
-        return supabase.storage.from_(bucket_name).get_public_url(filename)
-    except Exception as e:
-        print(f"🚨 خطأ في رفع الصورة للستورج: {e}")
-        # إرجاع رابط نصي فارغ أو إهمال الصورة بدلاً من تدمير قاعدة البيانات بـ Base64 ضخم
-        return None
-
-def load_reports(fetch_evidence=True):
+def load_reports():
     try:
         current_username = str(session.get('user', '')).strip().lower()
         is_admin_session = bool(session.get('is_admin', False))
@@ -126,7 +74,6 @@ def load_reports(fetch_evidence=True):
                 "recommendation": r.get("recommendation"),
                 "timestamp": r.get("timestamp"),
                 "status": r.get("status", "قيد المراجعة"),
-                "evidence": r.get("evidence", []) if fetch_evidence and isinstance(r.get("evidence"), list) else [],
                 "tech_indicators": r.get("tech_indicators", {}) if isinstance(r.get("tech_indicators"), dict) else {}
             })
             
@@ -178,8 +125,7 @@ def index():
         return redirect(url_for('login'))
     
     try:
-        reports = load_reports(fetch_evidence=False)
-        
+        reports = load_reports()
         total_reports = len(reports)
         critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
         monthly_count = sum(1 for r in reports if str(r.get('timestamp', '')).startswith(datetime.now().strftime('%Y-%m')))
@@ -217,13 +163,6 @@ def submit_report():
             pass
 
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    files = request.files.getlist('evidence_files')
-    evidence_urls = []
-    for file in files:
-        if file and file.filename:
-            image_link = compress_and_upload_image(file)
-            if image_link:
-                evidence_urls.append(image_link)
 
     db_payload = {
         "report_id": report_id,
@@ -239,7 +178,6 @@ def submit_report():
         "recommendation": request.form.get('m_recommendation'),
         "status": "قيد المراجعة",
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "evidence": evidence_urls,
         "tech_indicators": {
             "ip": request.form.get('tech_ip'),
             "domain": request.form.get('tech_domain'),
@@ -264,38 +202,81 @@ def submit_report():
 def get_records():
     if 'user' not in session:
         return jsonify({'records': []})
-    reports = load_reports(fetch_evidence=True)
+    reports = load_reports()
     return jsonify({'records': reports})
 
 @app.route('/approve-report/<report_id>', methods=['POST'])
 def approve_report(report_id):
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
-        flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
-        return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': 'غير مسموح'})
     try:
         supabase.table('reports').update({'status': 'تمت الموافقة'}).eq('report_id', report_id).execute()
-        flash(f'تمت الموافقة على البلاغ {report_id} بنجاح.', 'success')
+        return jsonify({'success': True})
     except Exception as e:
-        flash(f'حدث خطأ أثناء الموافقة: {e}', 'danger')
-    return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/bulk-approve', methods=['POST'])
+def bulk_approve():
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
+        return jsonify({'success': False, 'message': 'غير مسموح'})
+    try:
+        data = request.get_json()
+        report_ids = data.get('report_ids', [])
+        for rid in report_ids:
+            supabase.table('reports').update({'status': 'تمت الموافقة'}).eq('report_id', rid).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
 def reject_report(report_id):
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
-        flash('غير مسموح لك بإجراء هذه العملية.', 'danger')
-        return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': 'غير مسموح'})
     try:
         supabase.table('reports').delete().eq('report_id', report_id).execute()
-        flash(f'تم رفض البلاغ {report_id} وحذفه من المنظومة.', 'info')
+        return jsonify({'success': True})
     except Exception as e:
-        flash(f'حدث خطأ أثناء الرفض: {e}', 'danger')
-    return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/delete-report/<report_id>', methods=['POST'])
+def delete_report(report_id):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
+        return jsonify({'success': False, 'message': 'غير مسموح'})
+    try:
+        supabase.table('reports').delete().eq('report_id', report_id).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/delete-approved-bulk', methods=['POST'])
+def delete_approved_bulk():
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
+        return jsonify({'success': False, 'message': 'غير مسموح'})
+    try:
+        supabase.table('reports').delete().eq('status', 'تمت الموافقة').execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/delete-monthly-approved', methods=['POST'])
+def delete_monthly_approved():
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
+        return jsonify({'success': False, 'message': 'غير مسموح'})
+    try:
+        current_month = datetime.now().strftime('%Y-%m')
+        reports = supabase.table('reports').select('report_id, timestamp, status').eq('status', 'تمت الموافقة').execute().data or []
+        for r in reports:
+            if str(r.get('timestamp', '')).startswith(current_month):
+                supabase.table('reports').delete().eq('report_id', r['report_id']).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/monthly-log')
 def monthly_log():
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         return jsonify({'monthly_reports': []})
-    reports = load_reports(fetch_evidence=False)
+    reports = load_reports()
     current_month = datetime.now().strftime('%Y-%m')
     filtered = [r for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
     return jsonify({'monthly_reports': filtered})
@@ -355,6 +336,23 @@ def add_user():
         flash(f'حدث خطأ أثناء إضافة المستخدم: {e}', 'danger')
     return redirect(url_for('index'))
 
+@app.route('/update-user/<username>', methods=['POST'])
+def update_user(username):
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
+        flash('غير مسموح لك.', 'danger')
+        return redirect(url_for('index'))
+    try:
+        new_fullname = request.form.get('fullname')
+        new_pass = request.form.get('password')
+        update_data = {"fullname": new_fullname}
+        if new_pass:
+            update_data["password"] = generate_password_hash(new_pass)
+        supabase.table('users').update(update_data).eq('username', username).execute()
+        flash(f'تم تحديث بيانات المستخدم {username} بنجاح.', 'success')
+    except Exception as e:
+        flash(f'حدث خطأ أثناء التحديث: {e}', 'danger')
+    return redirect(url_for('index'))
+
 @app.route('/delete-user/<username>', methods=['POST'])
 def delete_user(username):
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
@@ -366,18 +364,6 @@ def delete_user(username):
     try:
         supabase.table('users').delete().eq('username', username).execute()
         flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
-    except Exception as e:
-        flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
-    return redirect(url_for('index'))
-
-@app.route('/delete-report/<report_id>', methods=['POST'])
-def delete_report(report_id):
-    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
-        flash('غير مسموح لك بحذف السجلات.', 'danger')
-        return redirect(url_for('index'))
-    try:
-        supabase.table('reports').delete().eq('report_id', report_id).execute()
-        flash(f'تم حذف السجل {report_id} بنجاح.', 'success')
     except Exception as e:
         flash(f'حدث خطأ أثناء الحذف: {e}', 'danger')
     return redirect(url_for('index'))
