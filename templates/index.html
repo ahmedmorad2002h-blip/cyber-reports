@@ -193,8 +193,8 @@
             <div class="position-relative">
                 <div id="globe-container">
                     <div class="threat-ticker">
-                        <span id="ticker-attack"><i class="fas fa-bolt text-warning me-1"></i> [DDoS Attack] 185.220.101.4 ➔ 192.168.1.1</span>
-                        <span class="text-danger fw-bold ms-2" id="ticker-status">HIGH SEVERITY</span>
+                        <span id="ticker-attack"><i class="fas fa-satellite-dish text-danger me-1"></i> [APTMission] Cross-border SYN-Flood attack redirected</span>
+                        <span class="text-danger fw-bold ms-2" id="ticker-status">WAR-OPS ACTIVE</span>
                     </div>
                 </div>
             </div>
@@ -235,7 +235,7 @@
             </div>
         </div>
 
-        <!-- استمارة إدخال بلاغ جديد (بدون صور) -->
+        <!-- استمارة إدخال بلاغ جديد -->
         <div id="form-section" class="card shadow-lg hidden">
             <form method="POST" action="{{ url_for('submit_report') }}">
                 <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: rgba(0, 242, 254, 0.4) !important;">
@@ -325,7 +325,6 @@
                 <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
             </div>
 
-            <!-- تبويبات الفرز -->
             <ul class="nav nav-pills mb-3 gap-2" id="recordsTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.2); border: 1px solid var(--cyber-cyan);">البلاغات الجديدة وقيد المراجعة</button>
@@ -335,7 +334,6 @@
                 </li>
             </ul>
 
-            <!-- أزرار الإجراءات الجماعية للأدمن -->
             {% if session.get('is_admin') or session.get('user') == 'admin' %}
             <div class="d-flex gap-2 mb-3 p-2 rounded" style="background: rgba(2,6,23,0.9); border: 1px solid rgba(0,242,254,0.3);" id="bulk-actions-bar">
                 <button class="btn btn-sm btn-success fw-bold" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
@@ -665,7 +663,7 @@
 
         function toggleSidebar() { document.getElementById('options-sidebar').classList.toggle('active'); }
 
-        // تشغيل أنميشن الكرة الأرضية Three.js وشريط التهديدات
+        // تشغيل أنميشن الكرة الأرضية وتحليق خطوط الهجمات السيبرانية (Three.js)
         function initGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
@@ -677,49 +675,94 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            const geometry = new THREE.SphereGeometry(2.2, 32, 32);
+            // 1. إنشاء الكرة الأرضية الهيكلية
+            const radius = 2.2;
+            const geometry = new THREE.SphereGeometry(radius, 36, 36);
             const material = new THREE.MeshBasicMaterial({ 
                 color: 0x00f2fe, 
                 wireframe: true, 
                 transparent: true, 
-                opacity: 0.25 
+                opacity: 0.18 
             });
             const globe = new THREE.Mesh(geometry, material);
             scene.add(globe);
 
-            const pointsGeometry = new THREE.BufferGeometry();
-            const pointsCount = 60;
-            const positions = new Float32Array(pointsCount * 3);
-            for(let i = 0; i < pointsCount * 3; i++) {
-                positions[i] = (Math.random() - 0.5) * 5;
+            // 2. عقد وعقد مراقبة السيبر (Nodes)
+            const nodesGeometry = new THREE.BufferGeometry();
+            const nodesCount = 80;
+            const posArray = new Float32Array(nodesCount * 3);
+            for(let i = 0; i < nodesCount * 3; i+=3) {
+                const phi = Math.acos(-1 + (2 * Math.random()));
+                const theta = Math.random() * Math.PI * 2;
+                posArray[i] = radius * Math.sin(phi) * Math.cos(theta);
+                posArray[i+1] = radius * Math.sin(phi) * Math.sin(theta);
+                posArray[i+2] = radius * Math.cos(phi);
             }
-            pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const pointsMaterial = new THREE.PointsMaterial({ color: 0xc084fc, size: 0.08 });
-            const pointsSystem = new THREE.Points(pointsGeometry, pointsMaterial);
-            scene.add(pointsSystem);
+            nodesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const nodesMaterial = new THREE.PointsMaterial({ color: 0xc084fc, size: 0.07, transparent: true, opacity: 0.8 });
+            const nodesSystem = new THREE.Points(nodesGeometry, nodesMaterial);
+            scene.add(nodesSystem);
+
+            // 3. محاكاة خطوط الهجمات السيبرانية المتبادلة بين الدول (Arc Lines)
+            const attacksGroup = new THREE.Group();
+            scene.add(attacksGroup);
+
+            function createAttackArc(startVec, endVec, colorHex) {
+                const distance = startVec.distanceTo(endVec);
+                const controlPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5).normalize().multiplyScalar(radius + distance * 0.4);
+                
+                const curve = new THREE.QuadraticBezierCurve3(startVec, controlPoint, endVec);
+                const points = curve.getPoints(30);
+                const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
+                const arcMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.7 });
+                const arcLine = new THREE.Line(arcGeo, arcMat);
+                
+                attacksGroup.add(arcLine);
+
+                setTimeout(() => {
+                    attacksGroup.remove(arcLine);
+                    arcGeo.dispose();
+                    arcMat.dispose();
+                }, 3500);
+            }
+
+            setInterval(() => {
+                if (nodesGeometry.attributes.position.count > 5) {
+                    const positions = nodesGeometry.attributes.position.array;
+                    const idx1 = Math.floor(Math.random() * (positions.length / 3)) * 3;
+                    const idx2 = Math.floor(Math.random() * (positions.length / 3)) * 3;
+
+                    const vStart = new THREE.Vector3(positions[idx1], positions[idx1+1], positions[idx1+2]);
+                    const vEnd = new THREE.Vector3(positions[idx2], positions[idx2+1], positions[idx2+2]);
+
+                    const attackColor = Math.random() > 0.4 ? 0xff3333 : 0x00ffcc;
+                    createAttackArc(vStart, vEnd, attackColor);
+                }
+            }, 700);
 
             camera.position.z = 5.5;
 
             function animate() {
                 requestAnimationFrame(animate);
-                globe.rotation.y += 0.003;
-                pointsSystem.rotation.y += 0.003;
+                globe.rotation.y += 0.002;
+                nodesSystem.rotation.y += 0.002;
+                attacksGroup.rotation.y += 0.002;
                 renderer.render(scene, camera);
             }
             animate();
 
-            const attacks = [
-                "[DDoS Attack] 185.220.101.4 ➔ 192.168.1.1 [BLOCKED]",
-                "[Port Scan] 45.154.255.82 detected on Port 443",
-                "[Tor Exit Node] Connection attempt from onion route",
-                "[Brute Force] Failed login spike on Auth Gateway"
+            const attacksList = [
+                "[APTMission] Cross-border SYN-Flood attack redirected ➔ [Mitigated]",
+                "[Cyber-Warfare] Malware payload detected from external node ➔ [Isolated]",
+                "[Counter-Strike] Automated firewall retaliated against attacking IP subnet",
+                "[BGP Hijack Alert] Routing anomaly intercepted and normalized by SOC"
             ];
             let index = 0;
             setInterval(() => {
-                index = (index + 1) % attacks.length;
+                index = (index + 1) % attacksList.length;
                 const tickerEl = document.getElementById('ticker-attack');
-                if(tickerEl) tickerEl.innerHTML = `<i class="fas fa-bolt text-warning me-1"></i> ${attacks[index]}`;
-            }, 4000);
+                if(tickerEl) tickerEl.innerHTML = `<i class="fas fa-satellite-dish text-danger me-1"></i> ${attacksList[index]}`;
+            }, 3500);
         }
 
         window.addEventListener('DOMContentLoaded', () => {
