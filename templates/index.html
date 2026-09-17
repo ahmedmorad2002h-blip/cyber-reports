@@ -22,18 +22,9 @@
         }
 
         @keyframes neonPulse {
-            0% { 
-                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); 
-                border-color: rgba(0, 242, 254, 0.5);
-            }
-            50% { 
-                box-shadow: 0 0 40px rgba(0, 242, 254, 0.8), inset 0 0 25px rgba(0, 242, 254, 0.3); 
-                border-color: #00f2fe;
-            }
-            100% { 
-                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); 
-                border-color: rgba(0, 242, 254, 0.5);
-            }
+            0% { box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(0, 242, 254, 0.8), inset 0 0 25px rgba(0, 242, 254, 0.3); border-color: #00f2fe; }
+            100% { box-shadow: 0 0 20px rgba(0, 242, 254, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.5); }
         }
 
         @keyframes titleGlow {
@@ -46,11 +37,8 @@
             color: var(--text-main); 
             font-family: 'Cairo', sans-serif; 
             min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 50% 0%, #0f172a 0%, #030712 80%),
-                linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
-            background-size: 100% 100%, 40px 40px, 40px 40px;
+            background-image: radial-gradient(circle at 50% 0%, #0f172a 0%, #030712 80%), linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px;
             overflow-x: hidden;
         }
 
@@ -71,25 +59,12 @@
             padding: 22px;
             text-align: center;
             box-shadow: 0 8px 25px rgba(0,0,0,0.7);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s;
         }
-        .stat-card:hover {
-            transform: translateY(-6px) scale(1.03);
-            box-shadow: 0 0 35px var(--cyber-cyan);
-            border-color: var(--cyber-cyan);
-        }
+        .stat-card:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 0 35px var(--cyber-cyan); border-color: var(--cyber-cyan); }
 
-        h1, h2, h3, h4, .navbar-brand {
-            animation: titleGlow 4s infinite ease-in-out;
-            color: #ffffff !important;
-            font-weight: 900 !important;
-        }
-
-        p, span, label, .form-label, .text-muted {
-            color: #f1f5f9 !important;
-            font-weight: 600 !important;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-        }
+        h1, h2, h3, h4, .navbar-brand { animation: titleGlow 4s infinite ease-in-out; color: #ffffff !important; font-weight: 900 !important; }
+        p, span, label, .form-label, .text-muted { color: #f1f5f9 !important; font-weight: 600 !important; }
 
         input, select, textarea { 
             background: rgba(2, 6, 23, 0.98) !important; 
@@ -99,189 +74,49 @@
             padding: 12px 16px !important;
             font-weight: 700 !important;
         }
-        input::placeholder, textarea::placeholder {
-            color: #94a3b8 !important;
-        }
-        input:focus, select:focus, textarea:focus { 
-            border-color: var(--cyber-cyan) !important; 
-            box-shadow: 0 0 25px var(--cyber-cyan) !important; 
-            background: rgba(3, 7, 18, 1) !important;
-            outline: none;
-            color: #ffffff !important;
-        }
-
-        select option {
-            background-color: #0b1326;
-            color: #ffffff;
-            padding: 12px;
-        }
+        input:focus, select:focus, textarea:focus { border-color: var(--cyber-cyan) !important; box-shadow: 0 0 25px var(--cyber-cyan) !important; outline: none; }
+        select option { background-color: #0b1326; color: #ffffff; }
 
         .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 5px; }
         
         .sidebar {
             position: fixed; top: 0; right: -380px; width: 380px; height: 100%;
-            background: rgba(5, 11, 24, 0.99); 
-            box-shadow: -20px 0 50px rgba(0,0,0,0.98); 
-            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-            z-index: 1050; padding: 35px;
-            border-left: 3px solid var(--cyber-cyan);
-            overflow-y: auto;
+            background: rgba(5, 11, 24, 0.99); box-shadow: -20px 0 50px rgba(0,0,0,0.98); 
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1050; padding: 35px;
+            border-left: 3px solid var(--cyber-cyan); overflow-y: auto;
         }
         .sidebar.active { right: 0; }
         .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0, 242, 254, 0.4); padding-bottom: 18px; margin-bottom: 25px; }
-        .close-btn { background: none; border: none; font-size: 32px; color: var(--cyber-cyan); cursor: pointer; transition: transform 0.3s; }
-        .close-btn:hover { transform: rotate(90deg); color: #fff; }
+        .close-btn { background: none; border: none; font-size: 32px; color: var(--cyber-cyan); cursor: pointer; }
 
         .btn-cyber {
-            background: linear-gradient(135deg, #0072ff, #00f2fe);
-            border: none;
-            color: #030712;
-            font-weight: 900;
-            box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 12px;
-            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #0072ff, #00f2fe); border: none; color: #030712; font-weight: 900;
+            box-shadow: 0 0 30px rgba(0, 242, 254, 0.6); transition: all 0.3s; border-radius: 12px;
         }
-        .btn-cyber:hover {
-            background: linear-gradient(135deg, #005bc5, #00c6ff);
-            color: #ffffff;
-            box-shadow: 0 0 45px var(--cyber-cyan);
-            transform: translateY(-3px) scale(1.02);
-        }
+        .btn-cyber:hover { background: linear-gradient(135deg, #005bc5, #00c6ff); color: #ffffff; box-shadow: 0 0 45px var(--cyber-cyan); }
 
         .btn-outline-cyber {
-            border: 2px solid var(--cyber-cyan);
-            color: var(--cyber-cyan);
-            background: rgba(0, 242, 254, 0.1);
-            font-weight: 800;
-            border-radius: 12px;
-            transition: all 0.3s;
+            border: 2px solid var(--cyber-cyan); color: var(--cyber-cyan); background: rgba(0, 242, 254, 0.1); font-weight: 800; border-radius: 12px;
         }
-        .btn-outline-cyber:hover {
-            background: rgba(0, 242, 254, 0.3);
-            color: #ffffff;
-            border-color: #ffffff;
-            box-shadow: 0 0 25px var(--cyber-cyan);
-            transform: translateY(-3px);
-        }
+        .btn-outline-cyber:hover { background: rgba(0, 242, 254, 0.3); color: #ffffff; border-color: #ffffff; }
 
         #globe-container {
-            width: 100%;
-            height: 380px;
-            position: relative;
-            margin: 15px 0;
-            border-radius: 16px;
-            overflow: hidden;
+            width: 100%; height: 380px; position: relative; margin: 15px 0; border-radius: 16px; overflow: hidden;
             background: radial-gradient(circle, rgba(11,18,33,0.85) 0%, rgba(2,6,18,0.99) 100%);
-            border: 1px solid rgba(0, 242, 254, 0.5);
-            box-shadow: inset 0 0 35px rgba(0, 242, 254, 0.25);
-            cursor: grab;
-        }
-        #globe-container:active {
-            cursor: grabbing;
+            border: 1px solid rgba(0, 242, 254, 0.5); cursor: grab;
         }
 
         .threat-ticker {
-            position: absolute;
-            bottom: 12px;
-            left: 15px;
-            right: 15px;
-            background: rgba(3, 7, 18, 0.85);
-            border: 1px solid rgba(0, 242, 254, 0.4);
-            border-radius: 8px;
-            padding: 6px 14px;
-            font-family: monospace;
-            font-size: 0.78rem;
-            color: #00f2fe;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            backdrop-filter: blur(8px);
-            z-index: 10;
-            pointer-events: none;
+            position: absolute; bottom: 12px; left: 15px; right: 15px; background: rgba(3, 7, 18, 0.85);
+            border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 8px; padding: 6px 14px; font-family: monospace; font-size: 0.78rem; color: #00f2fe; display: flex; justify-content: space-between; z-index: 10; pointer-events: none;
         }
 
         .hidden { display: none !important; }
 
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 12mm;
-            }
-
-            html, body {
-                background: #ffffff !important;
-                color: #000000 !important;
-                width: 100% !important;
-                height: auto !important;
-                min-height: auto !important;
-                overflow: visible !important;
-                position: static !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            body * {
-                visibility: hidden !important;
-            }
-
-            .modal, .modal-dialog, .modal-content, .modal-body {
-                position: static !important;
-                overflow: visible !important;
-                height: auto !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                transform: none !important;
-            }
-
-            #printable-report-area, #printable-report-area * {
-                visibility: visible !important;
-                color: #000000 !important;
-                background: transparent !important;
-                box-shadow: none !important;
-                text-shadow: none !important;
-            }
-
-            #printable-report-area {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                padding: 10px !important;
-                background: #ffffff !important;
-            }
-
-            .no-print-section, .modal-header, .modal-footer, .btn-close, nav, .sidebar {
-                display: none !important;
-            }
-
-            .page-break-page {
-                display: block !important;
-                page-break-before: always !important;
-                break-before: page !important;
-                text-align: center !important;
-                padding-top: 20px !important;
-                clear: both !important;
-                height: auto !important;
-                min-height: auto !important;
-            }
-
-            .page-break-page img {
-                max-width: 95% !important;
-                max-height: 22cm !important;
-                height: auto !important;
-                width: auto !important;
-                object-fit: contain !important;
-                margin: 15px auto !important;
-                display: block !important;
-                border: 1px solid #000000 !important;
-            }
+            body * { visibility: hidden !important; }
+            #printable-report-area, #printable-report-area * { visibility: visible !important; color: #000000 !important; background: #ffffff !important; }
+            #printable-report-area { position: absolute; left: 0; top: 0; width: 100%; }
         }
     </style>
 </head>
@@ -289,11 +124,11 @@
 
     <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important;">
         <div class="d-flex align-items-center">
-            <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 12px var(--cyber-cyan));"></i>
-            <span class="navbar-brand mb-0 h1 fw-black" style="letter-spacing: 1px; font-size: 1.2rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-OPS v2.6]</span></span>
+            <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan);"></i>
+            <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.2rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-OPS v2.8]</span></span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();" title="تحديث الصفحة وعدد البلاغات يدوياً"><i class="fas fa-sync-alt me-1"></i> تحديث الصفحة</button>
+            <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();"><i class="fas fa-sync-alt me-1"></i> تحديث</button>
             <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
@@ -325,7 +160,7 @@
                 </li>
                 <li class="mb-3">
                     <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(239,68,68,0.6);" data-bs-toggle="modal" data-bs-target="#manageUsersModal">
-                        <i class="fas fa-users-cog text-danger me-2"></i> إدارة المستخدمين المسجلين
+                        <i class="fas fa-users-cog text-danger me-2"></i> إدارة وتعديل المستخدمين
                     </a>
                 </li>
                 {% endif %}
@@ -350,15 +185,12 @@
 
         <div id="menu-section" class="card shadow-lg text-center">
             <div class="mb-2 pt-1">
-                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 25px rgba(0, 242, 254, 0.9));"></i>
+                <i class="fa-solid fa-shield-cat fa-3x" style="color: var(--cyber-cyan);"></i>
             </div>
             <h2 class="mb-1 fw-black text-white">منظومة مخرجات الرصد والتحقيقات السيبرانية</h2>
-            <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار (شامل Dark Web)</p>
+            <p class="text-white mb-2 fs-6 fw-bold">مديرية أمن وسلامة الوزارة - توثيق الحالات، تتبع المؤشرات الفنية، ومنع التكرار</p>
             
             <div class="position-relative">
-                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded bg-black bg-opacity-75 border border-info text-info small fw-bold z-3" style="font-size: 0.75rem; pointer-events: none;">
-                    <i class="fas fa-satellite-dish fa-spin me-1 text-danger"></i> رادار الهجمات السيبرانية العالمي (Interactive Neon Map)
-                </div>
                 <div id="globe-container">
                     <div class="threat-ticker">
                         <span id="ticker-attack"><i class="fas fa-bolt text-warning me-1"></i> [DDoS Attack] 185.220.101.4 ➔ 192.168.1.1</span>
@@ -371,19 +203,19 @@
                 <div class="col-4">
                     <div class="stat-card">
                         <div class="text-white small mb-1 fw-bold">إجمالي السجلات</div>
-                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan); text-shadow: 0 0 10px var(--cyber-cyan);">{{ stats.total }}</h3>
+                        <h3 class="m-0 fw-bold" style="color: var(--cyber-cyan);">{{ stats.total }}</h3>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-card">
                         <div class="text-white small mb-1 fw-bold">حالات حرجة</div>
-                        <h3 class="m-0 fw-bold text-danger" style="text-shadow: 0 0 15px rgba(239,68,68,0.8);">{{ stats.critical }}</h3>
+                        <h3 class="m-0 fw-bold text-danger">{{ stats.critical }}</h3>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-card">
                         <div class="text-white small mb-1 fw-bold">نشاط الشهر الحالي</div>
-                        <h3 class="m-0 fw-bold text-warning" style="text-shadow: 0 0 15px rgba(234,179,8,0.8);">{{ stats.monthly }}</h3>
+                        <h3 class="m-0 fw-bold text-warning">{{ stats.monthly }}</h3>
                     </div>
                 </div>
             </div>
@@ -392,30 +224,23 @@
                 <button class="btn btn-cyber py-3 fw-bold fs-6" onclick="showSection('form-section')">
                     <i class="fa-solid fa-file-shield me-2"></i> ملء استمارة مخرجات رصد جديدة
                 </button>
-
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadRecords()">
-                    <i class="fa-solid fa-database me-2"></i> 
-                    {% if session.get('is_admin') or session.get('user') == 'admin' %}
-                        السجلات المحفوظة ونظام منع التكرار (كافة البلاغات)
-                    {% else %}
-                        سجل البلاغات الخاصة بي
-                    {% endif %}
+                    <i class="fa-solid fa-database me-2"></i> السجلات والتحكم بالبلاغات (الجديدة والموافق عليها)
                 </button>
-
                 {% if session.get('is_admin') or session.get('user') == 'admin' %}
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadMonthlyLog()">
-                    <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي (Admin Only)
+                    <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي والتصفية
                 </button>
                 {% endif %}
             </div>
         </div>
 
+        <!-- استمارة إدخال بلاغ جديد (بدون صور) -->
         <div id="form-section" class="card shadow-lg hidden">
-            <form method="POST" action="{{ url_for('submit_report') }}" enctype="multipart/form-data">
-                
+            <form method="POST" action="{{ url_for('submit_report') }}">
                 <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: rgba(0, 242, 254, 0.4) !important;">
-                    <h3 class="m-0 fw-bold text-white" style="font-size: 1.4rem;"><i class="fa-solid fa-shield-halved me-2" style="color: var(--cyber-cyan);"></i> استمارة مخرجات الرصد السيبراني المتقدم</h3>
-                    <button type="button" class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+                    <h3 class="m-0 fw-bold text-white" style="font-size: 1.4rem;"><i class="fa-solid fa-shield-halved me-2" style="color: var(--cyber-cyan);"></i> استمارة مخرجات الرصد السيبراني</h3>
+                    <button type="button" class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
                 </div>
 
                 <div class="row mb-3">
@@ -432,17 +257,13 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">الاسم الثلاثي:</label>
-                        <input type="text" name="user_full_name" class="form-control" value="{{ session.get('fullname', '') }}" placeholder="أدخل اسمك الثلاثي..." required>
+                        <input type="text" name="user_full_name" class="form-control" value="{{ session.get('fullname', '') }}" required>
                     </div>
                 </div>
 
+                <div class="mb-3"><label class="form-label">مصدر الرصد</label><input type="text" name="m_source" class="form-control" placeholder="رصد مباشر..."></div>
                 <div class="mb-3">
-                    <label class="form-label">1. مصدر الرصد</label>
-                    <input type="text" name="m_source" class="form-control" placeholder="مثال: رصد مباشر، تتبع استخباراتي...">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">المنصة أو التطبيق المستهدف بالرصد (شامل الشبكة المظلمة)</label>
+                    <label class="form-label">المنصة المستهدفة</label>
                     <select name="m_platform" class="form-control">
                         <option value="Dark Web (Tor / Onion)">Dark Web (الشبكة المظلمة / Tor / Onion)</option>
                         <option value="Telegram">Telegram (تيليجرام)</option>
@@ -450,97 +271,80 @@
                         <option value="Instagram">Instagram (انستغرام)</option>
                         <option value="X (Twitter)">X / Twitter (إكس)</option>
                         <option value="TikTok">TikTok (تيك توك)</option>
-                        <option value="Website / Domain">موقع إلكتروني / Domain خاص</option>
-                        <option value="أخرى">منصة أخرى</option>
+                        <option value="Website / Domain">موقع إلكتروني / Domain</option>
+                        <option value="أخرى">أخرى</option>
                     </select>
                 </div>
-
+                <div class="mb-3"><label class="form-label">رابط الموقع أو الصفحة أو النطاق (.onion)</label><input type="text" name="m_url" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">اسم الحساب أو القناة</label><input type="text" name="m_account_name" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">تاريخ ووقت النشر أو الرصد</label><input type="datetime-local" name="m_datetime" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">وصف مختصر للحالة</label><textarea name="m_description" rows="2" class="form-control"></textarea></div>
+                
                 <div class="mb-3">
-                    <label class="form-label">2. رابط الموقع أو الصفحة أو النطاق (.onion أو رابط عادي) ذي العلاقة</label>
-                    <input type="text" name="m_url" class="form-control" placeholder="https://... أو رابط onion خاص بالدارك ويب" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">3. اسم الحساب أو القناة أو الجهة المرتبطة بالحالة (إن وجد)</label>
-                    <input type="text" name="m_account_name" class="form-control" placeholder="أدخل اسم الحساب أو الجهة المستهدفة...">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">4. تاريخ ووقت النشر أو الرصد</label>
-                    <input type="datetime-local" name="m_datetime" class="form-control">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">5. وصف مختصر وواضح للحالة المرصودة</label>
-                    <textarea name="m_description" rows="2" class="form-control" placeholder="اكتب وصفاً موجزاً لطبيعة الحالة والمحتوى المنشور..."></textarea>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">6. نوع التهديد أو النشاط السيبراني</label>
+                    <label class="form-label">نوع التهديد</label>
                     <select name="m_threat_type" class="form-control">
                         <option value="تسريب قواعد بيانات من الدارك ويب">تسريب قواعد بيانات من الدارك ويب</option>
                         <option value="ابتزاز إلكتروني">ابتزاز إلكتروني</option>
                         <option value="تشهير وإساءة">تشهير وإساءة</option>
-                        <option value="حساب مزيف / انتحال صفة">حساب مزيف / انتحال صفة</option>
                         <option value="اختراق أو تسريب معلومات">اختراق أو تسريب معلومات</option>
-                        <option value="هجوم سيبراني / DDoS">هجوم سيبراني / DDoS</option>
                         <option value="أخرى">أخرى</option>
                     </select>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">7. المؤشرات الفنية المتوفرة (تملأ الحقول عند توفرها بدقة):</label>
+                    <label class="form-label">المؤشرات الفنية:</label>
                     <div class="tech-grid">
-                        <input type="text" name="tech_ip" class="form-control" placeholder="عنوان IP أو Node">
-                        <input type="text" name="tech_domain" class="form-control" placeholder="اسم النطاق Domain / Onion">
-                        <input type="text" name="tech_url_ind" class="form-control" placeholder="الرابط الفرعي URL">
+                        <input type="text" name="tech_ip" class="form-control" placeholder="عنوان IP">
+                        <input type="text" name="tech_domain" class="form-control" placeholder="Domain / Onion">
+                        <input type="text" name="tech_url_ind" class="form-control" placeholder="الرابط الفرعي">
                         <input type="text" name="tech_email" class="form-control" placeholder="البريد الإلكتروني">
-                        <input type="text" name="tech_username" class="form-control" placeholder="اسم المستخدم أو المعرف (ID)">
-                        <input type="text" name="tech_hash" class="form-control" placeholder="قيمة التجزئة Hash">
+                        <input type="text" name="tech_username" class="form-control" placeholder="اسم المستخدم">
+                        <input type="text" name="tech_hash" class="form-control" placeholder="Hash">
                         <input type="text" name="tech_ioc" class="form-control" placeholder="مؤشرات الاختراق IOC">
-                        <input type="text" name="tech_other" class="form-control" placeholder="معلومات فنية أخرى">
+                        <input type="text" name="tech_other" class="form-control" placeholder="أخرى">
                     </div>
                 </div>
 
-                <div class="mb-3" id="grp-evidence">
-                    <label class="form-label">8. صور أو أدلة التوثيق المتوفرة (إرفاق لقطات شاشة أو أدلة)</label>
-                    <input type="file" name="evidence_files" class="form-control" multiple accept="image/*" id="evidence-input">
-                    <div id="image-preview" class="d-flex gap-2 mt-2 flex-wrap"></div>
-                </div>
-
                 <div class="mb-3">
-                    <label class="form-label">9. بيان أوّلي عن مستوى الخطورة أو أهمية الحالة</label>
+                    <label class="form-label">مستوى الخطورة</label>
                     <select name="m_severity" class="form-control">
                         <option value="حرج / عالي الخطورة">حرج / عالي الخطورة</option>
                         <option value="متوسط الخطورة">متوسط الخطورة</option>
                         <option value="منخفض الخطورة">منخفض الخطورة</option>
                     </select>
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">10. التوصية الأولية أو الإجراء المقترح (عند الحاجة)</label>
-                    <textarea name="m_recommendation" rows="2" class="form-control" placeholder="اكتب الإجراءات اللاحقة المناسبة أو التوصية الفنية..."></textarea>
-                </div>
-
-                <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn btn-cyber flex-grow-1 py-3 fs-6">
-                        <i class="fas fa-save me-2"></i> حفظ البلاغ وتوثيقه رسمياً
-                    </button>
-                </div>
+                <div class="mb-3"><label class="form-label">التوصية الأولية</label><textarea name="m_recommendation" rows="2" class="form-control"></textarea></div>
+                <button type="submit" class="btn btn-cyber w-100 py-3"><i class="fas fa-save me-2"></i> حفظ البلاغ رسمياً</button>
             </form>
         </div>
 
+        <!-- سجلات البلاغات -->
         <div id="records-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;">
-                    <i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> 
-                    {% if session.get('is_admin') or session.get('user') == 'admin' %}السجلات المحفوظة الشاملة{% else %}سجل البلاغات الخاصة بي{% endif %}
-                </h3>
-                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+                <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;"><i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> السجلات ونظام إدارة البلاغات</h3>
+                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
             </div>
-            
+
+            <!-- تبويبات الفرز -->
+            <ul class="nav nav-pills mb-3 gap-2" id="recordsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.2); border: 1px solid var(--cyber-cyan);">البلاغات الجديدة وقيد المراجعة</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">البلاغات الموافق عليها (السجل الكامل)</button>
+                </li>
+            </ul>
+
+            <!-- أزرار الإجراءات الجماعية للأدمن -->
+            {% if session.get('is_admin') or session.get('user') == 'admin' %}
+            <div class="d-flex gap-2 mb-3 p-2 rounded" style="background: rgba(2,6,23,0.9); border: 1px solid rgba(0,242,254,0.3);" id="bulk-actions-bar">
+                <button class="btn btn-sm btn-success fw-bold" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
+                <button class="btn btn-sm btn-outline-danger fw-bold ms-auto" onclick="deleteAllApproved()"><i class="fas fa-trash-alt me-1"></i> حذف كافة البلاغات الموافق عليها بضغطة زر</button>
+            </div>
+            {% endif %}
+
             <div class="mb-3">
-                <input type="text" id="record-search" class="form-control" placeholder="بحث سريع في السجلات (برقم البلاغ، المنصة، اسم الحساب، الرابط)..." onkeyup="filterRecords()">
+                <input type="text" id="record-search" class="form-control" placeholder="بحث سريع برقم البلاغ، المنصة، أو الرابط..." onkeyup="filterRecords()">
             </div>
 
             <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
@@ -549,126 +353,53 @@
         {% if session.get('is_admin') or session.get('user') == 'admin' %}
         <div id="monthly-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري الرسمي الشامل</h3>
-                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة للقائمة</button>
+                <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري والتصفية</h3>
+                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
             </div>
-            <div id="monthly-container" style="max-height: 500px; overflow-y: auto;"></div>
+            <div class="mb-3">
+                <button class="btn btn-danger fw-bold" onclick="deleteMonthlyApproved()"><i class="fas fa-broom me-1"></i> تصفية وحذف كافة البلاغات الموافق عليها لهذا الشهر</button>
+            </div>
+            <div id="monthly-container" style="max-height: 450px; overflow-y: auto;"></div>
         </div>
         {% endif %}
 
     </div>
 
-    <!-- نافذة عرض تفاصيل البلاغ والطباعة -->
+    <!-- Modal تفاصيل البلاغ والطباعة -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
-                <div class="modal-header border-bottom no-print-section" style="border-color: rgba(0,242,254,0.4) !important;">
-                    <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2" style="color: var(--cyber-cyan);"></i> تفاصيل البلاغ السيبراني الكامل</h5>
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important;">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2" style="color: var(--cyber-cyan);"></i> تفاصيل البلاغ الكاملة والمؤشرات الفنية</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
-                    
                     <div id="printable-report-area">
                         <div class="text-center mb-4 pb-2 border-bottom">
-                            <h4 class="fw-bold">جمهورية العراق</h4>
-                            <h5 class="fw-bold">مديرية أمن وسلامة الوزارة</h5>
+                            <h4 class="fw-bold">جمهورية العراق - مديرية أمن وسلامة الوزارة</h4>
                             <h6 class="fw-bold text-info">[استمارة رصد وتحقيق سيبراني معتمدة]</h6>
                         </div>
-
                         <div id="report-content-body" class="mb-4"></div>
-
-                        <div id="report-attachments-print-area"></div>
                     </div>
-
                 </div>
-                <div class="modal-footer border-top no-print-section d-flex justify-content-between" style="border-color: rgba(0,242,254,0.4) !important;">
+                <div class="modal-footer border-top d-flex justify-content-between">
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-cyber fw-bold" onclick="printReportAsPDF()">
-                            <i class="fas fa-file-pdf me-1"></i> طباعة كـ PDF
-                        </button>
-                        <button type="button" class="btn btn-outline-cyber fw-bold" onclick="exportReportToWord()">
-                            <i class="fas fa-file-word me-1"></i> تصدير كـ Word
-                        </button>
+                        <button type="button" class="btn btn-cyber fw-bold" onclick="window.print()"><i class="fas fa-file-pdf me-1"></i> طباعة PDF</button>
+                        <button type="button" class="btn btn-outline-cyber fw-bold" onclick="exportReportToWord()"><i class="fas fa-file-word me-1"></i> تصدير Word</button>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-warning text-dark fw-bold" id="share-report-btn">
-                            <i class="fas fa-share-alt me-1"></i> نسخ رابط البلاغ الكامل للمدير
-                        </button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
-                    </div>
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="changePasswordModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important; border-radius: 16px;">
-                <form method="POST" action="{{ url_for('change_password') }}">
-                    <div class="modal-header border-bottom" style="border-color: rgba(0,242,254,0.4) !important;">
-                        <h5 class="modal-title fw-bold text-white"><i class="fas fa-key me-2" style="color: var(--cyber-cyan);"></i> تغيير كلمة السر</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور الحالية</label>
-                            <input type="password" name="current_password" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور الجديدة</label>
-                            <input type="password" name="new_password" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">تأكيد كلمة المرور الجديدة</label>
-                            <input type="password" name="confirm_password" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-top" style="border-color: rgba(0,242,254,0.4) !important;">
-                        <button type="submit" class="btn btn-cyber">حفظ التغييرات</button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #f59e0b !important; border-radius: 16px;">
-                <form method="POST" action="{{ url_for('add_user') }}">
-                    <div class="modal-header border-bottom" style="border-color: rgba(245,158,11,0.4) !important;">
-                        <h5 class="modal-title text-warning fw-bold"><i class="fas fa-user-plus me-2"></i> إضافة حساب مستخدم جديد</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">اسم المستخدم (للتسجيل)</label>
-                            <input type="text" name="new_username" class="form-control" required placeholder="مثال: officer_ahmed">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">الاسم الكامل أو الرتبة والاسم</label>
-                            <input type="text" name="new_fullname" class="form-control" placeholder="مثال: مفوض أحمد جاسم">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور المؤقتة</label>
-                            <input type="password" name="new_password" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-top" style="border-color: rgba(245,158,11,0.4) !important;">
-                        <button type="submit" class="btn btn-warning text-dark fw-bold">إضافة الحساب رسمياً</button>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
+    <!-- نافذة تعديل المستخدمين للأدمن -->
     {% if session.get('is_admin') or session.get('user') == 'admin' %}
     <div class="modal fade" id="manageUsersModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #ef4444 !important; border-radius: 16px;">
-                <div class="modal-header border-bottom" style="border-color: rgba(239,68,68,0.4) !important;">
-                    <h5 class="modal-title text-danger fw-bold"><i class="fas fa-users-cog me-2"></i> إدارة المستخدمين المسجلين في النظام</h5>
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #ef4444 !important;">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title text-danger fw-bold"><i class="fas fa-users-cog me-2"></i> إدارة وتعديل حسابات المستخدمين</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
@@ -678,7 +409,7 @@
                                 <tr>
                                     <th>اسم المستخدم</th>
                                     <th>الاسم الكامل</th>
-                                    <th>نوع الصلاحية</th>
+                                    <th>تعديل الرمز / الاسم</th>
                                     <th>الإجراء</th>
                                 </tr>
                             </thead>
@@ -686,384 +417,121 @@
                                 {% for uname, udata in users.items() %}
                                 <tr>
                                     <td><code>{{ uname }}</code></td>
-                                    <td>{{ udata.get('fullname', 'غير محدد') }}</td>
-                                    <td>
-                                        {% if udata.get('is_admin') or uname == 'admin' %}
-                                            <span class="badge bg-danger">مشرف (Admin)</span>
-                                        {% else %}
-                                            <span class="badge bg-info text-dark fw-bold">مستخدم مخول</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if uname != 'admin' %}
-                                        <form action="{{ url_for('delete_user', username=uname) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم؟');">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold"><i class="fas fa-trash-alt"></i> حذف</button>
-                                        </form>
-                                        {% else %}
-                                        <span class="text-muted small">محمي</span>
-                                        {% endif %}
-                                    </td>
+                                    <form action="{{ url_for('update_user', username=uname) }}" method="POST">
+                                        <td><input type="text" name="fullname" value="{{ udata.get('fullname', '') }}" class="form-control form-control-sm"></td>
+                                        <td><input type="password" name="password" placeholder="رمز جديد (اختياري)" class="form-control form-control-sm"></td>
+                                        <td>
+                                            <button type="submit" class="btn btn-sm btn-info fw-bold mb-1">حفظ</button>
+                                            {% if uname != 'admin' %}
+                                            <button type="submit" formaction="{{ url_for('delete_user', username=uname) }}" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('حذف المستخدم؟')">حذف</button>
+                                            {% endif %}
+                                        </td>
+                                    </form>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top" style="border-color: rgba(239,68,68,0.4) !important;">
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
-                </div>
+                <div class="modal-footer border-top"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div>
             </div>
         </div>
     </div>
     {% endif %}
 
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid var(--cyber-cyan) !important;">
+                <form method="POST" action="{{ url_for('change_password') }}">
+                    <div class="modal-header"><h5 class="modal-title text-white">تغيير كلمة السر</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <div class="mb-3"><label class="form-label">الحالية</label><input type="password" name="current_password" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">الجديدة</label><input type="password" name="new_password" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">تأكيد الجديدة</label><input type="password" name="confirm_password" class="form-control" required></div>
+                    </div>
+                    <div class="modal-footer"><button type="submit" class="btn btn-cyber">حفظ</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(11,19,38,0.99); border: 2px solid #f59e0b !important;">
+                <form method="POST" action="{{ url_for('add_user') }}">
+                    <div class="modal-header"><h5 class="modal-title text-warning">إضافة مستخدم جديد</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <div class="mb-3"><label class="form-label">اسم المستخدم</label><input type="text" name="new_username" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">الاسم الكامل</label><input type="text" name="new_fullname" class="form-control"></div>
+                        <div class="mb-3"><label class="form-label">كلمة المرور</label><input type="password" name="new_password" class="form-control" required></div>
+                    </div>
+                    <div class="modal-footer"><button type="submit" class="btn btn-warning text-dark fw-bold">إضافة</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const IS_ADMIN = {{ 'true' if session.get('is_admin') or session.get('user') == 'admin' else 'false' }};
-        const CURRENT_USER_FULLNAME = "{{ session.get('fullname', '') }}";
-
         let allGlobalRecords = [];
+        let currentTabStatus = 'قيد المراجعة';
         let currentSelectedReport = null;
 
-        function copyLink(url, btnElement) {
-            if (!url) return;
-            navigator.clipboard.writeText(url).then(() => {
-                const originalHtml = btnElement.innerHTML;
-                btnElement.innerHTML = '<i class="fas fa-check me-1"></i> تم النسخ!';
-                btnElement.classList.add('btn-success');
-                btnElement.classList.remove('btn-outline-cyber');
-                setTimeout(() => {
-                    btnElement.innerHTML = originalHtml;
-                    btnElement.classList.remove('btn-success');
-                    btnElement.classList.add('btn-outline-cyber');
-                }, 2000);
-            });
-        }
-
-        function initCyberGlobe() {
-            const container = document.getElementById('globe-container');
-            if (!container) return;
-
-            const ticker = container.querySelector('.threat-ticker');
-            container.innerHTML = '';
-            if (ticker) container.appendChild(ticker);
-
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 15;
-
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            container.appendChild(renderer.domElement);
-
-            const globeGroup = new THREE.Group();
-            scene.add(globeGroup);
-
-            const globeGeo = new THREE.SphereGeometry(4.5, 40, 40);
-            const globeMat = new THREE.MeshBasicMaterial({
-                color: 0x030d22,
-                transparent: true,
-                opacity: 0.95
-            });
-            const globeMesh = new THREE.Mesh(globeGeo, globeMat);
-            globeGroup.add(globeMesh);
-
-            const wireGeo = new THREE.SphereGeometry(4.53, 32, 32);
-            const wireMat = new THREE.MeshBasicMaterial({
-                color: 0x00f2fe,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.35,
-                blending: THREE.AdditiveBlending
-            });
-            const wireMesh = new THREE.Mesh(wireGeo, wireMat);
-            globeGroup.add(wireMesh);
-
-            function latLongToVector3(lat, lon, radius) {
-                const phi = (90 - lat) * (Math.PI / 180);
-                const theta = (lon + 180) * (Math.PI / 180);
-                const x = -((radius) * Math.sin(phi) * Math.cos(theta));
-                const z = ((radius) * Math.sin(phi) * Math.sin(theta));
-                const y = ((radius) * Math.cos(phi));
-                return new THREE.Vector3(x, y, z);
-            }
-
-            const targetCoord = { lat: 33.3152, lon: 44.3661, name: "Iraq (Target)" };
-            const targetVec = latLongToVector3(targetCoord.lat, targetCoord.lon, 4.55);
-
-            const targetMarkerGeo = new THREE.SphereGeometry(0.15, 16, 16);
-            const targetMarkerMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe, blending: THREE.AdditiveBlending });
-            const targetMarker = new THREE.Mesh(targetMarkerGeo, targetMarkerMat);
-            targetMarker.position.copy(targetVec);
-            globeGroup.add(targetMarker);
-
-            const attackSources = [
-                { lat: 55.7558, lon: 37.6173, country: "Russia", ip: "185.220.101.4", type: "DDoS Attack" },
-                { lat: 39.9042, lon: 116.4074, country: "China", ip: "220.181.38.148", type: "SQL Injection" },
-                { lat: 37.7749, lon: -122.4194, country: "USA", ip: "104.244.42.1", type: "DarkWeb Leak" },
-                { lat: 52.5200, lon: 13.4050, country: "Germany", ip: "185.220.101.5", type: "Brute Force" },
-                { lat: 35.6762, lon: 139.6503, country: "Japan", ip: "133.242.181.1", type: "Botnet Probe" },
-                { lat: 51.5074, lon: -0.1278, country: "UK", ip: "212.58.244.20", type: "Malware C2" },
-                { lat: 48.8566, lon: 2.3522, country: "France", ip: "193.104.22.1", type: "Phishing Wave" },
-                { lat: -33.8688, lon: 151.2093, country: "Australia", ip: "139.130.4.5", type: "Zero-Day Exploit" },
-                { lat: 28.6139, lon: 77.2090, country: "India", ip: "103.25.14.8", type: "API Brute Force" },
-                { lat: -23.5505, lon: -46.6333, country: "Brazil", ip: "177.185.12.9", type: "Ransomware Node" },
-                { lat: 37.5665, lon: 126.9780, country: "South Korea", ip: "211.234.3.2", type: "SYN Flood" },
-                { lat: 30.0444, lon: 31.2357, country: "Egypt", ip: "197.45.21.9", type: "Web Defacement" }
-            ];
-
-            const attackArcs = [];
-            const neonColors = [0x00f2fe, 0xff2a5f, 0xc084fc, 0x38bdf8, 0xf43f5e, 0x10b981];
-
-            attackSources.forEach((src, index) => {
-                const srcVec = latLongToVector3(src.lat, src.lon, 4.55);
-
-                const srcGeo = new THREE.SphereGeometry(0.08, 10, 10);
-                const srcMat = new THREE.MeshBasicMaterial({ 
-                    color: neonColors[index % neonColors.length],
-                    blending: THREE.AdditiveBlending 
-                });
-                const srcMesh = new THREE.Mesh(srcGeo, srcMat);
-                srcMesh.position.copy(srcVec);
-                globeGroup.add(srcMesh);
-
-                const distance = srcVec.distanceTo(targetVec);
-                const mid = srcVec.clone().add(targetVec).multiplyScalar(0.5);
-                const midLength = mid.length();
-                mid.normalize();
-                mid.multiplyScalar(midLength + distance * (0.35 + (index % 3) * 0.12));
-
-                const curve = new THREE.QuadraticBezierCurve3(srcVec, mid, targetVec);
-                const points = curve.getPoints(60);
-                const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
-
-                const arcMat = new THREE.LineBasicMaterial({
-                    color: neonColors[index % neonColors.length],
-                    transparent: true,
-                    opacity: 0.85,
-                    blending: THREE.AdditiveBlending
-                });
-                const arcLine = new THREE.Line(arcGeo, arcMat);
-                globeGroup.add(arcLine);
-
-                const pulseGeo = new THREE.SphereGeometry(0.1, 12, 12);
-                const pulseMat = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.95,
-                    blending: THREE.AdditiveBlending
-                });
-                const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
-                pulseMesh.position.copy(srcVec);
-                globeGroup.add(pulseMesh);
-
-                attackArcs.push({
-                    curve: curve,
-                    pulse: pulseMesh,
-                    line: arcLine,
-                    progress: Math.random(),
-                    speed: 0.006 + Math.random() * 0.01,
-                    info: src
-                });
-            });
-
-            const impactGeo = new THREE.RingGeometry(0.05, 0.4, 32);
-            const impactMat = new THREE.MeshBasicMaterial({
-                color: 0x00f2fe,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.9,
-                blending: THREE.AdditiveBlending
-            });
-            const impactRing = new THREE.Mesh(impactGeo, impactMat);
-            impactRing.position.copy(targetVec);
-            impactRing.lookAt(new THREE.Vector3(0,0,0));
-            globeGroup.add(impactRing);
-
-            let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
-
-            container.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
-            container.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                const deltaX = e.clientX - previousMousePosition.x;
-                const deltaY = e.clientY - previousMousePosition.y;
-
-                globeGroup.rotation.y += deltaX * 0.006;
-                globeGroup.rotation.x += deltaY * 0.006;
-
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
-            window.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-
-            container.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                if (e.touches.length > 0) {
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                }
-            });
-
-            container.addEventListener('touchmove', (e) => {
-                if (!isDragging || e.touches.length === 0) return;
-                const deltaX = e.touches[0].clientX - previousMousePosition.x;
-                const deltaY = e.touches[0].clientY - previousMousePosition.y;
-
-                globeGroup.rotation.y += deltaX * 0.006;
-                globeGroup.rotation.x += deltaY * 0.006;
-
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            });
-
-            window.addEventListener('touchend', () => {
-                isDragging = false;
-            });
-
-            let lastTickerUpdate = 0;
-            let currentArcIndex = 0;
-
-            function animate(time) {
-                requestAnimationFrame(animate);
-
-                if (!isDragging) {
-                    globeGroup.rotation.y += 0.002;
-                }
-
-                attackArcs.forEach((arc, idx) => {
-                    arc.progress += arc.speed;
-                    if (arc.progress > 1) {
-                        arc.progress = 0;
-                        arc.speed = 0.006 + Math.random() * 0.01;
-                    }
-                    const point = arc.curve.getPoint(arc.progress);
-                    arc.pulse.position.copy(point);
-
-                    const lineOpacity = 0.5 + Math.sin(time * 0.006 + idx) * 0.4;
-                    arc.line.material.opacity = lineOpacity;
-                });
-
-                const pulseScale = 1 + Math.sin(time * 0.012) * 0.8;
-                impactRing.scale.set(pulseScale, pulseScale, pulseScale);
-
-                if (time - lastTickerUpdate > 2500) {
-                    lastTickerUpdate = time;
-                    const attack = attackArcs[currentArcIndex].info;
-                    const tickerAttack = document.getElementById('ticker-attack');
-                    const tickerStatus = document.getElementById('ticker-status');
-                    if (tickerAttack && tickerStatus) {
-                        tickerAttack.innerHTML = `<i class="fas fa-bolt text-warning me-1"></i> [${attack.type}] ${attack.country} (${attack.ip}) ➔ Iraq Defense Grid`;
-                        tickerStatus.innerText = (currentArcIndex % 2 === 0) ? "CRITICAL THREAT" : "INTERCEPTED";
-                        tickerStatus.className = (currentArcIndex % 2 === 0) ? "text-danger fw-bold ms-2" : "text-success fw-bold ms-2";
-                    }
-                    currentArcIndex = (currentArcIndex + 1) % attackArcs.length;
-                }
-
-                renderer.render(scene, camera);
-            }
-            animate(0);
-
-            window.addEventListener('resize', () => {
-                if (!container) return;
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            });
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            initCyberGlobe();
-
-            document.getElementById('evidence-input')?.addEventListener('change', function(e) {
-                const previewContainer = document.getElementById('image-preview');
-                previewContainer.innerHTML = '';
-                Array.from(e.target.files).forEach(file => {
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = function(evt) {
-                            const img = document.createElement('img');
-                            img.src = evt.target.result;
-                            img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--cyber-cyan);';
-                            previewContainer.appendChild(img);
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            });
-
-            document.getElementById('share-report-btn')?.addEventListener('click', function() {
-                if (currentSelectedReport) {
-                    copyLink(currentSelectedReport.url, this);
-                }
-            });
-        });
-
-        function toggleSidebar() {
-            document.getElementById('options-sidebar').classList.toggle('active');
+        function switchTab(status) {
+            currentTabStatus = status;
+            document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.2)' : 'rgba(15,23,42,0.8)';
+            document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.2)' : 'rgba(15,23,42,0.8)';
+            renderRecordsList(allGlobalRecords);
         }
 
         function showSection(sectionId) {
             document.getElementById('menu-section').classList.add('hidden');
             document.getElementById('form-section').classList.add('hidden');
             document.getElementById('records-section').classList.add('hidden');
-            
             const monthlySec = document.getElementById('monthly-section');
             if (monthlySec) monthlySec.classList.add('hidden');
-
             document.getElementById(sectionId).classList.remove('hidden');
         }
 
         function loadRecords() {
             showSection('records-section');
-            fetch('/get-records')
-                .then(res => res.json())
-                .then(data => {
-                    allGlobalRecords = data.records || [];
-                    renderRecordsList(allGlobalRecords);
-                });
+            fetch('/get-records').then(res => res.json()).then(data => {
+                allGlobalRecords = data.records || [];
+                renderRecordsList(allGlobalRecords);
+            });
         }
 
         function renderRecordsList(records) {
             const container = document.getElementById('records-container');
-            if(records.length === 0) {
-                container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد سجلات خاصة بك محفوظة حتى الآن.</p>';
+            const filteredByTab = records.filter(r => (r.status || 'قيد المراجعة') === currentTabStatus);
+
+            if(filteredByTab.length === 0) {
+                container.innerHTML = `<p class="text-center text-white py-4 fw-bold">لا توجد سجلات ضمن خانة [${currentTabStatus}].</p>`;
                 return;
             }
-            container.innerHTML = records.map(r => `
-                <div class="p-3 rounded mb-3 position-relative shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4);">
+
+            container.innerHTML = filteredByTab.map(r => `
+                <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4);">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            ${IS_ADMIN && currentTabStatus === 'قيد المراجعة' ? `<input type="checkbox" class="form-check-input report-checkbox" value="${r.report_id}">` : ''}
+                            <span class="fw-bold fs-6" style="color: var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
+                        </div>
                         <div class="d-flex align-items-center gap-2">
                             ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success">تمت الموافقة</span>' : '<span class="badge bg-warning text-dark">قيد المراجعة</span>'}
-                            
                             <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> تفاصيل</button>
                             
                             ${IS_ADMIN && r.status === 'قيد المراجعة' ? `
-                                <form action="/approve-report/${r.report_id}" method="POST" class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-success py-0 px-2 fw-bold">موافقة</button>
-                                </form>
-                                <form action="/reject-report/${r.report_id}" method="POST" class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
-                                </form>
+                                <button onclick="approveReport('${r.report_id}')" class="btn btn-sm btn-success py-0 px-2 fw-bold">موافقة</button>
+                                <button onclick="rejectReport('${r.report_id}')" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
                             ` : ''}
 
-                            ${IS_ADMIN ? `
-                            <form action="/delete-report/${r.report_id}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف السجل"><i class="fas fa-trash-alt"></i></button>
-                            </form>
-                            ` : ''}
+                            ${IS_ADMIN ? `<button onclick="deleteReport('${r.report_id}')" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </div>
                     </div>
                     <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${r.officer} | <strong>المنصة:</strong> <span class="text-info">${r.platform}</span></div>
-                    <div class="text-info text-break small mb-2 fw-bold d-flex align-items-center gap-2">
-                        <span><strong>الرابط:</strong> <a href="${r.url}" target="_blank" style="color: var(--cyber-cyan);">${r.url}</a></span>
-                    </div>
+                    <div class="text-info text-break small mb-2 fw-bold"><strong>الرابط:</strong> <a href="${r.url}" target="_blank" style="color: var(--cyber-cyan);">${r.url}</a></div>
                     ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${r.description}</div>` : ''}
                 </div>
             `).join('');
@@ -1080,39 +548,72 @@
             renderRecordsList(filtered);
         }
 
+        function approveReport(id) {
+            fetch(`/approve-report/${id}`, { method: 'POST' }).then(res => res.json()).then(data => { if(data.success) loadRecords(); });
+        }
+
+        function rejectReport(id) {
+            if(!confirm('هل أنت متأكد من رفض البلاغ؟')) return;
+            fetch(`/reject-report/${id}`, { method: 'POST' }).then(res => res.json()).then(data => { if(data.success) loadRecords(); });
+        }
+
+        function deleteReport(id) {
+            if(!confirm('هل أنت متأكد من الحذف النهائي؟')) return;
+            fetch(`/delete-report/${id}`, { method: 'POST' }).then(res => res.json()).then(data => { if(data.success) loadRecords(); });
+        }
+
+        function bulkApproveSelected() {
+            const checkboxes = document.querySelectorAll('.report-checkbox:checked');
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            if(ids.length === 0) { alert('يرجى تحديد بلاغ واحد على الأقل.'); return; }
+            if(!confirm(`هل تريد الموافقة على عدد (${ids.length}) بلاغ دفعة واحدة؟`)) return;
+
+            fetch('/bulk-approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_ids: ids })
+            }).then(res => res.json()).then(data => { if(data.success) loadRecords(); });
+        }
+
+        function deleteAllApproved() {
+            if(!confirm('تحذير: هل تريد حقاً حذف كافة البلاغات التي تمت الموافقة عليها دفعة واحدة؟')) return;
+            fetch('/delete-approved-bulk', { method: 'POST' }).then(res => res.json()).then(data => { if(data.success) loadRecords(); });
+        }
+
+        function deleteMonthlyApproved() {
+            if(!confirm('هل تريد تصفية وحذف كافة البلاغات الموافق عليها لشهر الحالي؟')) return;
+            fetch('/delete-monthly-approved', { method: 'POST' }).then(res => res.json()).then(data => { if(data.success) loadMonthlyLog(); });
+        }
+
         function loadMonthlyLog() {
             showSection('monthly-section');
-            fetch('/monthly-log')
-                .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById('monthly-container');
-                    if(!container) return;
-                    if(data.monthly_reports.length === 0) {
-                        container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
-                        return;
-                    }
-                    container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
-                        <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-3 fw-bold" style="background: rgba(2,6,23,0.95);">
-                            <div>
-                                <span style="color: var(--cyber-cyan);">${r.report_id}</span> | <span>${r.officer}</span>
-                            </div>
-                            <span class="badge bg-dark border border-info text-info">${r.timestamp}</span>
-                        </li>
-                    `).join('') + '</ul>';
-                });
+            fetch('/monthly-log').then(res => res.json()).then(data => {
+                const container = document.getElementById('monthly-container');
+                if(!container) return;
+                if(data.monthly_reports.length === 0) {
+                    container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
+                    return;
+                }
+                container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
+                    <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-3 fw-bold" style="background: rgba(2,6,23,0.95);">
+                        <div><span style="color: var(--cyber-cyan);">${r.report_id}</span> | <span>${r.officer}</span></div>
+                        <span class="badge bg-dark border border-info text-info">${r.timestamp}</span>
+                    </li>
+                `).join('') + '</ul>';
+            });
         }
 
         function openReportModal(report) {
             currentSelectedReport = report;
             const bodyContainer = document.getElementById('report-content-body');
-            const attachmentsContainer = document.getElementById('report-attachments-print-area');
+            const tech = report.tech_indicators || {};
             
             bodyContainer.innerHTML = `
                 <table class="table table-bordered text-white align-middle" style="border-color: rgba(0,242,254,0.3);">
                     <tr><th width="30%">رقم البلاغ</th><td>${report.report_id}</td></tr>
                     <tr><th>القائم بالرصد</th><td>${report.officer}</td></tr>
                     <tr><th>المنصة</th><td>${report.platform}</td></tr>
-                    <tr><th>اسم الحساب / الجهة</th><td>${report.accountName || 'غير محدد'}</td></tr>
+                    <tr><th>اسم الحساب</th><td>${report.accountName || 'غير محدد'}</td></tr>
                     <tr><th>الرابط</th><td><a href="${report.url}" target="_blank" style="color: var(--cyber-cyan);">${report.url}</a></td></tr>
                     <tr><th>تاريخ ووقت الرصد</th><td>${report.datetime || report.timestamp}</td></tr>
                     <tr><th>نوع التهديد</th><td>${report.threatType || 'غير محدد'}</td></tr>
@@ -1120,39 +621,23 @@
                     <tr><th>الوصف</th><td>${report.description || 'لا يوجد وصف'}</td></tr>
                     <tr><th>التوصية</th><td>${report.recommendation || 'لا توجد توصية'}</td></tr>
                     <tr><th>حالة البلاغ</th><td>${report.status}</td></tr>
+                    <tr class="table-dark"><th colspan="2" class="text-info text-center">المؤشرات الفنية (Technical Indicators)</th></tr>
+                    <tr><th>عنوان IP أو Node</th><td>${tech.ip || 'غير متوفر'}</td></tr>
+                    <tr><th>نطاق Domain / Onion</th><td>${tech.domain || 'غير متوفر'}</td></tr>
+                    <tr><th>الرابط الفرعي URL</th><td>${tech.url || 'غير متوفر'}</td></tr>
+                    <tr><th>البريد الإلكتروني</th><td>${tech.email || 'غير متوفر'}</td></tr>
+                    <tr><th>اسم المستخدم / المعرف</th><td>${tech.username || 'غير متوفر'}</td></tr>
+                    <tr><th>قيمة التجزئة Hash</th><td>${tech.hash || 'غير متوفر'}</td></tr>
+                    <tr><th>مؤشرات الاختراق IOC</th><td>${tech.ioc || 'غير متوفر'}</td></tr>
+                    <tr><th>معلومات فنية أخرى</th><td>${tech.other || 'غير متوفر'}</td></tr>
                 </table>
             `;
 
-            if (report.evidence && report.evidence.length > 0) {
-                attachmentsContainer.innerHTML = `
-                    <h5 class="fw-bold mt-4 mb-3 text-info no-print-section"><i class="fas fa-paperclip me-2"></i>الأدلة المرفقة (${report.evidence.length})</h5>
-                    <div class="d-flex flex-wrap gap-3 no-print-section mb-4">
-                        ${report.evidence.map(img => `<a href="${img}" target="_blank"><img src="${img}" style="max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--cyber-cyan);"></a>`).join('')}
-                    </div>
-                    <div class="d-none d-print-block">
-                        ${report.evidence.map((img, index) => `
-                            <div class="page-break-page">
-                                <h6>دليل التوثيق رقم (${index + 1}) - البلاغ ${report.report_id}</h6>
-                                <img src="${img}">
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else {
-                attachmentsContainer.innerHTML = '<p class="text-muted small">لا توجد أدلة مصورة مرفقة لهذا البلاغ.</p>';
-            }
-
-            const modal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
-            modal.show();
-        }
-
-        function printReportAsPDF() { 
-            window.print(); 
+            new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
         }
 
         function exportReportToWord() {
             if (!currentSelectedReport) return;
-            
             const content = `
                 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
                 <head><meta charset='utf-8'><title>تقرير ${currentSelectedReport.report_id}</title></head>
@@ -1164,11 +649,10 @@
                     <p><strong>المنصة:</strong> ${currentSelectedReport.platform}</p>
                     <p><strong>الرابط:</strong> ${currentSelectedReport.url}</p>
                     <p><strong>الوصف:</strong> ${currentSelectedReport.description}</p>
-                    <p><strong>التوصية:</strong> ${currentSelectedReport.recommendation}</p>
+                    <p><strong>المؤشرات الفنية:</strong> IP: ${JSON.stringify(currentSelectedReport.tech_indicators)}</p>
                 </body>
                 </html>
             `;
-
             const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1178,6 +662,69 @@
             a.click();
             document.body.removeChild(a);
         }
+
+        function toggleSidebar() { document.getElementById('options-sidebar').classList.toggle('active'); }
+
+        // تشغيل أنميشن الكرة الأرضية Three.js وشريط التهديدات
+        function initGlobe() {
+            const container = document.getElementById('globe-container');
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const geometry = new THREE.SphereGeometry(2.2, 32, 32);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00f2fe, 
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.25 
+            });
+            const globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            const pointsGeometry = new THREE.BufferGeometry();
+            const pointsCount = 60;
+            const positions = new Float32Array(pointsCount * 3);
+            for(let i = 0; i < pointsCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 5;
+            }
+            pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const pointsMaterial = new THREE.PointsMaterial({ color: 0xc084fc, size: 0.08 });
+            const pointsSystem = new THREE.Points(pointsGeometry, pointsMaterial);
+            scene.add(pointsSystem);
+
+            camera.position.z = 5.5;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                globe.rotation.y += 0.003;
+                pointsSystem.rotation.y += 0.003;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            const attacks = [
+                "[DDoS Attack] 185.220.101.4 ➔ 192.168.1.1 [BLOCKED]",
+                "[Port Scan] 45.154.255.82 detected on Port 443",
+                "[Tor Exit Node] Connection attempt from onion route",
+                "[Brute Force] Failed login spike on Auth Gateway"
+            ];
+            let index = 0;
+            setInterval(() => {
+                index = (index + 1) % attacks.length;
+                const tickerEl = document.getElementById('ticker-attack');
+                if(tickerEl) tickerEl.innerHTML = `<i class="fas fa-bolt text-warning me-1"></i> ${attacks[index]}`;
+            }, 4000);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initGlobe();
+        });
     </script>
 </body>
 </html>
