@@ -764,8 +764,6 @@
             if(!report) return;
             const tech = report.tech_indicators || {};
             const text = `📋 *تقرير رصد سيبراني - مديرية أمن وسلامة الوزارة*\n\n` +
-                         `📌 *رقم البلاغ:* ${report.report_id}\n` +
-                         `👤 *القائم بالرصد:* ${report.officer}\n` +
                          `🌐 *المنصة:* ${report.platform}\n` +
                          `🔗 *الرابط:* ${report.url}\n` +
                          `🏷️ *اسم الحساب:* ${report.accountName || 'غير محدد'}\n` +
@@ -773,8 +771,6 @@
                          `⚠️ *نوع التهديد:* ${report.threatType || 'غير محدد'}\n` +
                          `🔴 *مستوى الخطورة:* ${report.severity || 'غير محدد'}\n` +
                          `📝 *الوصف:* ${report.description || 'لا يوجد وصف'}\n` +
-                         `💡 *التوصية:* ${report.recommendation || 'لا توجد توصية'}\n` +
-                         `📌 *الحالة:* ${report.status}\n\n` +
                          `⚙️ *المؤشرات الفنية:*\n` +
                          `- IP: ${tech.ip || 'غير متوفر'}\n` +
                          `- Domain: ${tech.domain || 'غير متوفر'}\n` +
