@@ -130,10 +130,17 @@ def index():
         critical_reports = sum(1 for r in reports if 'حرج' in str(r.get('severity', '')))
         monthly_count = sum(1 for r in reports if str(r.get('timestamp', '')).startswith(datetime.now().strftime('%Y-%m')))
         
+        approved_count = sum(1 for r in reports if r.get('status') == 'تمت الموافقة')
+        rejected_count = sum(1 for r in reports if r.get('status') == 'مرفوض')
+        pending_count = sum(1 for r in reports if r.get('status', 'قيد المراجعة') == 'قيد المراجعة')
+        
         stats = {
             'total': total_reports,
             'critical': critical_reports,
-            'monthly': monthly_count
+            'monthly': monthly_count,
+            'approved': approved_count,
+            'rejected': rejected_count,
+            'pending': pending_count
         }
         
         current_user = session.get('user')
@@ -142,7 +149,7 @@ def index():
         return render_template('index.html', stats=stats, users=users)
     except Exception as e:
         print(f"🚨 خطأ في الصفحة الرئيسية: {e}")
-        stats = {'total': 0, 'critical': 0, 'monthly': 0}
+        stats = {'total': 0, 'critical': 0, 'monthly': 0, 'approved': 0, 'rejected': 0, 'pending': 0}
         return render_template('index.html', stats=stats, users={})
 
 @app.route('/submit-report', methods=['POST'])
@@ -233,7 +240,7 @@ def reject_report(report_id):
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
         return jsonify({'success': False, 'message': 'غير مسموح'})
     try:
-        supabase.table('reports').delete().eq('report_id', report_id).execute()
+        supabase.table('reports').update({'status': 'مرفوض'}).eq('report_id', report_id).execute()
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
@@ -275,11 +282,78 @@ def delete_monthly_approved():
 @app.route('/monthly-log')
 def monthly_log():
     if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
-        return jsonify({'monthly_reports': []})
-    reports = load_reports()
-    current_month = datetime.now().strftime('%Y-%m')
-    filtered = [r for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
-    return jsonify({'monthly_reports': filtered})
+        return jsonify({'monthly_data': []})
+    try:
+        reports = load_reports()
+        months_dict = {}
+        month_names = {
+            '01': 'كانون الثاني (يناير)', '02': 'شباط (فبراير)', '03': 'آذار (مارس)',
+            '04': 'نيسان (أبريل)', '05': 'أيار (مايو)', '06': 'حزيران (يونيو)',
+            '07': 'تموز (يوليو)', '08': 'آب (أغسطس)', '09': 'أيلول (سبتمبر)',
+            '10': 'تشرين الأول (أكتوبر)', '11': 'تشرين الثاني (نوفمبر)', '12': 'كانون الأول (ديسمبر)'
+        }
+        for r in reports:
+            ts = str(r.get('timestamp', ''))
+            if len(ts) >= 7:
+                year_month = ts[:7]
+                parts = year_month.split('-')
+                if len(parts) == 2:
+                    y, m = parts
+                    m_name = month_names.get(m, m)
+                    key = f"{y}-{m}"
+                    display_name = f"{m_name} {y}"
+                    if key not in months_dict:
+                        months_dict[key] = {'month_key': key, 'month_name': display_name, 'count': 0, 'reports': []}
+                    months_dict[key]['count'] += 1
+                    months_dict[key]['reports'].append(r)
+        
+        sorted_months = sorted(months_dict.values(), key=lambda x: x['month_key'], reverse=True)
+        return jsonify({'monthly_data': sorted_months})
+    except Exception as e:
+        return jsonify({'monthly_data': []})
+
+@app.route('/get-officers-activity')
+def get_officers_activity():
+    if session.get('user') != 'admin' and not bool(session.get('is_admin', False)):
+        return jsonify({'success': False, 'officers': []})
+    try:
+        res = supabase.table('reports').select('*').execute()
+        raw_reports = res.data or []
+        officers_dict = {}
+        for r in raw_reports:
+            off = r.get('officer', 'غير محدد').strip()
+            if not off:
+                off = 'غير محدد'
+            if off not in officers_dict:
+                officers_dict[off] = {
+                    'name': off, 
+                    'uploaded_count': 0, 
+                    'approved_count': 0, 
+                    'rejected_count': 0, 
+                    'pending_count': 0, 
+                    'reports': []
+                }
+            
+            rep_data = {
+                "report_id": r.get("report_id"),
+                "platform": r.get("platform"),
+                "url": r.get("url"),
+                "status": r.get("status", "قيد المراجعة"),
+                "timestamp": r.get("timestamp")
+            }
+            officers_dict[off]['reports'].append(rep_data)
+            officers_dict[off]['uploaded_count'] += 1
+            status = r.get("status", "قيد المراجعة")
+            if status == 'تمت الموافقة':
+                officers_dict[off]['approved_count'] += 1
+            elif status == 'مرفوض':
+                officers_dict[off]['rejected_count'] += 1
+            else:
+                officers_dict[off]['pending_count'] += 1
+
+        return jsonify({'success': True, 'officers': list(officers_dict.values())})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e), 'officers': []})
 
 @app.route('/change-password', methods=['POST'])
 def change_password():
