@@ -252,7 +252,6 @@
                 </div>
             </div>
 
-            <!-- إحصائيات حالات المستخدم (الموافقة، المرفوضة، قيد المراجعة) -->
             <div class="row g-3 mb-4">
                 <div class="col-4">
                     <div class="stat-card" style="border-color: #22c55e;">
@@ -292,7 +291,6 @@
             </div>
         </div>
 
-        <!-- استمارة إدخال بلاغ جديد -->
         <div id="form-section" class="card shadow-lg hidden">
             <form method="POST" action="{{ url_for('submit_report') }}">
                 <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: rgba(0, 242, 254, 0.4) !important;">
@@ -376,7 +374,6 @@
             </form>
         </div>
 
-        <!-- سجلات البلاغات -->
         <div id="records-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="m-0 fw-bold text-white" style="font-size: 1.3rem;"><i class="fas fa-database me-2" style="color: var(--cyber-cyan);"></i> السجلات ونظام إدارة البلاغات</h3>
@@ -409,7 +406,6 @@
             <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
-        <!-- قسم نشاط الأفراد (خاص بالادمن) -->
         {% if session.get('is_admin') or session.get('user') == 'admin' %}
         <div id="officers-activity-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -433,7 +429,6 @@
 
     </div>
 
-    <!-- Modal تفاصيل البلاغ والطباعة والمشاركة -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important; box-shadow: 0 0 50px rgba(0,242,254,0.4);">
@@ -462,7 +457,6 @@
         </div>
     </div>
 
-    <!-- نافذة تعديل المستخدمين للأدمن -->
     {% if session.get('is_admin') or session.get('user') == 'admin' %}
     <div class="modal fade" id="manageUsersModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -821,7 +815,7 @@
 
         function toggleSidebar() { document.getElementById('options-sidebar').classList.toggle('active'); }
 
-        // تشغيل أنميشن الكرة الأرضية وتحليق خطوط الهجمات السيبرانية
+        // تهيئة وحركة الكرة الأرضية باستخدام Three.js (تم إكمال الدالة بنجاح)
         function initGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
@@ -853,3 +847,31 @@
             });
             const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
             scene.add(atmosphere);
+
+            camera.position.z = 5;
+
+            // حلقة الأنميشن والرندر المستمر
+            function animate() {
+                requestAnimationFrame(animate);
+                globe.rotation.y += 0.003;
+                atmosphere.rotation.y -= 0.0015;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // التجاوب مع تغيير حجم النافذة
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // تشغيل الكرة الأرضية عند اكتمال تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            initGlobe();
+        });
+    </script>
+</body>
+</html>
