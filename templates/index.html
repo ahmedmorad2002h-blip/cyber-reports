@@ -190,6 +190,11 @@
                         <i class="fas fa-users-cog text-danger me-2"></i> إدارة وتعديل المستخدمين
                     </a>
                 </li>
+                <li class="mb-3">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(0,242,254,0.8);" onclick="loadOfficersActivity(); toggleSidebar();">
+                        <i class="fas fa-id-badge text-info me-2"></i> نشاط الأفراد (جميع الأفراد)
+                    </a>
+                </li>
                 {% endif %}
                 <li class="mt-4">
                     <a href="{{ url_for('logout') }}" class="text-decoration-none text-danger fw-bold d-block p-3 rounded text-center" style="background: rgba(239,68,68,0.15); border: 2px solid rgba(239,68,68,0.6);">
@@ -247,6 +252,28 @@
                 </div>
             </div>
 
+            <!-- إحصائيات حالات المستخدم (الموافقة، المرفوضة، قيد المراجعة) -->
+            <div class="row g-3 mb-4">
+                <div class="col-4">
+                    <div class="stat-card" style="border-color: #22c55e;">
+                        <div class="text-success small mb-1 fw-bold">تمت الموافقة عليها</div>
+                        <h4 class="m-0 fw-bold text-success" style="text-shadow: 0 0 10px #22c55e;">{{ stats.approved }}</h4>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-card" style="border-color: #ef4444;">
+                        <div class="text-danger small mb-1 fw-bold">الحالات المرفوضة</div>
+                        <h4 class="m-0 fw-bold text-danger" style="text-shadow: 0 0 10px #ef4444;">{{ stats.rejected }}</h4>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-card" style="border-color: #f59e0b;">
+                        <div class="text-warning small mb-1 fw-bold">قيد المراجعة</div>
+                        <h4 class="m-0 fw-bold text-warning" style="text-shadow: 0 0 10px #f59e0b;">{{ stats.pending }}</h4>
+                    </div>
+                </div>
+            </div>
+
             <div class="d-grid gap-3" style="max-width: 500px; margin: 0 auto;">
                 <button class="btn btn-cyber py-3 fw-bold fs-6" onclick="showSection('form-section')">
                     <i class="fa-solid fa-file-shield me-2"></i> ملء استمارة مخرجات رصد جديدة
@@ -257,6 +284,9 @@
                 {% if session.get('is_admin') or session.get('user') == 'admin' %}
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadMonthlyLog()">
                     <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي والتصفية
+                </button>
+                <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadOfficersActivity()">
+                    <i class="fa-solid fa-id-badge me-2"></i> نشاط الأفراد (حالات وموافقات كل فرد)
                 </button>
                 {% endif %}
             </div>
@@ -357,7 +387,10 @@
                     <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.25); border: 1px solid var(--cyber-cyan); box-shadow: 0 0 15px rgba(0,242,254,0.2);">البلاغات الجديدة وقيد المراجعة</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">البلاغات الموافق عليها (السجل الكامل)</button>
+                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">البلاغات الموافق عليها</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold text-white" id="tab-rejected" onclick="switchTab('مرفوض')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">الحالات المرفوضة</button>
                 </li>
             </ul>
 
@@ -375,7 +408,16 @@
             <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
+        <!-- قسم نشاط الأفراد (خاص بالادمن) -->
         {% if session.get('is_admin') or session.get('user') == 'admin' %}
+        <div id="officers-activity-section" class="card shadow-lg hidden">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-id-badge me-2" style="color: var(--cyber-cyan);"></i> نشاط الأفراد (حالات وموافقات كل فرد)</h3>
+                <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
+            </div>
+            <div id="officers-activity-container" style="max-height: 550px; overflow-y: auto;"></div>
+        </div>
+
         <div id="monthly-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري والتصفية</h3>
@@ -390,7 +432,7 @@
 
     </div>
 
-    <!-- Modal تفاصيل البلاغ والطباعة -->
+    <!-- Modal تفاصيل البلاغ والطباعة والمشاركة -->
     <div class="modal fade" id="reportDetailModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important; box-shadow: 0 0 50px rgba(0,242,254,0.4);">
@@ -411,6 +453,7 @@
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-cyber fw-bold" onclick="window.print()"><i class="fas fa-file-pdf me-1"></i> طباعة PDF</button>
                         <button type="button" class="btn btn-outline-cyber fw-bold" onclick="exportReportToWord()"><i class="fas fa-file-word me-1"></i> تصدير Word</button>
+                        <button type="button" class="btn btn-success fw-bold" onclick="shareOnWhatsApp(currentSelectedReport)"><i class="fab fa-whatsapp me-1"></i> مشاركة واتساب</button>
                     </div>
                     <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق</button>
                 </div>
@@ -507,6 +550,8 @@
             currentTabStatus = status;
             document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
+            const rejTab = document.getElementById('tab-rejected');
+            if (rejTab) rejTab.style.background = status === 'مرفوض' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             renderRecordsList(allGlobalRecords);
         }
 
@@ -516,6 +561,9 @@
             document.getElementById('records-section').classList.add('hidden');
             const monthlySec = document.getElementById('monthly-section');
             if (monthlySec) monthlySec.classList.add('hidden');
+            const officersSec = document.getElementById('officers-activity-section');
+            if (officersSec) officersSec.classList.add('hidden');
+            
             document.getElementById(sectionId).classList.remove('hidden');
         }
 
@@ -544,8 +592,9 @@
                             <span class="fw-bold fs-6" style="color: var(--cyber-cyan); text-shadow: 0 0 8px var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${r.report_id}</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success shadow">تمت الموافقة</span>' : '<span class="badge bg-warning text-dark shadow">قيد المراجعة</span>'}
+                            ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success shadow">تمت الموافقة</span>' : r.status === 'مرفوض' ? '<span class="badge bg-danger shadow">مرفوض</span>' : '<span class="badge bg-warning text-dark shadow">قيد المراجعة</span>'}
                             <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" onclick='openReportModal(${JSON.stringify(r)})'><i class="fas fa-eye me-1"></i> تفاصيل</button>
+                            <button class="btn btn-sm btn-success py-0 px-2 fw-bold" onclick='shareOnWhatsApp(${JSON.stringify(r)})' title="مشاركة واتساب"><i class="fab fa-whatsapp"></i></button>
                             
                             ${IS_ADMIN && r.status === 'قيد المراجعة' ? `
                                 <button onclick="approveReport('${r.report_id}')" class="btn btn-sm btn-success py-0 px-2 fw-bold">موافقة</button>
@@ -606,7 +655,7 @@
         }
 
         function deleteMonthlyApproved() {
-            if(!confirm('هل تريد تصفية وحذف كافة البلاغات الموافق عليها لشهر الحالي؟')) return;
+            if(!confirm('هل تريد تصفية وحذف كافة البلاغات الموافق عليها للشهر الحالي؟')) return;
             fetch('/delete-monthly-approved', { method: 'POST' }).then(res => res.json()).then(data => { if(data.success) loadMonthlyLog(); });
         }
 
@@ -615,16 +664,71 @@
             fetch('/monthly-log').then(res => res.json()).then(data => {
                 const container = document.getElementById('monthly-container');
                 if(!container) return;
-                if(data.monthly_reports.length === 0) {
-                    container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة للشهر الحالي.</p>';
+                const monthsData = data.monthly_data || [];
+                if(monthsData.length === 0) {
+                    container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد نشاطات مسجلة.</p>';
                     return;
                 }
-                container.innerHTML = '<ul class="list-group list-group-flush">' + data.monthly_reports.map(r => `
-                    <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-3 fw-bold" style="background: rgba(2,6,23,0.95);">
-                        <div><span style="color: var(--cyber-cyan);">${r.report_id}</span> | <span>${r.officer}</span></div>
-                        <span class="badge bg-dark border border-info text-info">${r.timestamp}</span>
-                    </li>
-                `).join('') + '</ul>';
+                container.innerHTML = monthsData.map(m => `
+                    <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="m-0 fw-bold" style="color: var(--cyber-cyan);"><i class="fas fa-calendar-alt me-2"></i> ${m.month_name} (رقم الشهر: ${m.month_key})</h5>
+                            <span class="badge bg-info text-dark fw-bold fs-6">إجمالي النشاط: ${m.count}</span>
+                        </div>
+                        <ul class="list-group list-group-flush mt-2">
+                            ${m.reports.map(r => `
+                                <li class="list-group-item text-white border-secondary d-flex justify-content-between align-items-center py-2 fw-bold small" style="background: rgba(15,23,42,0.8);">
+                                    <div><span class="text-info">${r.report_id}</span> \vert{} <span>${r.officer}</span></div>
+                                    <span class="badge bg-dark border border-secondary">${r.status}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+            });
+        }
+
+        function loadOfficersActivity() {
+            showSection('officers-activity-section');
+            fetch('/get-officers-activity').then(res => res.json()).then(data => {
+                const container = document.getElementById('officers-activity-container');
+                if(!container) return;
+                const officers = data.officers || [];
+                if(officers.length === 0) {
+                    container.innerHTML = '<p class="text-center text-white py-4 fw-bold">لا توجد بيانات للأفراد.</p>';
+                    return;
+                }
+                container.innerHTML = `
+                    <div class="row g-3">
+                        ${officers.map(off => `
+                            <div class="col-md-6">
+                                <div class="p-3 rounded shadow" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.5);">
+                                    <h5 class="fw-bold mb-2 text-white border-bottom pb-2" style="color: var(--cyber-cyan) !important;">
+                                        <i class="fas fa-user-shield me-2"></i> ${off.name}
+                                    </h5>
+                                    <div class="d-flex justify-content-between mb-3 small fw-bold">
+                                        <span class="badge bg-secondary">المجموع: ${off.uploaded_count}</span>
+                                        <span class="badge bg-success">الموافق عليها: ${off.approved_count}</span>
+                                        <span class="badge bg-danger">المرفوضة: ${off.rejected_count}</span>
+                                        <span class="badge bg-warning text-dark">قيد المراجعة: ${off.pending_count}</span>
+                                    </div>
+                                    <div style="max-height: 200px; overflow-y: auto;">
+                                        <ul class="list-unstyled mb-0">
+                                            ${off.reports.map(r => `
+                                                <li class="p-2 mb-1 rounded small border border-secondary" style="background: rgba(15,23,42,0.9);">
+                                                    <div class="d-flex justify-content-between text-white">
+                                                        <span><strong>${r.report_id}</strong> (${r.platform})</span>
+                                                        <span class="${r.status === 'تمت الموافقة' ? 'text-success' : r.status === 'مرفوض' ? 'text-danger' : 'text-warning'}">${r.status}</span>
+                                                    </div>
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
             });
         }
 
@@ -661,6 +765,32 @@
             new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
         }
 
+        function shareOnWhatsApp(report) {
+            if(!report) return;
+            const tech = report.tech_indicators || {};
+            const text = `📋 *تقرير رصد سيبراني - مديرية أمن وسلامة الوزارة*\n\n` +
+                         `📌 *رقم البلاغ:* ${report.report_id}\n` +
+                         `👤 *القائم بالرصد:* ${report.officer}\n` +
+                         `🌐 *المنصة:* ${report.platform}\n` +
+                         `🔗 *الرابط:* ${report.url}\n` +
+                         `🏷️ *اسم الحساب:* ${report.accountName || 'غير محدد'}\n` +
+                         `📅 *التاريخ:* ${report.datetime || report.timestamp}\n` +
+                         `⚠️ *نوع التهديد:* ${report.threatType || 'غير محدد'}\n` +
+                         `🔴 *مستوى الخطورة:* ${report.severity || 'غير محدد'}\n` +
+                         `📝 *الوصف:* ${report.description || 'لا يوجد وصف'}\n` +
+                         `💡 *التوصية:* ${report.recommendation || 'لا توجد توصية'}\n` +
+                         `📌 *الحالة:* ${report.status}\n\n` +
+                         `⚙️ *المؤشرات الفنية:*\n` +
+                         `- IP: ${tech.ip || 'غير متوفر'}\n` +
+                         `- Domain: ${tech.domain || 'غير متوفر'}\n` +
+                         `- Email: ${tech.email || 'غير متوفر'}\n` +
+                         `- Hash: ${tech.hash || 'غير متوفر'}\n` +
+                         `- IOC: ${tech.ioc || 'غير متوفر'}`;
+            
+            const encodedText = encodeURIComponent(text);
+            window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+        }
+
         function exportReportToWord() {
             if (!currentSelectedReport) return;
             const content = `
@@ -690,7 +820,7 @@
 
         function toggleSidebar() { document.getElementById('options-sidebar').classList.toggle('active'); }
 
-        // تشغيل أنميشن الكرة الأرضية وتحليق خطوط الهجمات السيبرانية (Three.js الاحترافي للغاية)
+        // تشغيل أنميشن الكرة الأرضية وتحليق خطوط الهجمات السيبرانية
         function initGlobe() {
             const container = document.getElementById('globe-container');
             if (!container) return;
@@ -702,7 +832,6 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            // 1. الكرة الأرضية السيبرانية مع طبقة شبكية مزدوجة وتوهج نيون
             const radius = 2.1;
             const geometry = new THREE.SphereGeometry(radius, 40, 40);
             const material = new THREE.MeshBasicMaterial({ 
@@ -714,7 +843,6 @@
             const globe = new THREE.Mesh(geometry, material);
             scene.add(globe);
 
-            // غلاف جوي نيون خارجي محيط بالكرة
             const atmosGeo = new THREE.SphereGeometry(radius * 1.08, 32, 32);
             const atmosMat = new THREE.MeshBasicMaterial({
                 color: 0xa855f7,
@@ -724,118 +852,3 @@
             });
             const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
             scene.add(atmosphere);
-
-            // 2. عقد وعقد مراقبة السيبر (Nodes) المضيئة باللون الأرجواني والسيان
-            const nodesGeometry = new THREE.BufferGeometry();
-            const nodesCount = 100;
-            const posArray = new Float32Array(nodesCount * 3);
-            for(let i = 0; i < nodesCount * 3; i+=3) {
-                const phi = Math.acos(-1 + (2 * Math.random()));
-                const theta = Math.random() * Math.PI * 2;
-                posArray[i] = radius * Math.sin(phi) * Math.cos(theta);
-                posArray[i+1] = radius * Math.sin(phi) * Math.sin(theta);
-                posArray[i+2] = radius * Math.cos(phi);
-            }
-            nodesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const nodesMaterial = new THREE.PointsMaterial({ color: 0x00ffcc, size: 0.08, transparent: true, opacity: 0.9 });
-            const nodesSystem = new THREE.Points(nodesGeometry, nodesMaterial);
-            scene.add(nodesSystem);
-
-            // 3. محاكاة خطوط الهجمات السيبرانية الباليستية العابرة للقارات والهجمات المرتدة النيونية
-            const attacksGroup = new THREE.Group();
-            scene.add(attacksGroup);
-
-            function createAttackArc(startVec, endVec, colorHex) {
-                const distance = startVec.distanceTo(endVec);
-                const controlPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5).normalize().multiplyScalar(radius + distance * 0.45);
-                
-                const curve = new THREE.QuadraticBezierCurve3(startVec, controlPoint, endVec);
-                const points = curve.getPoints(40);
-                const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const arcMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.85 });
-                const arcLine = new THREE.Line(arcGeo, arcMat);
-                
-                attacksGroup.add(arcLine);
-
-                // تأثير هالة نبضية لحظة الوصول للهدف
-                const ringGeo = new THREE.RingGeometry(0.02, 0.08, 16);
-                const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-                const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-                ringMesh.position.copy(endVec);
-                ringMesh.lookAt(scene.position);
-                attacksGroup.add(ringMesh);
-
-                let scale = 1;
-                const pulseInterval = setInterval(() => {
-                    scale += 0.15;
-                    ringMesh.scale.set(scale, scale, scale);
-                    ringMat.opacity -= 0.1;
-                    if (ringMat.opacity <= 0) {
-                        clearInterval(pulseInterval);
-                        attacksGroup.remove(ringMesh);
-                        ringGeo.dispose();
-                        ringMat.dispose();
-                    }
-                }, 50);
-
-                setTimeout(() => {
-                    attacksGroup.remove(arcLine);
-                    arcGeo.dispose();
-                    arcMat.dispose();
-                }, 3000);
-            }
-
-            // مولد هجمات مستمر عشوائي بين العقد
-            setInterval(() => {
-                if (nodesGeometry.attributes.position.count > 5) {
-                    const positions = nodesGeometry.attributes.position.array;
-                    const idx1 = Math.floor(Math.random() * (positions.length / 3)) * 3;
-                    const idx2 = Math.floor(Math.random() * (positions.length / 3)) * 3;
-
-                    const vStart = new THREE.Vector3(positions[idx1], positions[idx1+1], positions[idx1+2]);
-                    const vEnd = new THREE.Vector3(positions[idx2], positions[idx2+1], positions[idx2+2]);
-
-                    // تدرج ألوان نيون بين الأحمر الخطير والأزرق/الأخضر السيبراني للدفاع والمرتدات
-                    const rand = Math.random();
-                    let attackColor = 0xff2a6d; // نيون أحمر وردي خطير
-                    if (rand > 0.6) attackColor = 0x05d9e8; // نيون سيان أزرق
-                    else if (rand > 0.3) attackColor = 0x39ff14; // أخضر رادار
-
-                    createAttackArc(vStart, vEnd, attackColor);
-                }
-            }, 600);
-
-            camera.position.z = 5.2;
-
-            // حركة ودوران مستمر سلس للمنظومة
-            function animate() {
-                requestAnimationFrame(animate);
-                globe.rotation.y += 0.0018;
-                atmosphere.rotation.y -= 0.001;
-                nodesSystem.rotation.y += 0.0018;
-                attacksGroup.rotation.y += 0.0018;
-                renderer.render(scene, camera);
-            }
-            animate();
-
-            // شريط التهديدات الحية السفلي
-            const attacksList = [
-                "[APTMission] Cross-border SYN-Flood attack intercepted & neutralized ➔ [DEFCON-2]",
-                "[Cyber-Warfare] Malware payload isolated from external subnet node ➔ [Mitigated]",
-                "[Counter-Strike] Firewall automated retaliation successfully executed against IP",
-                "[BGP Hijack Alert] Routing anomaly normalized by Central Security Operations Center"
-            ];
-            let index = 0;
-            setInterval(() => {
-                index = (index + 1) % attacksList.length;
-                const tickerEl = document.getElementById('ticker-attack');
-                if(tickerEl) tickerEl.innerHTML = `<i class="fas fa-satellite-dish text-danger me-1"></i> ${attacksList[index]}`;
-            }, 3200);
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            initGlobe();
-        });
-    </script>
-</body>
-</html>
