@@ -1,10 +1,13 @@
 import os
+import re
 import hmac
 import time
+import calendar
 import secrets
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
+from urllib.parse import urlsplit, parse_qsl, unquote
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -138,6 +141,144 @@ def _escape_like(text):
     return text.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 
 
+def fetch_all(build_query, page_size=1000, max_rows=200000):
+    """Supabase يرجع 1000 صف كحد أقصى في الطلب الواحد، لذلك نقرأ على صفحات حتى لا نفقد بيانات."""
+    rows = []
+    start = 0
+    while True:
+        chunk = build_query().range(start, start + page_size - 1).execute().data or []
+        rows.extend(chunk)
+        if len(chunk) < page_size or len(rows) >= max_rows:
+            return rows
+        start += page_size
+
+
+# ---------------------------------------------------------------------------
+# فحص الروابط وتطبيعها (لكشف الرابط المكرر حتى لو كُتب بشكل مختلف)
+# ---------------------------------------------------------------------------
+_SCHEME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.\-]*://')
+_HOST_RE = re.compile(r'^[a-z0-9_]([a-z0-9_\-]{0,61}[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_\-]{0,61}[a-z0-9_])?)*$')
+_IPV4_RE = re.compile(r'^\d{1,3}(\.\d{1,3}){3}$')
+
+# نفس الموقع بأسماء مختلفة
+_HOST_ALIASES = {
+    'twitter.com': 'x.com',
+    'telegram.me': 't.me', 'telegram.dog': 't.me',
+    'fb.com': 'facebook.com', 'fb.me': 'facebook.com',
+    'instagr.am': 'instagram.com',
+}
+_SOCIAL_BASES = {'facebook.com', 'instagram.com', 'x.com', 'tiktok.com', 'youtube.com', 't.me', 'linkedin.com', 'snapchat.com'}
+_MOBILE_PREFIXES = ('m.', 'mobile.', 'web.', 'mbasic.', 'touch.')
+
+# معاملات تتبّع لا تغيّر الصفحة
+_TRACKING_PARAMS = {
+    'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid', 'igshid', 'igsh',
+    'mc_cid', 'mc_eid', 'mibextid', 'fref', 'ref_src', 'ref_url', '_ga', '__tn__', '__cft__',
+}
+_HOST_TRACKING = {
+    'x.com': {'s', 't'},
+    'youtube.com': {'si', 'feature'},
+    'facebook.com': {'ref', '_rdr', 'refsrc'},
+    'tiktok.com': {'is_copy_url', 'is_from_webapp', 'sender_device', 'sender_web_id', '_r', '_t'},
+}
+
+
+def _canonical_host(host):
+    if host.startswith('www.'):
+        host = host[4:]
+    for prefix in _MOBILE_PREFIXES:
+        if host.startswith(prefix) and (host[len(prefix):] in _SOCIAL_BASES or host[len(prefix):] in _HOST_ALIASES):
+            host = host[len(prefix):]
+            break
+    return _HOST_ALIASES.get(host, host)
+
+
+def normalize_url(raw):
+    """يرجع (مفتاح المقارنة, الرابط للعرض والحفظ). يرفع ValueError برسالة عربية إذا كان الرابط غير صالح."""
+    text = (raw or '').strip()
+    if not text:
+        raise ValueError('رابط الموقع أو الصفحة مطلوب.')
+    if len(text) > 1000:
+        raise ValueError('الرابط طويل جداً.')
+    if re.search(r'\s', text):
+        raise ValueError('الرابط يحتوي على مسافات أو أسطر، يرجى التأكد منه.')
+
+    if _SCHEME_RE.match(text):
+        if text.split('://', 1)[0].lower() not in ('http', 'https'):
+            raise ValueError('يُسمح بروابط http أو https فقط.')
+        display = text
+    else:
+        first = text.split('/', 1)[0]
+        # "javascript:..." أو "mailto:..." وما شابه: النقطتان بدون رقم منفذ بعدها
+        if ':' in first and not re.fullmatch(r'[^:/]+:\d{1,5}', first):
+            raise ValueError('يُسمح بروابط http أو https فقط.')
+        default_scheme = 'http' if first.lower().split(':')[0].endswith('.onion') else 'https'
+        display = f'{default_scheme}://{text}'
+
+    try:
+        parts = urlsplit(display)
+        host = (parts.hostname or '').lower().rstrip('.')
+        port = parts.port
+    except ValueError:
+        raise ValueError('صيغة الرابط غير صحيحة.')
+    if not host:
+        raise ValueError('صيغة الرابط غير صحيحة: لم يُعثر على اسم النطاق.')
+    try:
+        host = host.encode('idna').decode('ascii')
+    except UnicodeError:
+        raise ValueError('اسم النطاق غير صحيح.')
+
+    if _IPV4_RE.match(host):
+        if any(int(o) > 255 for o in host.split('.')):
+            raise ValueError('عنوان IP غير صحيح.')
+    elif ':' not in host:  # غير IPv6
+        if not _HOST_RE.match(host) or '.' not in host or host.rsplit('.', 1)[1].isdigit():
+            raise ValueError('اسم النطاق غير صحيح (مثال: example.com).')
+
+    host = _canonical_host(host)
+
+    path = re.sub(r'/{2,}', '/', unquote(parts.path or '')).rstrip('/')
+    if host in _SOCIAL_BASES:
+        invite = host == 't.me' and (path.startswith('/+') or path.lower().startswith('/joinchat'))
+        if host == 't.me' and path.lower().startswith('/s/'):
+            path = path[2:]  # معاينة القناة على الويب = نفس القناة
+        if not invite:
+            path = path.lower()
+
+    drop = _HOST_TRACKING.get(host, set())
+    query_items = []
+    for k, v in parse_qsl(parts.query, keep_blank_values=True):
+        base = k.split('[')[0].lower()
+        if base.startswith('utm_') or base in _TRACKING_PARAMS or base in drop:
+            continue
+        query_items.append((k, v))
+    query = '&'.join(f'{k}={v}' for k, v in sorted(query_items))
+
+    port_part = f':{port}' if port and port not in (80, 443) else ''
+    key = f'{host}{port_part}{path}' + (f'?{query}' if query else '')
+    return key, display
+
+
+def find_duplicate_report(key, exclude_id=None):
+    """يبحث في كل البلاغات عن نفس الرابط بعد التطبيع. يرجع صف البلاغ أو None."""
+    rows = fetch_all(lambda: supabase.table('reports').select('report_id, url, status').order('report_id'))
+    for r in rows:
+        if exclude_id and r.get('report_id') == exclude_id:
+            continue
+        existing = r.get('url') or ''
+        try:
+            other_key = normalize_url(existing)[0]
+        except ValueError:
+            other_key = existing.strip().lower()
+        if other_key == key:
+            return r
+    return None
+
+
+def duplicate_message(row):
+    return f"⚠️ هذا الرابط مرصود ومُبلغ عنه مسبقاً برقم البلاغ ({row.get('report_id')}) وحالته الحالية: [{row.get('status') or STATUS_PENDING}]."
+
+
 def load_users():
     try:
         # أعمدة العرض فقط: لا نجلب كلمات السر (الهاش) إلا عند تسجيل الدخول
@@ -155,6 +296,46 @@ def get_user(username):
     except Exception:
         log.exception("خطأ في جلب المستخدم")
         return None
+
+
+def _is_owner(row):
+    """صاحب البلاغ: من رفعه (يُحفظ اسم المستخدم داخل tech_indicators)، وللبلاغات القديمة نطابق الاسم الكامل."""
+    ti = row.get('tech_indicators') if isinstance(row.get('tech_indicators'), dict) else {}
+    submitted_by = ti.get('submitted_by')
+    if submitted_by:
+        return submitted_by == session.get('user')
+    fullname = str(session.get('fullname', '')).strip().lower()
+    return bool(fullname) and fullname in str(row.get('officer') or '').lower()
+
+
+def _can_edit(row):
+    """التعديل مسموح فقط لصاحب البلاغ (أو الأدمن) وطالما البلاغ قيد المراجعة."""
+    return row.get('status') == STATUS_PENDING and (is_admin_session() or _is_owner(row))
+
+
+def extract_report_fields(src):
+    """يقرأ حقول الاستمارة من form أو JSON (نفس أسماء الحقول) ويرجع (أعمدة, مؤشرات فنية)."""
+    columns = {
+        "source": clean(src.get('m_source'), 500),
+        "platform": clean(src.get('m_platform'), 200),
+        "account_name": clean(src.get('m_account_name'), 500),
+        "datetime": clean(src.get('m_datetime'), 50),
+        "description": clean(src.get('m_description'), 5000),
+        "threat_type": clean(src.get('m_threat_type'), 200),
+        "severity": clean(src.get('m_severity'), 100),
+        "recommendation": clean(src.get('m_recommendation'), 5000),
+    }
+    tech = {
+        "ip": clean(src.get('tech_ip'), 500),
+        "domain": clean(src.get('tech_domain'), 500),
+        "url": clean(src.get('tech_url_ind'), 1000),
+        "email": clean(src.get('tech_email'), 500),
+        "username": clean(src.get('tech_username'), 500),
+        "hash": clean(src.get('tech_hash'), 500),
+        "ioc": clean(src.get('tech_ioc'), 1000),
+        "other": clean(src.get('tech_other'), 1000),
+    }
+    return columns, tech
 
 
 def _reports_query(columns='*'):
@@ -209,6 +390,7 @@ def load_reports():
 
         for r in (res.data or []):
             reports.append({
+                "editable": _can_edit(r),
                 "report_id": r.get("report_id"),
                 "officer": r.get("officer", ""),
                 "source": r.get("source"),
@@ -379,47 +561,34 @@ def index():
 @app.route('/submit-report', methods=['POST'])
 @login_required_page
 def submit_report():
-    m_url = clean(request.form.get('m_url'), 1000)
-    if not m_url:
-        flash('رابط الموقع أو الصفحة مطلوب.', 'danger')
+    try:
+        url_key, m_url = normalize_url(request.form.get('m_url'))
+    except ValueError as e:
+        flash(str(e), 'danger')
         return redirect(url_for('index'))
 
     try:
-        existing_report = supabase.table('reports').select('report_id, status').eq('url', m_url).execute()
-        if existing_report.data:
-            prior_id = existing_report.data[0].get('report_id')
-            prior_status = existing_report.data[0].get('status', STATUS_PENDING)
-            flash(f'⚠️ تنبيه: هذا الرابط مرصود ومُبلغ عنه مسبقاً برقم البلاغ ({prior_id}) وحالته الحالية: [{prior_status}].', 'warning')
-            return redirect(url_for('index'))
+        duplicate = find_duplicate_report(url_key)
     except Exception:
         log.exception("فشل التحقق من تكرار الرابط")
+        flash('تعذر التحقق من تكرار الرابط حالياً، يرجى المحاولة مجدداً.', 'danger')
+        return redirect(url_for('index'))
+    if duplicate:
+        flash(duplicate_message(duplicate), 'warning')
+        return redirect(url_for('index'))
 
+    columns, tech = extract_report_fields(request.form)
+    tech['submitted_by'] = session['user']
     report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
 
     db_payload = {
         "report_id": report_id,
         "officer": f"{clean(request.form.get('user_rank'), 100)} {clean(request.form.get('user_full_name'), 200)}".strip(),
-        "source": clean(request.form.get('m_source'), 500),
-        "platform": clean(request.form.get('m_platform'), 200),
+        **columns,
         "url": m_url,
-        "account_name": clean(request.form.get('m_account_name'), 500),
-        "datetime": clean(request.form.get('m_datetime'), 50),
-        "description": clean(request.form.get('m_description'), 5000),
-        "threat_type": clean(request.form.get('m_threat_type'), 200),
-        "severity": clean(request.form.get('m_severity'), 100),
-        "recommendation": clean(request.form.get('m_recommendation'), 5000),
         "status": STATUS_PENDING,
         "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "tech_indicators": {
-            "ip": clean(request.form.get('tech_ip'), 500),
-            "domain": clean(request.form.get('tech_domain'), 500),
-            "url": clean(request.form.get('tech_url_ind'), 1000),
-            "email": clean(request.form.get('tech_email'), 500),
-            "username": clean(request.form.get('tech_username'), 500),
-            "hash": clean(request.form.get('tech_hash'), 500),
-            "ioc": clean(request.form.get('tech_ioc'), 1000),
-            "other": clean(request.form.get('tech_other'), 1000)
-        }
+        "tech_indicators": tech,
     }
 
     try:
@@ -430,6 +599,84 @@ def submit_report():
         flash('حدث خطأ أثناء حفظ البلاغ، يرجى المحاولة مجدداً.', 'danger')
 
     return redirect(url_for('index'))
+
+
+@app.route('/check-url')
+def check_url():
+    """فحص مباشر للرابط أثناء الكتابة: صحة الصيغة + هل هو مرصود سابقاً."""
+    if not is_logged_in():
+        return jsonify({'valid': False, 'duplicate': False, 'message': 'غير مسموح'}), 403
+    raw = clean(request.args.get('url'), 1000)
+    exclude = clean(request.args.get('exclude'), 100) or None
+    if not raw:
+        return jsonify({'valid': False, 'duplicate': False, 'message': ''})
+    try:
+        key, _display = normalize_url(raw)
+    except ValueError as e:
+        return jsonify({'valid': False, 'duplicate': False, 'message': str(e)})
+    try:
+        duplicate = find_duplicate_report(key, exclude)
+    except Exception:
+        log.exception("فشل فحص الرابط")
+        return jsonify({'valid': True, 'duplicate': False, 'message': 'تعذر فحص التكرار حالياً، سيُفحص عند الحفظ.'})
+    if duplicate:
+        return jsonify({'valid': True, 'duplicate': True, 'message': duplicate_message(duplicate)})
+    return jsonify({'valid': True, 'duplicate': False, 'message': '✓ الرابط صالح وغير مرصود سابقاً.'})
+
+
+@app.route('/edit-report/<report_id>', methods=['POST'])
+@require(is_logged_in, _deny_json())
+def edit_report(report_id):
+    """تعديل البلاغ من صاحبه (أو الأدمن) قبل الموافقة أو الرفض فقط."""
+    rid = clean(report_id, 100)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'message': 'بيانات غير صحيحة.'}), 400
+
+    try:
+        rows = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
+    except Exception:
+        log.exception("خطأ في جلب البلاغ للتعديل")
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
+    if not rows:
+        return jsonify({'success': False, 'message': 'البلاغ غير موجود.'}), 404
+    row = rows[0]
+
+    if not (is_admin_session() or _is_owner(row)):
+        return jsonify({'success': False, 'message': 'غير مسموح لك بتعديل هذا البلاغ.'}), 403
+    if row.get('status') != STATUS_PENDING:
+        return jsonify({'success': False, 'message': 'لا يمكن تعديل بلاغ تمت الموافقة عليه أو رفضه.'}), 409
+
+    try:
+        url_key, new_url = normalize_url(data.get('m_url'))
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    try:
+        duplicate = find_duplicate_report(url_key, exclude_id=rid)
+    except Exception:
+        log.exception("فشل التحقق من تكرار الرابط عند التعديل")
+        return jsonify({'success': False, 'message': 'تعذر التحقق من تكرار الرابط حالياً.'}), 500
+    if duplicate:
+        return jsonify({'success': False, 'message': duplicate_message(duplicate)}), 409
+
+    columns, tech = extract_report_fields(data)
+    old_tech = row.get('tech_indicators') if isinstance(row.get('tech_indicators'), dict) else {}
+    for keep in ('submitted_by',):
+        if old_tech.get(keep):
+            tech[keep] = old_tech[keep]
+    tech['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    try:
+        # الشرط على الحالة داخل نفس الاستعلام: إن وافق الأدمن في هذه اللحظة لا يُطبَّق التعديل
+        res = (supabase.table('reports')
+               .update({**columns, "url": new_url, "tech_indicators": tech})
+               .eq('report_id', rid).eq('status', STATUS_PENDING).execute())
+    except Exception:
+        log.exception("خطأ أثناء حفظ تعديل البلاغ")
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء حفظ التعديل.'}), 500
+    if not res.data:
+        return jsonify({'success': False, 'message': 'تمت معالجة البلاغ (موافقة أو رفض) قبل حفظ تعديلك، فلا يمكن تعديله.'}), 409
+    return jsonify({'success': True})
 
 
 @app.route('/get-records')
@@ -550,31 +797,57 @@ def monthly_log():
 @require(is_admin_session, _deny_json(officers=[]))
 def get_officers_activity():
     try:
-        res = supabase.table('reports').select('report_id, officer, platform, url, status, timestamp').execute()
+        rows = fetch_all(lambda: supabase.table('reports')
+                         .select('report_id, officer, platform, url, status, timestamp').order('report_id'))
         officers_dict = {}
-        for r in (res.data or []):
+        for r in rows:
             off = (r.get('officer') or '').strip() or 'غير محدد'
             entry = officers_dict.setdefault(off, {
                 'name': off, 'uploaded_count': 0, 'approved_count': 0,
-                'rejected_count': 0, 'pending_count': 0, 'reports': []
+                'rejected_count': 0, 'pending_count': 0, 'reports': [], '_months': {}
             })
             status = r.get("status") or STATUS_PENDING
+            ts = str(r.get("timestamp") or '')
             entry['reports'].append({
                 "report_id": r.get("report_id"),
                 "platform": r.get("platform"),
                 "url": r.get("url"),
                 "status": status,
-                "timestamp": r.get("timestamp")
+                "timestamp": ts
             })
-            entry['uploaded_count'] += 1
-            if status == STATUS_APPROVED:
-                entry['approved_count'] += 1
-            elif status == STATUS_REJECTED:
-                entry['rejected_count'] += 1
-            else:
-                entry['pending_count'] += 1
 
-        return jsonify({'success': True, 'officers': list(officers_dict.values())})
+            bucket = [entry]
+            if re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', ts[:7]):
+                key = ts[:7]
+                month = entry['_months'].setdefault(key, {
+                    'month_key': key,
+                    'month_name': f"{MONTH_NAMES.get(key[5:], key[5:])} {key[:4]}",
+                    'days': calendar.monthrange(int(key[:4]), int(key[5:7]))[1],
+                    'uploaded_count': 0, 'approved_count': 0, 'rejected_count': 0, 'pending_count': 0,
+                })
+                bucket.append(month)
+
+            for b in bucket:
+                b['uploaded_count'] += 1
+                if status == STATUS_APPROVED:
+                    b['approved_count'] += 1
+                elif status == STATUS_REJECTED:
+                    b['rejected_count'] += 1
+                else:
+                    b['pending_count'] += 1
+
+        officers = []
+        for entry in officers_dict.values():
+            months = sorted(entry.pop('_months').values(), key=lambda m: m['month_key'], reverse=True)
+            for m in months:
+                # معدل الرصد اليومي = عدد حالات الشهر ÷ عدد أيام الشهر الكامل
+                m['daily_rate'] = round(m['uploaded_count'] / m['days'], 2)
+            entry['months'] = months
+            entry['reports'].sort(key=lambda x: x['timestamp'], reverse=True)
+            officers.append(entry)
+        officers.sort(key=lambda e: e['uploaded_count'], reverse=True)
+
+        return jsonify({'success': True, 'officers': officers})
     except Exception:
         log.exception("خطأ في نشاط الأفراد")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تحميل البيانات.', 'officers': []})
