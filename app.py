@@ -140,7 +140,8 @@ def _escape_like(text):
 
 def load_users():
     try:
-        res = supabase.table('users').select('*').execute()
+        # أعمدة العرض فقط: لا نجلب كلمات السر (الهاش) إلا عند تسجيل الدخول
+        res = supabase.table('users').select('username, fullname, rank').execute()
         return {u['username']: u for u in (res.data or [])}
     except Exception:
         log.exception("خطأ في تحميل المستخدمين")
@@ -156,18 +157,52 @@ def get_user(username):
         return None
 
 
+def _reports_query(columns='*'):
+    """يبني استعلام البلاغات مع تطبيق صلاحيات المستخدم. يرجع None إذا لا يحق له رؤية شيء."""
+    query = supabase.table('reports').select(columns)
+    if not is_admin_session():
+        current_fullname = str(session.get('fullname', '')).strip()
+        if not current_fullname:
+            # مستخدم بلا اسم كامل لا يرى شيئاً (بدل أن يرى كل البلاغات)
+            return None
+        query = query.ilike('officer', f"%{_escape_like(current_fullname)}%")
+    return query
+
+
+def load_report_stats():
+    """إحصائيات الصفحة الرئيسية: تجلب 3 أعمدة فقط بدل كل بيانات البلاغات."""
+    stats = {'total': 0, 'critical': 0, 'monthly': 0, 'approved': 0, 'rejected': 0, 'pending': 0}
+    try:
+        query = _reports_query('severity, timestamp, status')
+        if query is None:
+            return stats
+        rows = query.execute().data or []
+    except Exception:
+        log.exception("خطأ في تحميل إحصائيات البلاغات")
+        return stats
+
+    month_prefix = datetime.now().strftime('%Y-%m')
+    for r in rows:
+        status = r.get('status') or STATUS_PENDING
+        stats['total'] += 1
+        if 'حرج' in str(r.get('severity') or ''):
+            stats['critical'] += 1
+        if str(r.get('timestamp') or '').startswith(month_prefix):
+            stats['monthly'] += 1
+        if status == STATUS_APPROVED:
+            stats['approved'] += 1
+        elif status == STATUS_REJECTED:
+            stats['rejected'] += 1
+        else:
+            stats['pending'] += 1
+    return stats
+
+
 def load_reports():
     try:
-        is_admin = is_admin_session()
-        current_fullname = str(session.get('fullname', '')).strip()
-
-        query = supabase.table('reports').select('*')
-
-        if not is_admin:
-            if not current_fullname:
-                # مستخدم بلا اسم كامل لا يرى شيئاً (بدل أن يرى كل البلاغات)
-                return []
-            query = query.ilike('officer', f"%{_escape_like(current_fullname)}%")
+        query = _reports_query()
+        if query is None:
+            return []
 
         res = query.order('timestamp', desc=True).execute()
         reports = []
@@ -272,6 +307,12 @@ def _register_failure(key):
 # ---------------------------------------------------------------------------
 # المسارات
 # ---------------------------------------------------------------------------
+@app.route('/healthz')
+def healthz():
+    """بدون تسجيل دخول وبدون قاعدة بيانات: لخدمات المراقبة (UptimeRobot) حتى لا ينام الموقع."""
+    return 'ok', 200
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -319,17 +360,7 @@ def logout():
 @login_required_page
 def index():
     try:
-        reports = load_reports()
-        month_prefix = datetime.now().strftime('%Y-%m')
-
-        stats = {
-            'total': len(reports),
-            'critical': sum(1 for r in reports if 'حرج' in str(r.get('severity', ''))),
-            'monthly': sum(1 for r in reports if str(r.get('timestamp', '')).startswith(month_prefix)),
-            'approved': sum(1 for r in reports if r.get('status') == STATUS_APPROVED),
-            'rejected': sum(1 for r in reports if r.get('status') == STATUS_REJECTED),
-            'pending': sum(1 for r in reports if r.get('status', STATUS_PENDING) == STATUS_PENDING),
-        }
+        stats = load_report_stats()
 
         users = {}
         if is_admin_session():
