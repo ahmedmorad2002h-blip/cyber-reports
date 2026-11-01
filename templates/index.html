@@ -6,8 +6,10 @@
     <title>مديرية أمن وسلامة الوزارة - منصة الرصد والتحقيقات السيبرانية</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
     
     <style>
         :root {
@@ -21,18 +23,10 @@
             --text-main: #f8fafc;
         }
 
-        @keyframes hyperNeonPulse {
-            0% { box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.4); }
-            50% { box-shadow: 0 0 50px rgba(0, 242, 254, 0.7), inset 0 0 30px rgba(168, 85, 247, 0.3); border-color: var(--cyber-cyan); }
-            100% { box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), inset 0 0 15px rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.4); }
-        }
+        /* تم استبدال أنميشن الوهج المتكرر (box-shadow / text-shadow) بوهج ثابت:
+           تلك الأنميشنات تعيد رسم الصفحة كل إطار وهي سبب أساسي للبطء. */
 
-        @keyframes titleGlow {
-            0%, 100% { text-shadow: 0 0 15px rgba(0,242,254,0.6), 0 0 30px rgba(0,242,254,0.3); }
-            50% { text-shadow: 0 0 25px rgba(0,242,254,0.9), 0 0 50px rgba(168,85,247,0.7), 0 0 80px rgba(236,72,153,0.4); }
-        }
-
-        body { 
+        body {
             background-color: var(--bg-color); 
             color: var(--text-main); 
             font-family: 'Cairo', sans-serif; 
@@ -50,9 +44,7 @@
             border: 2px solid var(--border-glow); 
             border-radius: 24px; 
             padding: 35px; 
-            animation: hyperNeonPulse 4s infinite ease-in-out;
-            backdrop-filter: blur(30px);
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95);
+            box-shadow: 0 0 35px rgba(0, 242, 254, 0.35), inset 0 0 20px rgba(0, 242, 254, 0.1), 0 25px 70px rgba(0, 0, 0, 0.95);
         }
 
         .stat-card {
@@ -62,15 +54,15 @@
             padding: 20px;
             text-align: center;
             box-shadow: 0 8px 30px rgba(0,0,0,0.8);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
         }
-        .stat-card:hover { 
+        .stat-card:hover {
             transform: translateY(-6px) scale(1.03); 
             box-shadow: 0 0 40px var(--cyber-cyan), inset 0 0 15px rgba(0,242,254,0.4); 
             border-color: var(--cyber-cyan); 
         }
 
-        h1, h2, h3, h4, .navbar-brand { animation: titleGlow 4s infinite ease-in-out; color: #ffffff !important; font-weight: 900 !important; }
+        h1, h2, h3, h4, .navbar-brand { text-shadow: 0 0 18px rgba(0,242,254,0.7), 0 0 36px rgba(168,85,247,0.35); color: #ffffff !important; font-weight: 900 !important; }
         p, span, label, .form-label, .text-muted { color: #f1f5f9 !important; font-weight: 600 !important; }
 
         input, select, textarea { 
@@ -80,7 +72,7 @@
             border-radius: 14px !important;
             padding: 12px 18px !important;
             font-weight: 700 !important;
-            transition: all 0.3s ease;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
         input:focus, select:focus, textarea:focus { 
             border-color: var(--cyber-cyan) !important; 
@@ -96,7 +88,6 @@
             background: rgba(4, 8, 18, 0.98); box-shadow: -25px 0 60px rgba(0,0,0,0.99); 
             transition: 0.45s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1050; padding: 35px;
             border-left: 3px solid var(--cyber-cyan); overflow-y: auto;
-            backdrop-filter: blur(25px);
         }
         .sidebar.active { right: 0; }
         .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0, 242, 254, 0.4); padding-bottom: 18px; margin-bottom: 25px; }
@@ -105,7 +96,7 @@
 
         .btn-cyber {
             background: linear-gradient(135deg, #0072ff, #00f2fe); border: none; color: #030712; font-weight: 900;
-            box-shadow: 0 0 35px rgba(0, 242, 254, 0.6); transition: all 0.3s ease; border-radius: 14px;
+            box-shadow: 0 0 35px rgba(0, 242, 254, 0.6); transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; border-radius: 14px;
         }
         .btn-cyber:hover { 
             background: linear-gradient(135deg, #005bc5, #00c6ff); 
@@ -116,7 +107,7 @@
 
         .btn-outline-cyber {
             border: 2px solid var(--cyber-cyan); color: var(--cyber-cyan); background: rgba(0, 242, 254, 0.08); font-weight: 800; border-radius: 14px;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, border-color 0.3s ease;
         }
         .btn-outline-cyber:hover { 
             background: rgba(0, 242, 254, 0.25); 
@@ -150,7 +141,7 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important; background: rgba(2,4,10,0.95) !important; backdrop-filter: blur(20px);">
+    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important; background: rgba(2,4,10,0.95) !important;">
         <div class="d-flex align-items-center">
             <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 10px var(--cyber-cyan));"></i>
             <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.25rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-WAROC v3.0]</span></span>
@@ -870,17 +861,21 @@
         // تهيئة وحركة الكرة الأرضية باستخدام Three.js (تم إكمال الدالة بنجاح)
         function initGlobe() {
             const container = document.getElementById('globe-container');
-            if (!container) return;
+            if (!container || typeof THREE === 'undefined') return;
+
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
 
+            // لا حاجة لدقة أعلى من 1.5 (توفّر الكثير من الجهد على الموبايل والشاشات عالية الدقة)
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
             const radius = 2.1;
-            const geometry = new THREE.SphereGeometry(radius, 40, 40);
+            const geometry = new THREE.SphereGeometry(radius, 28, 28);
             const material = new THREE.MeshBasicMaterial({
                 color: 0x00f2fe,
                 wireframe: true,
@@ -890,7 +885,7 @@
             const globe = new THREE.Mesh(geometry, material);
             scene.add(globe);
 
-            const atmosGeo = new THREE.SphereGeometry(radius * 1.08, 32, 32);
+            const atmosGeo = new THREE.SphereGeometry(radius * 1.08, 22, 22);
             const atmosMat = new THREE.MeshBasicMaterial({
                 color: 0xa855f7,
                 transparent: true,
@@ -902,21 +897,46 @@
 
             camera.position.z = 5;
 
-            // حلقة الأنميشن والرندر المستمر
-            function animate() {
-                requestAnimationFrame(animate);
+            // الأنميشن يعمل فقط عندما تكون الكرة ظاهرة والتبويب مفتوح (بدل الرسم المستمر في الخلفية)
+            let running = false;
+            let inView = true;
+
+            function frame() {
+                if (!running) return;
+                requestAnimationFrame(frame);
                 globe.rotation.y += 0.003;
                 atmosphere.rotation.y -= 0.0015;
                 renderer.render(scene, camera);
             }
-            animate();
+
+            function updateRunning() {
+                const shouldRun = inView && !document.hidden && !reduceMotion;
+                if (shouldRun && !running) {
+                    running = true;
+                    frame();
+                } else if (!shouldRun) {
+                    running = false;
+                }
+            }
+
+            renderer.render(scene, camera);
+
+            if ('IntersectionObserver' in window) {
+                new IntersectionObserver(entries => {
+                    inView = entries[0].isIntersecting;
+                    updateRunning();
+                }).observe(container);
+            }
+            document.addEventListener('visibilitychange', updateRunning);
+            updateRunning();
 
             // التجاوب مع تغيير حجم النافذة
             window.addEventListener('resize', () => {
-                if (!container) return;
+                if (!container.clientWidth || !container.clientHeight) return;
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
+                if (!running) renderer.render(scene, camera);
             });
         }
 
