@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+
+# بيانات البلاغات الحقيقية يجب ألا تُرفع للريبو أبداً
+cases/
+reports/
+*.json
