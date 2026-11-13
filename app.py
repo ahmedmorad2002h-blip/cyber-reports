@@ -5,6 +5,7 @@ import time
 import calendar
 import secrets
 import logging
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlsplit, parse_qsl, unquote
@@ -13,6 +14,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client, Client
+
+import whatsapp_sender as wa
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("cyber-reports")
@@ -58,6 +61,12 @@ MIN_PASSWORD_LENGTH = 8
 STATUS_APPROVED = 'تمت الموافقة'
 STATUS_REJECTED = 'مرفوض'
 STATUS_PENDING = 'قيد المراجعة'
+# بعد الموافقة: تُرسل تلقائياً على واتساب فتصبح "تمت الموافقة وتم إرسالها"
+STATUS_SENDING = 'جاري الإرسال'          # حالة مؤقتة أثناء الإرسال (تمنع الإرسال المزدوج)
+STATUS_SENT = 'تمت الموافقة وتم إرسالها'
+APPROVED_STATES = (STATUS_APPROVED, STATUS_SENDING, STATUS_SENT)
+
+RANKS = ('مفوض', 'شرطي', 'منتسب / مرتب')
 
 
 def init_admin_user():
@@ -103,7 +112,34 @@ def is_logged_in():
 
 
 def is_admin_session():
+    """الأدمن الكامل: وحده يوافق ويرفض ويحذف ويعدّل البلاغات ويدير الأدوار."""
     return session.get('user') == 'admin' or bool(session.get('is_admin', False))
+
+
+def is_supervisor_session():
+    return bool(session.get('is_supervisor', False)) and not is_admin_session()
+
+
+def can_view_all():
+    """يرى كل البلاغات والسجل الشهري ونشاط الأفراد: الأدمن والمشرف."""
+    return is_logged_in() and (is_admin_session() or is_supervisor_session())
+
+
+def role_name():
+    if is_admin_session():
+        return 'admin'
+    return 'supervisor' if is_supervisor_session() else 'user'
+
+
+@app.context_processor
+def inject_roles():
+    return {
+        'ROLE_ADMIN': is_admin_session(),
+        'ROLE_SUPERVISOR': is_supervisor_session(),
+        'CAN_VIEW_ALL': can_view_all(),
+        'USER_RANK': session.get('rank', '') or '',
+        'RANKS': RANKS,
+    }
 
 
 def require(check, on_denied):
@@ -135,6 +171,7 @@ def _deny_page():
 login_required_page = require(is_logged_in, _to_login)
 admin_required_json = require(is_admin_session, _deny_json())
 admin_required_page = require(is_admin_session, _deny_page)
+viewer_required_page = require(can_view_all, _deny_page)
 
 
 def _escape_like(text):
@@ -281,9 +318,17 @@ def duplicate_message(row):
 
 def load_users():
     try:
-        # أعمدة العرض فقط: لا نجلب كلمات السر (الهاش) إلا عند تسجيل الدخول
-        res = supabase.table('users').select('username, fullname, rank').execute()
-        return {u['username']: u for u in (res.data or [])}
+        # نسقط كلمة السر (الهاش) فوراً: تُستخدم فقط عند تسجيل الدخول وتغيير كلمة السر
+        res = supabase.table('users').select('*').execute()
+        return {
+            u['username']: {
+                'fullname': u.get('fullname') or '',
+                'rank': u.get('rank') or '',
+                'is_admin': u['username'] == 'admin' or bool(u.get('is_admin')),
+                'is_supervisor': bool(u.get('is_supervisor')),
+            }
+            for u in (res.data or [])
+        }
     except Exception:
         log.exception("خطأ في تحميل المستخدمين")
         return {}
@@ -341,7 +386,7 @@ def extract_report_fields(src):
 def _reports_query(columns='*'):
     """يبني استعلام البلاغات مع تطبيق صلاحيات المستخدم. يرجع None إذا لا يحق له رؤية شيء."""
     query = supabase.table('reports').select(columns)
-    if not is_admin_session():
+    if not can_view_all():
         current_fullname = str(session.get('fullname', '')).strip()
         if not current_fullname:
             # مستخدم بلا اسم كامل لا يرى شيئاً (بدل أن يرى كل البلاغات)
@@ -362,7 +407,7 @@ def load_report_stats():
         log.exception("خطأ في تحميل إحصائيات البلاغات")
         return stats
 
-    month_prefix = datetime.now().strftime('%Y-%m')
+    month_prefix = wa.now_iraq().strftime('%Y-%m')
     for r in rows:
         status = r.get('status') or STATUS_PENDING
         stats['total'] += 1
@@ -370,7 +415,7 @@ def load_report_stats():
             stats['critical'] += 1
         if str(r.get('timestamp') or '').startswith(month_prefix):
             stats['monthly'] += 1
-        if status == STATUS_APPROVED:
+        if status in APPROVED_STATES:
             stats['approved'] += 1
         elif status == STATUS_REJECTED:
             stats['rejected'] += 1
@@ -423,6 +468,39 @@ def get_csrf_token():
 
 
 app.jinja_env.globals['csrf_token'] = get_csrf_token
+
+ROLE_REFRESH_SECONDS = 60
+
+
+def _apply_user_to_session(user_record, username):
+    session['is_admin'] = True if username == 'admin' else bool(user_record.get('is_admin', False))
+    session['is_supervisor'] = bool(user_record.get('is_supervisor', False))
+    session['fullname'] = user_record.get('fullname') or username
+    session['rank'] = (user_record.get('rank') or '').strip()
+    session['_role_at'] = time.time()
+
+
+@app.before_request
+def refresh_role():
+    """يعيد قراءة صلاحيات المستخدم من قاعدة البيانات كل دقيقة: سحب صلاحية المشرف أو حذف مستخدم
+    يسري خلال دقيقة وليس بعد 8 ساعات (عمر الجلسة)."""
+    if request.endpoint in ('healthz', 'static', 'login', 'logout', 'cron_send_pending') or not is_logged_in():
+        return None
+    if time.time() - float(session.get('_role_at', 0) or 0) < ROLE_REFRESH_SECONDS:
+        return None
+    username = session['user']
+    try:
+        res = supabase.table('users').select('*').eq('username', username).limit(1).execute()
+    except Exception:
+        log.exception("تعذر تحديث صلاحيات المستخدم، نبقي الجلسة كما هي مؤقتاً")
+        return None
+    if not res.data:
+        session.clear()
+        if request.is_json or request.path.startswith(('/get-', '/check-', '/monthly', '/whatsapp')):
+            return jsonify({'success': False, 'message': 'انتهت الجلسة.'}), 401
+        return redirect(url_for('login'))
+    _apply_user_to_session(res.data[0], username)
+    return None
 
 
 @app.before_request
@@ -519,8 +597,7 @@ def login():
                 session.clear()
                 session.permanent = True
                 session['user'] = username
-                session['is_admin'] = True if username == 'admin' else bool(user_record.get('is_admin', False))
-                session['fullname'] = user_record.get('fullname') or username
+                _apply_user_to_session(user_record, username)
                 return redirect(url_for('index'))
 
             _register_failure(key)
@@ -544,13 +621,7 @@ def index():
     try:
         stats = load_report_stats()
 
-        users = {}
-        if is_admin_session():
-            # لا نمرر كلمات السر (الهاش) للقالب
-            users = {
-                name: {'fullname': u.get('fullname', ''), 'rank': u.get('rank', '')}
-                for name, u in load_users().items()
-            }
+        users = load_users() if can_view_all() else {}   # بدون كلمات السر
         return render_template('index.html', stats=stats, users=users)
     except Exception:
         log.exception("خطأ في الصفحة الرئيسية")
@@ -577,17 +648,38 @@ def submit_report():
         flash(duplicate_message(duplicate), 'warning')
         return redirect(url_for('index'))
 
+    # الرتبة تُحدَّد مرة وحدة: إن كانت محفوظة نستعملها، وإلا نحفظ ما اختاره الآن (ولا تتغير بعدها)
+    rank = (session.get('rank') or '').strip()
+    if not rank:
+        chosen = clean(request.form.get('user_rank'), 100)
+        if chosen not in RANKS:
+            flash('يرجى اختيار الرتبة. تُحدَّد مرة واحدة فقط ولا تُسأل عنها مجدداً.', 'danger')
+            return redirect(url_for('index'))
+        try:
+            fresh = get_user(session['user']) or {}
+            rank = (fresh.get('rank') or '').strip() or chosen
+            if not (fresh.get('rank') or '').strip():
+                supabase.table('users').update({'rank': rank}).eq('username', session['user']).execute()
+            session['rank'] = rank
+        except Exception:
+            log.exception("تعذر حفظ رتبة المستخدم")
+            flash('تعذر حفظ الرتبة حالياً، يرجى المحاولة مجدداً.', 'danger')
+            return redirect(url_for('index'))
+
+    # اسم القائم بالرصد يُبنى من ملف المستخدم في الخادم، وليس من حقول الاستمارة
+    fullname = (session.get('fullname') or session['user']).strip()
+
     columns, tech = extract_report_fields(request.form)
     tech['submitted_by'] = session['user']
-    report_id = f"MSW-{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
+    report_id = f"MSW-{wa.now_iraq().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
 
     db_payload = {
         "report_id": report_id,
-        "officer": f"{clean(request.form.get('user_rank'), 100)} {clean(request.form.get('user_full_name'), 200)}".strip(),
+        "officer": f"{rank} {fullname}".strip(),
         **columns,
         "url": m_url,
         "status": STATUS_PENDING,
-        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "timestamp": wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S'),
         "tech_indicators": tech,
     }
 
@@ -664,7 +756,7 @@ def edit_report(report_id):
     for keep in ('submitted_by',):
         if old_tech.get(keep):
             tech[keep] = old_tech[keep]
-    tech['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    tech['edited_at'] = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
 
     try:
         # الشرط على الحالة داخل نفس الاستعلام: إن وافق الأدمن في هذه اللحظة لا يُطبَّق التعديل
@@ -686,25 +778,52 @@ def get_records():
     return jsonify({'records': load_reports()})
 
 
-def _set_status(report_id, status):
+def _tech_of(row):
+    return row.get('tech_indicators') if isinstance(row.get('tech_indicators'), dict) else {}
+
+
+def _decide_report(report_id, new_status, extra_tech=None):
+    """يبتّ في بلاغ قيد المراجعة (موافقة/رفض) مرة واحدة فقط، ويسجّل من قرر ومتى.
+    الشرط على الحالة داخل نفس استعلام التحديث، فلا يمكن البتّ مرتين ولا قلب قرار سابق."""
+    rid = clean(report_id, 100)
     try:
-        supabase.table('reports').update({'status': status}).eq('report_id', clean(report_id, 100)).execute()
+        rows = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
+        if not rows:
+            return jsonify({'success': False, 'message': 'البلاغ غير موجود.'}), 404
+        row = rows[0]
+        if row.get('status') != STATUS_PENDING:
+            return jsonify({'success': False, 'message': 'تم البتّ في هذا البلاغ مسبقاً، لا يمكن تغيير قراره.'}), 409
+        tech = dict(_tech_of(row))
+        tech['decided_by'] = session.get('user')
+        tech['decided_at'] = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
+        tech.update(extra_tech or {})
+        res = (supabase.table('reports').update({'status': new_status, 'tech_indicators': tech})
+               .eq('report_id', rid).eq('status', STATUS_PENDING).execute())
+        if not res.data:
+            return jsonify({'success': False, 'message': 'تم البتّ في هذا البلاغ للتو من مستخدم آخر.'}), 409
         return jsonify({'success': True})
     except Exception:
         log.exception("خطأ في تحديث حالة البلاغ")
-        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
 
 
 @app.route('/approve-report/<report_id>', methods=['POST'])
 @admin_required_json
 def approve_report(report_id):
-    return _set_status(report_id, STATUS_APPROVED)
+    resp = _decide_report(report_id, STATUS_APPROVED)
+    if (resp[0] if isinstance(resp, tuple) else resp).get_json().get('success'):
+        trigger_whatsapp_async()      # يُرسل فوراً إن كنا داخل وقت الإرسال، وإلا ينتظر الطابور
+    return resp
 
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
 @admin_required_json
 def reject_report(report_id):
-    return _set_status(report_id, STATUS_REJECTED)
+    data = request.get_json(silent=True) or {}
+    reason = clean(str(data.get('reason') or ''), 1000)
+    if len(reason) < 3:
+        return jsonify({'success': False, 'message': 'يجب كتابة سبب الرفض قبل رفض البلاغ.'}), 400
+    return _decide_report(report_id, STATUS_REJECTED, {'rejection_reason': reason})
 
 
 @app.route('/bulk-approve', methods=['POST'])
@@ -718,8 +837,11 @@ def bulk_approve():
         report_ids = [clean(str(i), 100) for i in raw_ids if i][:500]
         if not report_ids:
             return jsonify({'success': False, 'message': 'لم يتم تحديد أي بلاغ.'})
-        supabase.table('reports').update({'status': STATUS_APPROVED}).in_('report_id', report_ids).execute()
-        return jsonify({'success': True})
+        # الشرط على الحالة: لا تمسّ البلاغات المبتوت فيها (المرفوضة أو المرسلة)
+        res = (supabase.table('reports').update({'status': STATUS_APPROVED})
+               .in_('report_id', report_ids).eq('status', STATUS_PENDING).execute())
+        trigger_whatsapp_async()
+        return jsonify({'success': True, 'approved': len(res.data or [])})
     except Exception:
         log.exception("خطأ في الموافقة الجماعية")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
@@ -736,12 +858,23 @@ def delete_report(report_id):
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
 
 
+def _deletable_statuses():
+    """عند تفعيل واتساب لا نحذف إلا ما أُرسل فعلاً، حتى لا يضيع بلاغ موافق عليه لم يصل بعد."""
+    return [STATUS_SENT] if wa.load_config()['enabled'] else [STATUS_APPROVED, STATUS_SENT]
+
+
+def _kept_unsent_count():
+    if not wa.load_config()['enabled']:
+        return 0
+    return len(supabase.table('reports').select('report_id').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or [])
+
+
 @app.route('/delete-approved-bulk', methods=['POST'])
 @admin_required_json
 def delete_approved_bulk():
     try:
-        supabase.table('reports').delete().eq('status', STATUS_APPROVED).execute()
-        return jsonify({'success': True})
+        res = supabase.table('reports').delete().in_('status', _deletable_statuses()).execute()
+        return jsonify({'success': True, 'deleted': len(res.data or []), 'kept_unsent': _kept_unsent_count()})
     except Exception:
         log.exception("خطأ في حذف البلاغات الموافق عليها")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
@@ -751,12 +884,13 @@ def delete_approved_bulk():
 @admin_required_json
 def delete_monthly_approved():
     try:
-        current_month = datetime.now().strftime('%Y-%m')
-        reports = supabase.table('reports').select('report_id, timestamp, status').eq('status', STATUS_APPROVED).execute().data or []
+        current_month = wa.now_iraq().strftime('%Y-%m')
+        reports = fetch_all(lambda: supabase.table('reports').select('report_id, timestamp, status')
+                            .in_('status', _deletable_statuses()).order('report_id'))
         ids = [r['report_id'] for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
         for i in range(0, len(ids), 100):
             supabase.table('reports').delete().in_('report_id', ids[i:i + 100]).execute()
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'deleted': len(ids), 'kept_unsent': _kept_unsent_count()})
     except Exception:
         log.exception("خطأ في تصفية بلاغات الشهر")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
@@ -771,7 +905,7 @@ MONTH_NAMES = {
 
 
 @app.route('/monthly-log')
-@require(is_admin_session, _deny_json(monthly_data=[]))
+@require(can_view_all, _deny_json(monthly_data=[]))
 def monthly_log():
     try:
         months_dict = {}
@@ -794,7 +928,7 @@ def monthly_log():
 
 
 @app.route('/get-officers-activity')
-@require(is_admin_session, _deny_json(officers=[]))
+@require(can_view_all, _deny_json(officers=[]))
 def get_officers_activity():
     try:
         rows = fetch_all(lambda: supabase.table('reports')
@@ -829,7 +963,7 @@ def get_officers_activity():
 
             for b in bucket:
                 b['uploaded_count'] += 1
-                if status == STATUS_APPROVED:
+                if status in APPROVED_STATES:
                     b['approved_count'] += 1
                 elif status == STATUS_REJECTED:
                     b['rejected_count'] += 1
@@ -887,8 +1021,13 @@ def change_password():
     return redirect(url_for('index'))
 
 
+def _is_privileged_user(record):
+    """حسابات لا يلمسها المشرف: الأدمن وأي مشرف آخر (منعاً لرفع الصلاحيات عبر تغيير كلمة السر)."""
+    return bool(record) and (record.get('username') == 'admin' or bool(record.get('is_admin')) or bool(record.get('is_supervisor')))
+
+
 @app.route('/add-user', methods=['POST'])
-@admin_required_page
+@viewer_required_page
 def add_user():
     username = clean(request.form.get('new_username'), 50)
     password = (request.form.get('new_password') or '').strip()
@@ -923,14 +1062,25 @@ def add_user():
 
 
 @app.route('/update-user/<username>', methods=['POST'])
-@admin_required_page
+@viewer_required_page
 def update_user(username):
+    target = get_user(username)
+    if not target:
+        flash('المستخدم غير موجود.', 'danger')
+        return redirect(url_for('index'))
+    if not is_admin_session() and _is_privileged_user(target):
+        flash('المشرف لا يستطيع تعديل حسابات الأدمن أو المشرفين.', 'danger')
+        return redirect(url_for('index'))
+
     new_fullname = clean(request.form.get('fullname'), 200)
+    new_rank = clean(request.form.get('rank'), 100)
     new_pass = (request.form.get('password') or '').strip()
 
     update_data = {}
     if new_fullname:
         update_data["fullname"] = new_fullname
+    if new_rank:
+        update_data["rank"] = new_rank
     if new_pass:
         if len(new_pass) < MIN_PASSWORD_LENGTH:
             flash(f'كلمة المرور يجب ألا تقل عن {MIN_PASSWORD_LENGTH} أحرف.', 'danger')
@@ -950,6 +1100,30 @@ def update_user(username):
     return redirect(url_for('index'))
 
 
+@app.route('/set-supervisor/<username>', methods=['POST'])
+@admin_required_page
+def set_supervisor(username):
+    """الأدمن فقط يعيّن المشرفين أو يسحب الإشراف."""
+    make = request.form.get('value') == '1'
+    target = get_user(username)
+    if not target:
+        flash('المستخدم غير موجود.', 'danger')
+        return redirect(url_for('index'))
+    if username == 'admin' or target.get('is_admin'):
+        flash('حساب الأدمن لا يُحوَّل إلى مشرف.', 'danger')
+        return redirect(url_for('index'))
+    try:
+        supabase.table('users').update({'is_supervisor': make}).eq('username', username).execute()
+        flash(f'تم تعيين {username} مشرفاً.' if make else f'تم سحب صلاحية الإشراف من {username}.', 'success')
+    except Exception as e:
+        log.exception("خطأ أثناء تغيير دور المستخدم")
+        if 'is_supervisor' in str(e):
+            flash('عمود is_supervisor غير موجود في جدول users. شغّل أمر SQL المذكور في README مرة واحدة ثم أعد المحاولة.', 'danger')
+        else:
+            flash('حدث خطأ أثناء تغيير الدور.', 'danger')
+    return redirect(url_for('index'))
+
+
 @app.route('/delete-user/<username>', methods=['POST'])
 @admin_required_page
 def delete_user(username):
@@ -966,6 +1140,268 @@ def delete_user(username):
         log.exception("خطأ أثناء حذف المستخدم")
         flash('حدث خطأ أثناء الحذف.', 'danger')
     return redirect(url_for('index'))
+
+
+# ---------------------------------------------------------------------------
+# الإرسال التلقائي على واتساب بعد الموافقة (07:00 - 16:00 بتوقيت بغداد)
+# ---------------------------------------------------------------------------
+WA_MAX_ATTEMPTS = 6        # بعدها يتوقف التلقائي ويظهر "فشل الإرسال" مع زر إعادة المحاولة
+WA_STALE_SECONDS = 600     # إرسال عالق أكثر من 10 دقائق بلا معرّف رسالة يُعاد للطابور
+WA_BATCH_LIMIT = 10        # أقصى عدد رسائل في الدورة الواحدة (الدورة كل دقيقة)
+WA_LOOP_SECONDS = 60
+_wa_lock = threading.Lock()
+
+
+def _fmt_local(dt):
+    return dt.astimezone(wa.IRAQ_TZ).strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _parse_local(text):
+    try:
+        return datetime.strptime(str(text), '%Y-%m-%d %H:%M:%S').replace(tzinfo=wa.IRAQ_TZ)
+    except (TypeError, ValueError):
+        return None
+
+
+def _wa_info(row):
+    return dict(_tech_of(row).get('whatsapp') or {})
+
+
+def _wa_eligible(row, now):
+    info = _wa_info(row)
+    if int(info.get('attempts') or 0) >= WA_MAX_ATTEMPTS:
+        return False
+    retry_at = _parse_local(info.get('next_retry_at'))
+    return not (retry_at and retry_at > now)
+
+
+def _wa_save(row, tech, info, status, only_if_status):
+    tech = dict(tech)
+    tech['whatsapp'] = info
+    return (supabase.table('reports').update({'status': status, 'tech_indicators': tech})
+            .eq('report_id', row['report_id']).eq('status', only_if_status).execute())
+
+
+def _wa_claim(row, now):
+    """يحجز البلاغ بتحديث شرطي واحد (موافق عليه -> جاري الإرسال). نجح الحجز لمن رجع له صف فقط،
+    فلا يرسل عاملان نفس البلاغ حتى لو اشتغل أكثر من نسخة من التطبيق (مثلاً أثناء النشر)."""
+    tech = dict(_tech_of(row))
+    info = _wa_info(row)
+    info.update({'state': 'sending', 'claimed_at': _fmt_local(now), 'attempts': int(info.get('attempts') or 0) + 1})
+    info.pop('next_retry_at', None)
+    res = _wa_save(row, tech, info, STATUS_SENDING, STATUS_APPROVED)
+    return (tech, info) if res.data else None
+
+
+def _wa_mark_sent(row, tech, info, message_id, cfg, now):
+    info.update({'state': 'sent', 'sent_at': _fmt_local(now), 'message_id': message_id, 'to': wa.mask_number(cfg['to'])})
+    info.pop('last_error', None)
+    info.pop('next_retry_at', None)
+    for attempt in range(3):
+        try:
+            _wa_save(row, tech, info, STATUS_SENT, STATUS_SENDING)
+            return True
+        except Exception:
+            log.exception("تعذر تسجيل نجاح الإرسال للبلاغ %s (المحاولة %s)", row.get('report_id'), attempt + 1)
+            time.sleep(0.5)
+    log.error("أُرسل البلاغ %s (message_id=%s) لكن تعذر تحديث حالته؛ لن يُعاد إرساله تلقائياً قبل مرور %s ثانية",
+              row.get('report_id'), message_id, WA_STALE_SECONDS)
+    return False
+
+
+def _wa_mark_failed(row, tech, info, error, retryable, now):
+    attempts = int(info.get('attempts') or 1)
+    if not retryable:
+        attempts = max(attempts, WA_MAX_ATTEMPTS)     # خطأ إعداد: لا فائدة من التكرار التلقائي
+    info['attempts'] = attempts
+    info['last_error'] = str(error)[:300]
+    info['failed_at'] = _fmt_local(now)
+    if attempts >= WA_MAX_ATTEMPTS:
+        info['state'] = 'failed'
+        info.pop('next_retry_at', None)
+    else:
+        info['state'] = 'retry'
+        info['next_retry_at'] = _fmt_local(now + timedelta(seconds=min(60 * 2 ** (attempts - 1), 3600)))
+    try:
+        _wa_save(row, tech, info, STATUS_APPROVED, STATUS_SENDING)
+    except Exception:
+        log.exception("تعذر تسجيل فشل الإرسال للبلاغ %s", row.get('report_id'))
+
+
+def _wa_reclaim_stale(now):
+    rows = supabase.table('reports').select('*').eq('status', STATUS_SENDING).limit(100).execute().data or []
+    for row in rows:
+        info = _wa_info(row)
+        claimed = _parse_local(info.get('claimed_at'))
+        if info.get('message_id') or (claimed and (now - claimed).total_seconds() < WA_STALE_SECONDS):
+            continue
+        info.update({'state': 'retry', 'last_error': 'انقطعت عملية الإرسال السابقة قبل اكتمالها'})
+        try:
+            _wa_save(row, _tech_of(row), info, STATUS_APPROVED, STATUS_SENDING)
+        except Exception:
+            log.exception("تعذر إعادة البلاغ العالق %s للطابور", row.get('report_id'))
+
+
+def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0):
+    """يرسل البلاغات الموافق عليها غير المرسلة (الأقدم أولاً) داخل وقت الإرسال فقط."""
+    cfg = wa.load_config()
+    out = {'enabled': cfg['enabled'], 'in_window': False, 'sent': 0, 'failed': 0, 'busy': False}
+    if not cfg['enabled']:
+        return out
+    out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
+    if not out['in_window']:
+        return out
+    if not _wa_lock.acquire(blocking=False):
+        out['busy'] = True
+        return out
+    try:
+        _wa_reclaim_stale(wa.now_iraq())
+        query = supabase.table('reports').select('*').eq('status', STATUS_APPROVED)
+        if only_id:
+            query = query.eq('report_id', only_id)
+        rows = query.order('report_id').limit(50).execute().data or []
+        handled = 0
+        for row in rows:
+            if handled >= limit:
+                break
+            now = wa.now_iraq()
+            if not wa.in_send_window(cfg, now):      # انتهى الوقت أثناء الدورة
+                out['in_window'] = False
+                break
+            if not only_id and not _wa_eligible(row, now):
+                continue
+            claimed = _wa_claim(row, now)
+            if not claimed:
+                continue
+            tech, info = claimed
+            handled += 1
+            try:
+                message_id = wa.send_message(cfg, wa.build_message(row, max_len=900 if cfg['template'] else None))
+            except wa.WhatsAppError as e:
+                log.warning("فشل إرسال البلاغ %s: %s", row.get('report_id'), e)
+                _wa_mark_failed(row, tech, info, e, e.retryable, wa.now_iraq())
+                out['failed'] += 1
+                continue
+            except Exception as e:
+                log.exception("خطأ غير متوقع أثناء إرسال البلاغ %s", row.get('report_id'))
+                _wa_mark_failed(row, tech, info, f"{type(e).__name__}", True, wa.now_iraq())
+                out['failed'] += 1
+                continue
+            _wa_mark_sent(row, tech, info, message_id, cfg, wa.now_iraq())
+            out['sent'] += 1
+            if delay and handled < limit:
+                time.sleep(delay)
+    finally:
+        _wa_lock.release()
+    return out
+
+
+def _background_disabled():
+    return bool(os.environ.get('DISABLE_BACKGROUND_JOBS'))
+
+
+def _safe_process():
+    try:
+        process_whatsapp_queue()
+    except Exception:
+        log.exception("خطأ في دورة إرسال واتساب")
+
+
+def trigger_whatsapp_async():
+    """بعد الموافقة: دورة فورية في الخلفية (لا تُبطئ الطلب). خارج وقت الإرسال لا تفعل شيئاً."""
+    if _background_disabled() or not wa.load_config()['enabled']:
+        return
+    threading.Thread(target=_safe_process, name='wa-trigger', daemon=True).start()
+
+
+def _wa_worker_loop():
+    while True:
+        time.sleep(WA_LOOP_SECONDS)
+        _safe_process()
+
+
+def start_whatsapp_worker():
+    if _background_disabled():
+        return
+    if not wa.load_config()['enabled']:
+        log.info("الإرسال التلقائي على واتساب غير مفعّل (متغيرات WHATSAPP_* غير مضبوطة).")
+        return
+    threading.Thread(target=_wa_worker_loop, name='wa-worker', daemon=True).start()
+    log.info("بدأ عامل الإرسال التلقائي على واتساب.")
+
+
+@app.route('/whatsapp-status')
+def whatsapp_status():
+    if not can_view_all():
+        return jsonify({'success': False, 'message': 'غير مسموح'}), 403
+    cfg = wa.load_config()
+    out = {'success': True, 'enabled': cfg['enabled'], 'window': wa.window_label(cfg), 'in_window': False,
+           'pending': 0, 'failed': 0, 'to': wa.mask_number(cfg['to']) if cfg['enabled'] else ''}
+    if not cfg['enabled']:
+        return jsonify(out)
+    out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
+    try:
+        rows = supabase.table('reports').select('report_id, tech_indicators, status').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or []
+        for row in rows:
+            if int(_wa_info(row).get('attempts') or 0) >= WA_MAX_ATTEMPTS:
+                out['failed'] += 1
+            else:
+                out['pending'] += 1
+    except Exception:
+        log.exception("خطأ في قراءة حالة الإرسال")
+    return jsonify(out)
+
+
+@app.route('/whatsapp-send-now/<report_id>', methods=['POST'])
+@admin_required_json
+def whatsapp_send_now(report_id):
+    """إرسال/إعادة محاولة يدوية لبلاغ واحد (الأدمن فقط) وبنفس قيد وقت الإرسال."""
+    rid = clean(report_id, 100)
+    cfg = wa.load_config()
+    if not cfg['enabled']:
+        return jsonify({'success': False, 'message': 'الإرسال على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.'}), 400
+    if not wa.in_send_window(cfg, wa.now_iraq()):
+        return jsonify({'success': False, 'message': f'خارج وقت الإرسال المسموح ({wa.window_label(cfg)} بتوقيت بغداد). سيُرسل تلقائياً عند بدء الوقت.'}), 409
+    try:
+        rows = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
+        if not rows or rows[0].get('status') != STATUS_APPROVED:
+            return jsonify({'success': False, 'message': 'البلاغ غير موجود أو ليس بانتظار الإرسال.'}), 409
+        row = rows[0]
+        info = _wa_info(row)
+        info.update({'attempts': 0, 'state': 'retry'})
+        info.pop('next_retry_at', None)
+        _wa_save(row, _tech_of(row), info, STATUS_APPROVED, STATUS_APPROVED)
+        result = process_whatsapp_queue(limit=1, only_id=rid, delay=0)
+    except Exception:
+        log.exception("خطأ في الإرسال اليدوي")
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
+    if result.get('busy'):
+        return jsonify({'success': False, 'message': 'عملية إرسال أخرى جارية الآن، حاول بعد لحظات.'}), 409
+    if result['sent']:
+        return jsonify({'success': True})
+    fresh = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
+    error = _wa_info(fresh[0]).get('last_error') if fresh else ''
+    return jsonify({'success': False, 'message': f'فشل الإرسال: {error or "سبب غير معروف"}'}), 502
+
+
+@app.route('/cron/send-pending')
+def cron_send_pending():
+    """رابط لخدمة مراقبة خارجية (UptimeRobot / cron-job.org) كل 5 دقائق: يبقي الموقع مستيقظاً
+    على الخطة المجانية ويشغّل دورة الإرسال. يعمل فقط إذا ضُبط CRON_KEY."""
+    expected = _clean_env('CRON_KEY')
+    sent = request.args.get('key') or request.headers.get('X-Cron-Key', '')
+    if not expected:
+        return 'not found', 404
+    if not hmac.compare_digest(expected.encode(), str(sent).encode()):
+        return jsonify({'success': False, 'message': 'مفتاح غير صحيح'}), 403
+    try:
+        return jsonify({'success': True, **process_whatsapp_queue()})
+    except Exception:
+        log.exception("خطأ في دورة الإرسال من الرابط الخارجي")
+        return jsonify({'success': False, 'message': 'خطأ داخلي'}), 500
+
+
+start_whatsapp_worker()
 
 
 if __name__ == '__main__':
