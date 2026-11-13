@@ -176,7 +176,8 @@
         <div class="sidebar-body">
             <div class="mb-4 p-3 rounded text-center" style="background: rgba(0,242,254,0.08); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 20px rgba(0,242,254,0.15);">
                 <div class="text-white fw-bold mb-1 fs-5" style="color: var(--cyber-cyan) !important;">{{ session.get('fullname') }}</div>
-                <div class="text-white small">الصلاحية: {% if session.get('is_admin') or session.get('user') == 'admin' %}<span class="text-danger fw-bold">مشرف نظام (Admin)</span>{% else %}<span class="text-info fw-bold">مستخدم مخول</span>{% endif %}</div>
+                <div class="text-white small">الصلاحية: {% if ROLE_ADMIN %}<span class="text-danger fw-bold">مدير النظام (Admin)</span>{% elif ROLE_SUPERVISOR %}<span class="text-warning fw-bold">مشرف (عرض ومتابعة)</span>{% else %}<span class="text-info fw-bold">مستخدم مخول</span>{% endif %}</div>
+                {% if USER_RANK %}<div class="text-white small mt-1">الرتبة: <span class="fw-bold" style="color: var(--cyber-cyan);">{{ USER_RANK }}</span></div>{% endif %}
             </div>
 
             <ul class="list-unstyled">
@@ -185,7 +186,7 @@
                         <i class="fas fa-key text-info me-2"></i> تغيير كلمة السر
                     </a>
                 </li>
-                {% if session.get('is_admin') or session.get('user') == 'admin' %}
+                {% if CAN_VIEW_ALL %}
                 <li class="mb-3">
                     <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(234,179,8,0.6);" data-bs-toggle="modal" data-bs-target="#addUserModal">
                         <i class="fas fa-user-plus text-warning me-2"></i> إضافة مستخدم جديد
@@ -291,7 +292,7 @@
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadRecords()">
                     <i class="fa-solid fa-database me-2"></i> السجلات والتحكم بالبلاغات (الجديدة والموافق عليها)
                 </button>
-                {% if session.get('is_admin') or session.get('user') == 'admin' %}
+                {% if CAN_VIEW_ALL %}
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadMonthlyLog()">
                     <i class="fa-solid fa-calendar-alt me-2"></i> سجل النشاط الشهري الرسمي والتصفية
                 </button>
@@ -313,16 +314,20 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label">الرتبة / الصفة الوظيفية:</label>
+                        {% if USER_RANK %}
+                        <input type="text" class="form-control" value="{{ USER_RANK }}" readonly style="opacity:.85; cursor:not-allowed;">
+                        <div class="small mt-1" style="opacity:.75;">محددة مسبقاً ولا تُسأل عنها مجدداً (التغيير عن طريق الإدارة).</div>
+                        {% else %}
                         <select name="user_rank" class="form-control" required>
                             <option value="" disabled selected>اختر الرتبة...</option>
-                            <option value="مفوض">مفوض</option>
-                            <option value="شرطي">شرطي</option>
-                            <option value="منتسب / مرتب">منتسب / مرتب</option>
+                            {% for r in RANKS %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
                         </select>
+                        <div class="small mt-1 text-warning fw-bold">تختارها مرة واحدة فقط وتُحفظ لحسابك.</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">الاسم الثلاثي:</label>
-                        <input type="text" name="user_full_name" class="form-control" value="{{ session.get('fullname', '') }}" required>
+                        <input type="text" class="form-control" value="{{ session.get('fullname', '') }}" readonly style="opacity:.85; cursor:not-allowed;">
                     </div>
                 </div>
 
@@ -408,12 +413,14 @@
                 </li>
             </ul>
 
-            {% if session.get('is_admin') or session.get('user') == 'admin' %}
+            {% if ROLE_ADMIN %}
             <div class="d-flex gap-2 mb-3 p-2 rounded" style="background: rgba(2,6,23,0.95); border: 1px solid rgba(0,242,254,0.4);" id="bulk-actions-bar">
                 <button class="btn btn-sm btn-success fw-bold" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
                 <button class="btn btn-sm btn-outline-danger fw-bold ms-auto" onclick="deleteAllApproved()"><i class="fas fa-trash-alt me-1"></i> حذف كافة البلاغات الموافق عليها بضغطة زر</button>
             </div>
             {% endif %}
+
+            <div id="wa-status" class="small fw-bold mb-2" style="display:none;"></div>
 
             <div class="mb-3">
                 <input type="text" id="record-search" class="form-control" placeholder="بحث سريع برقم البلاغ، المنصة، أو الرابط..." onkeyup="filterRecords()">
@@ -422,7 +429,7 @@
             <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
-        {% if session.get('is_admin') or session.get('user') == 'admin' %}
+        {% if CAN_VIEW_ALL %}
         <div id="officers-activity-section" class="card shadow-lg hidden">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-id-badge me-2" style="color: var(--cyber-cyan);"></i> نشاط الأفراد (حالات وموافقات كل فرد)</h3>
@@ -436,9 +443,11 @@
                 <h3 class="m-0 text-white fw-bold" style="font-size: 1.3rem;"><i class="fas fa-calendar-alt me-2" style="color: var(--cyber-cyan);"></i> سجل النشاط الشهري والتصفية</h3>
                 <button class="btn btn-outline-secondary btn-sm text-white fw-bold" onclick="showSection('menu-section')"><i class="fas fa-arrow-right me-1"></i> العودة</button>
             </div>
+            {% if ROLE_ADMIN %}
             <div class="mb-3">
-                <button class="btn btn-danger fw-bold shadow" onclick="deleteMonthlyApproved()"><i class="fas fa-broom me-1"></i> تصفية وحذف كافة البلاغات الموافق عليها لهذا الشهر</button>
+                <button class="btn btn-danger fw-bold shadow" onclick="deleteMonthlyApproved()"><i class="fas fa-broom me-1"></i> تصفية وحذف كافة البلاغات المُرسلة/الموافق عليها لهذا الشهر</button>
             </div>
+            {% endif %}
             <div id="monthly-container" style="max-height: 450px; overflow-y: auto;"></div>
         </div>
         {% endif %}
@@ -548,50 +557,86 @@
         </div>
     </div>
 
-    {% if session.get('is_admin') or session.get('user') == 'admin' %}
+    {% if CAN_VIEW_ALL %}
     <div class="modal fade" id="manageUsersModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid #ef4444 !important; box-shadow: 0 0 50px rgba(239,68,68,0.4);">
                 <div class="modal-header border-bottom">
                     <h5 class="modal-title text-danger fw-bold"><i class="fas fa-users-cog me-2"></i> إدارة وتعديل حسابات المستخدمين</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                <div class="modal-body" style="max-height: 460px; overflow-y: auto;">
+                    {% if ROLE_SUPERVISOR %}<div class="alert py-2 small fw-bold" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.5);">بصفتك مشرفاً: تستطيع تعديل المستخدمين العاديين فقط، ولا تستطيع تعديل الأدمن أو المشرفين أو الحذف.</div>{% endif %}
                     <div class="table-responsive">
                         <table class="table table-dark table-striped table-bordered align-middle">
                             <thead>
                                 <tr>
                                     <th>اسم المستخدم</th>
+                                    <th>الدور</th>
                                     <th>الاسم الكامل</th>
-                                    <th>تعديل الرمز / الاسم</th>
+                                    <th>الرتبة</th>
+                                    <th>رمز جديد</th>
                                     <th>الإجراء</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for uname, udata in users.items() %}
+                                {% set locked = ROLE_SUPERVISOR and (udata.get('is_admin') or udata.get('is_supervisor')) %}
                                 <tr>
                                     <td><code>{{ uname }}</code></td>
-                                    <form action="{{ url_for('update_user', username=uname) }}" method="POST">
-                                        <td><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="fullname" value="{{ udata.get('fullname', '') }}" class="form-control form-control-sm"></td>
-                                        <td><input type="password" name="password" placeholder="رمز جديد (اختياري)" class="form-control form-control-sm"></td>
-                                        <td>
-                                            <button type="submit" class="btn btn-sm btn-info fw-bold mb-1">حفظ</button>
-                                            {% if uname != 'admin' %}
-                                            <button type="submit" formaction="{{ url_for('delete_user', username=uname) }}" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('حذف المستخدم؟')">حذف</button>
-                                            {% endif %}
-                                        </td>
-                                    </form>
+                                    <td>{% if udata.get('is_admin') %}<span class="badge bg-danger">أدمن</span>{% elif udata.get('is_supervisor') %}<span class="badge bg-warning text-dark">مشرف</span>{% else %}<span class="badge bg-secondary">مستخدم</span>{% endif %}</td>
+                                    <td><input type="text" form="uf-{{ loop.index }}" name="fullname" value="{{ udata.get('fullname', '') }}" class="form-control form-control-sm" {% if locked %}disabled{% endif %}></td>
+                                    <td><input type="text" form="uf-{{ loop.index }}" name="rank" value="{{ udata.get('rank', '') }}" class="form-control form-control-sm" {% if locked %}disabled{% endif %}></td>
+                                    <td><input type="password" form="uf-{{ loop.index }}" name="password" placeholder="اختياري" class="form-control form-control-sm" autocomplete="new-password" {% if locked %}disabled{% endif %}></td>
+                                    <td class="text-nowrap">
+                                        {% if not locked %}
+                                        <button type="submit" form="uf-{{ loop.index }}" class="btn btn-sm btn-info fw-bold mb-1">حفظ</button>
+                                        {% endif %}
+                                        {% if ROLE_ADMIN and not udata.get('is_admin') and uname != 'admin' %}
+                                        {% if udata.get('is_supervisor') %}
+                                        <button type="submit" form="uf-{{ loop.index }}" formaction="{{ url_for('set_supervisor', username=uname) }}" name="value" value="0" class="btn btn-sm btn-outline-warning fw-bold mb-1" onclick="return confirm('سحب صلاحية الإشراف؟')">إلغاء الإشراف</button>
+                                        {% else %}
+                                        <button type="submit" form="uf-{{ loop.index }}" formaction="{{ url_for('set_supervisor', username=uname) }}" name="value" value="1" class="btn btn-sm btn-warning text-dark fw-bold mb-1" onclick="return confirm('تعيين هذا المستخدم مشرفاً؟')">تعيين مشرف</button>
+                                        {% endif %}
+                                        {% endif %}
+                                        {% if ROLE_ADMIN and uname != 'admin' %}
+                                        <button type="submit" form="uf-{{ loop.index }}" formaction="{{ url_for('delete_user', username=uname) }}" class="btn btn-sm btn-danger fw-bold mb-1" onclick="return confirm('حذف المستخدم؟')">حذف</button>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% for uname, udata in users.items() %}
+                    <form id="uf-{{ loop.index }}" action="{{ url_for('update_user', username=uname) }}" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+                    {% endfor %}
                 </div>
                 <div class="modal-footer border-top"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div>
             </div>
         </div>
     </div>
     {% endif %}
+
+    <div class="modal fade" id="rejectReasonModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid #ef4444 !important; box-shadow: 0 0 40px rgba(239,68,68,0.35);">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title text-danger fw-bold"><i class="fas fa-ban me-2"></i> رفض البلاغ <span id="reject-report-id" class="text-info"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label fw-bold">سبب الرفض (إجباري):</label>
+                    <textarea id="reject-reason" rows="4" maxlength="1000" class="form-control" placeholder="اكتب سبب الرفض بوضوح، سيظهر لصاحب البلاغ..."></textarea>
+                    <div id="reject-reason-msg" class="url-check-msg err"></div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-danger fw-bold" id="reject-confirm-btn" onclick="confirmReject()"><i class="fas fa-ban me-1"></i> تأكيد الرفض</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
@@ -630,7 +675,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const IS_ADMIN = {{ 'true' if session.get('is_admin') or session.get('user') == 'admin' else 'false' }};
+        const IS_ADMIN = {{ 'true' if ROLE_ADMIN else 'false' }};
+        const CAN_VIEW_ALL = {{ 'true' if CAN_VIEW_ALL else 'false' }};
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
         let allGlobalRecords = [];
         let currentTabStatus = 'قيد المراجعة';
@@ -767,6 +813,43 @@
             attachUrlCheck('e_url', 'e_url_msg', () => editingReportId);
         });
 
+        const APPROVED_STATES = ['تمت الموافقة', 'جاري الإرسال', 'تمت الموافقة وتم إرسالها'];
+        let WA_ENABLED = null;   // يُعرف من /whatsapp-status (للأدمن والمشرف فقط)
+
+        function tabOf(status) {
+            const s = status || 'قيد المراجعة';
+            return APPROVED_STATES.includes(s) ? 'تمت الموافقة' : s;
+        }
+
+        function statusBadge(r) {
+            const wa = (r.tech_indicators || {}).whatsapp || {};
+            switch (r.status) {
+                case 'تمت الموافقة وتم إرسالها': return '<span class="badge shadow" style="background:#0d9488;"><i class="fab fa-whatsapp me-1"></i> تمت الموافقة وتم إرسالها</span>';
+                case 'جاري الإرسال': return '<span class="badge bg-info text-dark shadow">جاري الإرسال...</span>';
+                case 'تمت الموافقة':
+                    if (wa.state === 'failed') return '<span class="badge bg-danger shadow">تمت الموافقة • فشل الإرسال</span>';
+                    return WA_ENABLED ? '<span class="badge bg-success shadow">تمت الموافقة • بانتظار الإرسال</span>' : '<span class="badge bg-success shadow">تمت الموافقة</span>';
+                case 'مرفوض': return '<span class="badge bg-danger shadow">مرفوض</span>';
+                default: return '<span class="badge bg-warning text-dark shadow">قيد المراجعة</span>';
+            }
+        }
+
+        function extraInfoHtml(r) {
+            const t = r.tech_indicators || {};
+            const wa = t.whatsapp || {};
+            let html = '';
+            if (r.status === 'مرفوض' && t.rejection_reason) {
+                html += `<div class="small p-2 rounded mt-2 fw-bold text-white" style="background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.6);"><i class="fas fa-ban me-1 text-danger"></i> <strong>سبب الرفض:</strong> ${esc(t.rejection_reason)}</div>`;
+            }
+            if (r.status === 'تمت الموافقة وتم إرسالها' && wa.sent_at) {
+                html += `<div class="small mt-2 fw-bold" style="color:#5eead4;"><i class="fab fa-whatsapp me-1"></i> أُرسل على واتساب: ${esc(wa.sent_at)}</div>`;
+            }
+            if (CAN_VIEW_ALL && r.status === 'تمت الموافقة' && wa.last_error) {
+                html += `<div class="small p-2 rounded mt-2 fw-bold text-white" style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.6);">آخر خطأ إرسال (محاولة ${esc(wa.attempts || 0)}): ${esc(wa.last_error)}</div>`;
+            }
+            return html;
+        }
+
         function findRecord(id) { return allGlobalRecords.find(r => r.report_id === id) || null; }
         function openReportById(id) { const r = findRecord(id); if (r) openReportModal(r); }
         function shareById(id) { const r = findRecord(id); if (r) shareOnWhatsApp(r); }
@@ -797,12 +880,37 @@
             fetch('/get-records').then(res => res.json()).then(data => {
                 allGlobalRecords = data.records || [];
                 renderRecordsList(allGlobalRecords);
+                loadWaStatus();
             }).catch(networkError);
+        }
+
+        function loadWaStatus() {
+            const el = document.getElementById('wa-status');
+            if (!el || !CAN_VIEW_ALL) return;
+            fetch('/whatsapp-status').then(res => res.json()).then(d => {
+                if (!d || !d.success) return;
+                const changed = WA_ENABLED !== !!d.enabled;
+                WA_ENABLED = !!d.enabled;
+                el.style.display = 'block';
+                if (!d.enabled) {
+                    el.style.color = '#fbbf24';
+                    el.textContent = 'الإرسال التلقائي على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.';
+                } else {
+                    el.style.color = d.in_window ? '#5eead4' : '#fbbf24';
+                    el.textContent = `واتساب: مفعّل (${d.window} بتوقيت بغداد) • ${d.in_window ? 'داخل وقت الإرسال' : 'خارج وقت الإرسال، تنتظر البلاغات'} • بانتظار الإرسال: ${d.pending} • فشل: ${d.failed}`;
+                }
+                if (changed) renderRecordsList(allGlobalRecords);
+            }).catch(() => {});
+        }
+
+        function sendNow(id) {
+            if (!confirm('إرسال هذا البلاغ على واتساب الآن؟')) return;
+            postJson('/whatsapp-send-now/' + encodeURIComponent(id)).then(data => handleResult(data, loadRecords)).catch(networkError);
         }
 
         function renderRecordsList(records) {
             const container = document.getElementById('records-container');
-            const filteredByTab = records.filter(r => (r.status || 'قيد المراجعة') === currentTabStatus);
+            const filteredByTab = records.filter(r => tabOf(r.status) === currentTabStatus);
 
             if(filteredByTab.length === 0) {
                 container.innerHTML = `<p class="text-center text-white py-4 fw-bold">لا توجد سجلات ضمن خانة [${esc(currentTabStatus)}].</p>`;
@@ -817,7 +925,7 @@
                             <span class="fw-bold fs-6" style="color: var(--cyber-cyan); text-shadow: 0 0 8px var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${esc(r.report_id)}</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            ${r.status === 'تمت الموافقة' ? '<span class="badge bg-success shadow">تمت الموافقة</span>' : r.status === 'مرفوض' ? '<span class="badge bg-danger shadow">مرفوض</span>' : '<span class="badge bg-warning text-dark shadow">قيد المراجعة</span>'}
+                            ${statusBadge(r)}
                             <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" data-id="${esc(r.report_id)}" onclick="openReportById(this.dataset.id)"><i class="fas fa-eye me-1"></i> تفاصيل</button>
                             <button class="btn btn-sm btn-success py-0 px-2 fw-bold" data-id="${esc(r.report_id)}" onclick="shareById(this.dataset.id)" title="مشاركة واتساب"><i class="fab fa-whatsapp"></i></button>
                             ${r.editable ? `<button class="btn btn-sm btn-warning py-0 px-2 fw-bold" data-id="${esc(r.report_id)}" onclick="openEditModal(this.dataset.id)" title="يمكن التعديل حتى الموافقة أو الرفض"><i class="fas fa-pen me-1"></i> تعديل</button>` : ''}
@@ -827,12 +935,14 @@
                                 <button data-id="${esc(r.report_id)}" onclick="rejectReport(this.dataset.id)" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
                             ` : ''}
 
+                            ${IS_ADMIN && WA_ENABLED && r.status === 'تمت الموافقة' ? `<button data-id="${esc(r.report_id)}" onclick="sendNow(this.dataset.id)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال الآن (داخل وقت الإرسال فقط)"><i class="fab fa-whatsapp me-1"></i> ${((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال الآن'}</button>` : ''}
                             ${IS_ADMIN ? `<button data-id="${esc(r.report_id)}" onclick="deleteReport(this.dataset.id)" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </div>
                     </div>
                     <div class="mb-1 text-white fw-bold"><strong>القائم بالرصد:</strong> ${esc(r.officer)} | <strong>المنصة:</strong> <span class="text-info">${esc(r.platform)}</span></div>
                     <div class="text-info text-break small mb-2 fw-bold"><strong>الرابط:</strong> ${linkHtml(r.url)}</div>
                     ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${esc(r.description)}</div>` : ''}
+                    ${extraInfoHtml(r)}
                 </div>
             `).join('');
         }
@@ -852,9 +962,31 @@
             postJson(`/approve-report/${encodeURIComponent(id)}`).then(data => handleResult(data, loadRecords)).catch(networkError);
         }
 
+        let rejectingId = null;
         function rejectReport(id) {
-            if(!confirm('هل أنت متأكد من رفض البلاغ؟')) return;
-            postJson(`/reject-report/${encodeURIComponent(id)}`).then(data => handleResult(data, loadRecords)).catch(networkError);
+            rejectingId = id;
+            document.getElementById('reject-report-id').textContent = id;
+            document.getElementById('reject-reason').value = '';
+            document.getElementById('reject-reason-msg').textContent = '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectReasonModal')).show();
+        }
+
+        function confirmReject() {
+            if (!rejectingId) return;
+            const reason = document.getElementById('reject-reason').value.trim();
+            const msg = document.getElementById('reject-reason-msg');
+            if (reason.length < 3) { msg.textContent = 'يجب كتابة سبب الرفض قبل رفض البلاغ.'; return; }
+            const btn = document.getElementById('reject-confirm-btn');
+            btn.disabled = true;
+            postJson(`/reject-report/${encodeURIComponent(rejectingId)}`, { reason }).then(data => {
+                btn.disabled = false;
+                if (data && data.success) {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectReasonModal')).hide();
+                    loadRecords();
+                } else {
+                    msg.textContent = (data && data.message) || 'تعذر رفض البلاغ.';
+                }
+            }).catch(() => { btn.disabled = false; msg.textContent = 'تعذر الاتصال بالخادم، حاول مرة أخرى.'; });
         }
 
         function deleteReport(id) {
@@ -872,13 +1004,18 @@
         }
 
         function deleteAllApproved() {
-            if(!confirm('تحذير: هل تريد حقاً حذف كافة البلاغات التي تمت الموافقة عليها دفعة واحدة؟')) return;
-            postJson('/delete-approved-bulk').then(data => handleResult(data, loadRecords)).catch(networkError);
+            if(!confirm('تحذير: هل تريد حقاً حذف كافة البلاغات التي تمت الموافقة عليها وأُرسلت دفعة واحدة؟ (البلاغات الموافق عليها التي لم تُرسل بعد لا تُحذف عند تفعيل واتساب)')) return;
+            postJson('/delete-approved-bulk').then(data => handleResult(data, () => { loadRecords(); reportDeleteResult(data); })).catch(networkError);
         }
 
         function deleteMonthlyApproved() {
-            if(!confirm('هل تريد تصفية وحذف كافة البلاغات الموافق عليها للشهر الحالي؟')) return;
-            postJson('/delete-monthly-approved').then(data => handleResult(data, loadMonthlyLog)).catch(networkError);
+            if(!confirm('هل تريد تصفية وحذف كافة البلاغات الموافق عليها والمُرسلة للشهر الحالي؟')) return;
+            postJson('/delete-monthly-approved').then(data => handleResult(data, () => { loadMonthlyLog(); reportDeleteResult(data); })).catch(networkError);
+        }
+
+        function reportDeleteResult(data) {
+            if (data.deleted === undefined) return;
+            alert(`تم حذف ${data.deleted} بلاغ.` + (data.kept_unsent ? `\nبقي ${data.kept_unsent} بلاغ موافق عليه لم يُرسل على واتساب بعد، ولم يُحذف.` : ''));
         }
 
         function loadMonthlyLog() {
@@ -966,7 +1103,7 @@
                                         <li class="p-2 mb-1 rounded small border border-secondary" style="background: rgba(15,23,42,0.9);">
                                             <div class="d-flex justify-content-between text-white">
                                                 <span><strong>${esc(r.report_id)}</strong> (${esc(r.platform)})</span>
-                                                <span class="${r.status === 'تمت الموافقة' ? 'text-success' : r.status === 'مرفوض' ? 'text-danger' : 'text-warning'}">${esc(r.status)}</span>
+                                                <span class="${APPROVED_STATES.includes(r.status) ? 'text-success' : r.status === 'مرفوض' ? 'text-danger' : 'text-warning'}">${esc(r.status)}</span>
                                             </div>
                                         </li>
                                     `).join('')}
@@ -997,6 +1134,9 @@
                     <tr><th>التوصية</th><td>${esc(report.recommendation || 'لا توجد توصية')}</td></tr>
                     <tr><th>حالة البلاغ</th><td>${esc(report.status)}</td></tr>
                     ${tech.edited_at ? `<tr><th>آخر تعديل</th><td>${esc(tech.edited_at)}</td></tr>` : ''}
+                    ${tech.decided_by ? `<tr><th>البتّ بالبلاغ</th><td>${esc(tech.decided_by)} — ${esc(tech.decided_at || '')}</td></tr>` : ''}
+                    ${tech.rejection_reason ? `<tr><th class="text-danger">سبب الرفض</th><td class="text-danger fw-bold">${esc(tech.rejection_reason)}</td></tr>` : ''}
+                    ${(tech.whatsapp || {}).sent_at ? `<tr><th>إرسال واتساب</th><td>${esc(tech.whatsapp.sent_at)}</td></tr>` : ''}
                     <tr class="table-dark"><th colspan="2" class="text-info text-center">المؤشرات الفنية (Technical Indicators)</th></tr>
                     <tr><th>عنوان IP أو Node</th><td>${esc(tech.ip || 'غير متوفر')}</td></tr>
                     <tr><th>نطاق Domain / Onion</th><td>${esc(tech.domain || 'غير متوفر')}</td></tr>
