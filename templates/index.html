@@ -411,6 +411,9 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link fw-bold text-white" id="tab-sent" onclick="switchTab('تمت الموافقة وتم إرسالها')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);"><i class="fab fa-whatsapp me-1"></i> موافق عليها وتم إرسالها</button>
                 </li>
+                <li class="nav-item" role="presentation" id="tab-legacy-li" style="display:none;">
+                    <button class="nav-link fw-bold text-white" id="tab-legacy" onclick="switchTab('legacy')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);" title="بلاغات وُوفق عليها قبل تفعيل الإرسال التلقائي، ولا تُرسل">موافق عليها سابقاً (لا تُرسل)</button>
+                </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link fw-bold text-white" id="tab-rejected" onclick="switchTab('مرفوض')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">الحالات المرفوضة</button>
                 </li>
@@ -819,9 +822,14 @@
         const APPROVED_STATES = ['تمت الموافقة', 'جاري الإرسال', 'تمت الموافقة وتم إرسالها'];
         let WA_ENABLED = null;   // يُعرف من /whatsapp-status (للأدمن والمشرف فقط)
 
-        function tabOf(status) {
-            const s = status || 'قيد المراجعة';
+        function isLegacyApproved(r) {
+            return r.status === 'تمت الموافقة' && !(r.tech_indicators || {}).wa_queue;
+        }
+
+        function tabOf(r) {
+            const s = r.status || 'قيد المراجعة';
             if (s === 'جاري الإرسال') return 'تمت الموافقة';   // قيد الإرسال = لم تُرسل بعد
+            if (isLegacyApproved(r)) return 'legacy';          // موافق عليها قبل تفعيل الإرسال التلقائي: لا تُرسل
             return s;
         }
 
@@ -831,6 +839,7 @@
                 case 'تمت الموافقة وتم إرسالها': return '<span class="badge shadow" style="background:#0d9488;"><i class="fab fa-whatsapp me-1"></i> تمت الموافقة وتم إرسالها</span>';
                 case 'جاري الإرسال': return '<span class="badge bg-info text-dark shadow">جاري الإرسال...</span>';
                 case 'تمت الموافقة':
+                    if (isLegacyApproved(r)) return '<span class="badge bg-success shadow">تمت الموافقة</span>';
                     if (wa.state === 'failed') return '<span class="badge bg-danger shadow">تمت الموافقة • فشل الإرسال</span>';
                     return WA_ENABLED ? '<span class="badge bg-success shadow">تمت الموافقة • بانتظار الإرسال</span>' : '<span class="badge bg-success shadow">تمت الموافقة</span>';
                 case 'مرفوض': return '<span class="badge bg-danger shadow">مرفوض</span>';
@@ -863,6 +872,7 @@
             document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             document.getElementById('tab-sent').style.background = status === 'تمت الموافقة وتم إرسالها' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
+            document.getElementById('tab-legacy').style.background = status === 'legacy' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             const rejTab = document.getElementById('tab-rejected');
             if (rejTab) rejTab.style.background = status === 'مرفوض' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             renderRecordsList(allGlobalRecords);
@@ -915,7 +925,9 @@
 
         function renderRecordsList(records) {
             const container = document.getElementById('records-container');
-            const filteredByTab = records.filter(r => tabOf(r.status) === currentTabStatus);
+            const legacyLi = document.getElementById('tab-legacy-li');
+            if (legacyLi) legacyLi.style.display = records.some(isLegacyApproved) ? '' : 'none';
+            const filteredByTab = records.filter(r => tabOf(r) === currentTabStatus);
 
             if(filteredByTab.length === 0) {
                 container.innerHTML = `<p class="text-center text-white py-4 fw-bold">لا توجد سجلات ضمن خانة [${esc(currentTabStatus)}].</p>`;
@@ -940,7 +952,7 @@
                                 <button data-id="${esc(r.report_id)}" onclick="rejectReport(this.dataset.id)" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
                             ` : ''}
 
-                            ${IS_ADMIN && WA_ENABLED && r.status === 'تمت الموافقة' ? `<button data-id="${esc(r.report_id)}" onclick="sendNow(this.dataset.id)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال الآن (داخل وقت الإرسال فقط)"><i class="fab fa-whatsapp me-1"></i> ${((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال الآن'}</button>` : ''}
+                            ${IS_ADMIN && WA_ENABLED && r.status === 'تمت الموافقة' && !isLegacyApproved(r) ? `<button data-id="${esc(r.report_id)}" onclick="sendNow(this.dataset.id)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال الآن (داخل وقت الإرسال فقط)"><i class="fab fa-whatsapp me-1"></i> ${((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال الآن'}</button>` : ''}
                             ${IS_ADMIN ? `<button data-id="${esc(r.report_id)}" onclick="deleteReport(this.dataset.id)" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </div>
                     </div>
