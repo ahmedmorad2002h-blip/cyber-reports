@@ -88,61 +88,36 @@ def mask_number(number):
 # نص الرسالة
 # ---------------------------------------------------------------------------
 def build_message(row, max_len=None):
+    """نفس صيغة زر "مشاركة واتساب" في الموقع تماماً (ترتيب الحقول والرموز والقيم الافتراضية)."""
     tech = row.get('tech_indicators') if isinstance(row.get('tech_indicators'), dict) else {}
 
-    def val(x):
-        return str(x).strip() if x not in (None, '') else ''
-
-    def line(icon, label, value):
-        value = val(value)
-        return f"{icon} *{label}:* {value}" if value else None
-
-    head = [x for x in (
-        "📋 *تقرير رصد سيبراني - مديرية أمن وسلامة الوزارة*",
-        line("🆔", "رقم البلاغ", row.get('report_id')),
-        line("👤", "القائم بالرصد", row.get('officer')),
-        line("🌐", "المنصة", row.get('platform')),
-        line("🔗", "الرابط", row.get('url')),
-        line("🏷️", "اسم الحساب", row.get('account_name')),
-        line("📅", "تاريخ الرصد", row.get('datetime') or row.get('timestamp')),
-        line("⚠️", "نوع التهديد", row.get('threat_type')),
-        line("🔴", "مستوى الخطورة", row.get('severity')),
-    ) if x]
-
-    indicators = [x for x in (
-        line("•", "IP", tech.get('ip')),
-        line("•", "Domain", tech.get('domain')),
-        line("•", "URL فرعي", tech.get('url')),
-        line("•", "Email", tech.get('email')),
-        line("•", "Username", tech.get('username')),
-        line("•", "Hash", tech.get('hash')),
-        line("•", "IOC", tech.get('ioc')),
-        line("•", "أخرى", tech.get('other')),
-    ) if x]
-    tail = []
-    if indicators:
-        tail.append("⚙️ *المؤشرات الفنية:*")
-        tail.extend(indicators)
-    recommendation = val(row.get('recommendation'))
-    if recommendation:
-        tail.append(f"✅ *التوصية:* {recommendation[:400]}")
-    decided_at = val(tech.get('decided_at'))
-    if decided_at:
-        tail.append(f"🗓️ *تمت الموافقة:* {decided_at}")
-
-    description = val(row.get('description'))
+    def val(x, default):
+        x = str(x).strip() if x not in (None, '') else ''
+        return x or default
 
     def assemble(desc):
-        parts = list(head)
-        if desc:
-            parts.append(f"📝 *الوصف:* {desc}")
-        parts.extend(tail)
-        return "\n".join(parts)
+        return (
+            "📋 *تقرير رصد سيبراني - مديرية أمن وسلامة الوزارة*\n\n"
+            f"🌐 *المنصة:* {val(row.get('platform'), 'غير محدد')}\n"
+            f"🔗 *الرابط:* {val(row.get('url'), 'غير محدد')}\n"
+            f"🏷️ *اسم الحساب:* {val(row.get('account_name'), 'غير محدد')}\n"
+            f"📅 *التاريخ:* {val(row.get('datetime') or row.get('timestamp'), 'غير محدد')}\n"
+            f"⚠️ *نوع التهديد:* {val(row.get('threat_type'), 'غير محدد')}\n"
+            f"🔴 *مستوى الخطورة:* {val(row.get('severity'), 'غير محدد')}\n"
+            f"📝 *الوصف:* {desc}\n"
+            "⚙️ *المؤشرات الفنية:*\n"
+            f"- IP: {val(tech.get('ip'), 'غير متوفر')}\n"
+            f"- Domain: {val(tech.get('domain'), 'غير متوفر')}\n"
+            f"- Email: {val(tech.get('email'), 'غير متوفر')}\n"
+            f"- Hash: {val(tech.get('hash'), 'غير متوفر')}\n"
+            f"- IOC: {val(tech.get('ioc'), 'غير متوفر')}"
+        )
 
+    description = val(row.get('description'), 'لا يوجد وصف')
     text = assemble(description)
     if max_len and len(text) > max_len:
         overflow = len(text) - max_len
-        if description and len(description) > overflow + 20:
+        if len(description) > overflow + 20:
             description = description[: len(description) - overflow - 1].rstrip() + '…'
             text = assemble(description)
         if len(text) > max_len:
