@@ -952,7 +952,7 @@
                                 <button data-id="${esc(r.report_id)}" onclick="rejectReport(this.dataset.id)" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
                             ` : ''}
 
-                            ${IS_ADMIN && WA_ENABLED && r.status === 'تمت الموافقة' && !isLegacyApproved(r) ? `<button data-id="${esc(r.report_id)}" onclick="sendNow(this.dataset.id)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال الآن (داخل وقت الإرسال فقط)"><i class="fab fa-whatsapp me-1"></i> ${((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال الآن'}</button>` : ''}
+                            ${IS_ADMIN && WA_ENABLED && r.status === 'تمت الموافقة' && !isLegacyApproved(r) ? `<button data-id="${esc(r.report_id)}" onclick="sendNow(this.dataset.id)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال فوري (حتى خارج وقت الدوام)"><i class="fab fa-whatsapp me-1"></i> ${((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال الآن'}</button>` : ''}
                             ${IS_ADMIN ? `<button data-id="${esc(r.report_id)}" onclick="deleteReport(this.dataset.id)" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </div>
                     </div>
