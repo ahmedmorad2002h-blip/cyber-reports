@@ -797,6 +797,8 @@ def _decide_report(report_id, new_status, extra_tech=None):
         tech['decided_by'] = session.get('user')
         tech['decided_at'] = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
         tech.update(extra_tech or {})
+        if new_status == STATUS_APPROVED:
+            tech['wa_queue'] = True     # علامة: موافقة جديدة تدخل طابور الإرسال (القديمة بلا علامة ولا تُرسل أبداً)
         res = (supabase.table('reports').update({'status': new_status, 'tech_indicators': tech})
                .eq('report_id', rid).eq('status', STATUS_PENDING).execute())
         if not res.data:
@@ -837,11 +839,19 @@ def bulk_approve():
         report_ids = [clean(str(i), 100) for i in raw_ids if i][:500]
         if not report_ids:
             return jsonify({'success': False, 'message': 'لم يتم تحديد أي بلاغ.'})
-        # الشرط على الحالة: لا تمسّ البلاغات المبتوت فيها (المرفوضة أو المرسلة)
-        res = (supabase.table('reports').update({'status': STATUS_APPROVED})
-               .in_('report_id', report_ids).eq('status', STATUS_PENDING).execute())
+        # الشرط على الحالة: لا تمسّ البلاغات المبتوت فيها (المرفوضة أو المرسلة).
+        # كل بلاغ يُحدَّث لوحده لأن لكل بلاغ مؤشراته، ويُوسَم بعلامة طابور الإرسال.
+        rows = supabase.table('reports').select('*').in_('report_id', report_ids).eq('status', STATUS_PENDING).execute().data or []
+        stamp = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
+        approved = 0
+        for row in rows:
+            tech = dict(_tech_of(row))
+            tech.update({'decided_by': session.get('user'), 'decided_at': stamp, 'wa_queue': True})
+            res = (supabase.table('reports').update({'status': STATUS_APPROVED, 'tech_indicators': tech})
+                   .eq('report_id', row['report_id']).eq('status', STATUS_PENDING).execute())
+            approved += len(res.data or [])
         trigger_whatsapp_async()
-        return jsonify({'success': True, 'approved': len(res.data or [])})
+        return jsonify({'success': True, 'approved': approved})
     except Exception:
         log.exception("خطأ في الموافقة الجماعية")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
@@ -858,23 +868,38 @@ def delete_report(report_id):
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
 
 
-def _deletable_statuses():
-    """عند تفعيل واتساب لا نحذف إلا ما أُرسل فعلاً، حتى لا يضيع بلاغ موافق عليه لم يصل بعد."""
-    return [STATUS_SENT] if wa.load_config()['enabled'] else [STATUS_APPROVED, STATUS_SENT]
+def _is_queued(row):
+    return bool(_tech_of(row).get('wa_queue'))
+
+
+def _deletable_rows():
+    """عند تفعيل واتساب لا نحذف إلا ما أُرسل فعلاً، أو الموافق عليه القديم الذي لن يُرسل أبداً (بلا علامة طابور)."""
+    rows = fetch_all(lambda: supabase.table('reports').select('report_id, timestamp, status, tech_indicators')
+                     .in_('status', [STATUS_APPROVED, STATUS_SENT]).order('report_id'))
+    if not wa.load_config()['enabled']:
+        return rows
+    return [r for r in rows if r.get('status') == STATUS_SENT or not _is_queued(r)]
 
 
 def _kept_unsent_count():
     if not wa.load_config()['enabled']:
         return 0
-    return len(supabase.table('reports').select('report_id').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or [])
+    rows = supabase.table('reports').select('report_id, tech_indicators').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or []
+    return len([r for r in rows if _is_queued(r)])
+
+
+def _delete_ids(ids):
+    for i in range(0, len(ids), 100):
+        supabase.table('reports').delete().in_('report_id', ids[i:i + 100]).execute()
 
 
 @app.route('/delete-approved-bulk', methods=['POST'])
 @admin_required_json
 def delete_approved_bulk():
     try:
-        res = supabase.table('reports').delete().in_('status', _deletable_statuses()).execute()
-        return jsonify({'success': True, 'deleted': len(res.data or []), 'kept_unsent': _kept_unsent_count()})
+        ids = [r['report_id'] for r in _deletable_rows()]
+        _delete_ids(ids)
+        return jsonify({'success': True, 'deleted': len(ids), 'kept_unsent': _kept_unsent_count()})
     except Exception:
         log.exception("خطأ في حذف البلاغات الموافق عليها")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'})
@@ -885,11 +910,8 @@ def delete_approved_bulk():
 def delete_monthly_approved():
     try:
         current_month = wa.now_iraq().strftime('%Y-%m')
-        reports = fetch_all(lambda: supabase.table('reports').select('report_id, timestamp, status')
-                            .in_('status', _deletable_statuses()).order('report_id'))
-        ids = [r['report_id'] for r in reports if str(r.get('timestamp', '')).startswith(current_month)]
-        for i in range(0, len(ids), 100):
-            supabase.table('reports').delete().in_('report_id', ids[i:i + 100]).execute()
+        ids = [r['report_id'] for r in _deletable_rows() if str(r.get('timestamp', '')).startswith(current_month)]
+        _delete_ids(ids)
         return jsonify({'success': True, 'deleted': len(ids), 'kept_unsent': _kept_unsent_count()})
     except Exception:
         log.exception("خطأ في تصفية بلاغات الشهر")
@@ -1268,6 +1290,8 @@ def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0):
             if not wa.in_send_window(cfg, now):      # انتهى الوقت أثناء الدورة
                 out['in_window'] = False
                 break
+            if not _is_queued(row):      # بلاغات قديمة موافق عليها قبل تفعيل الإرسال: لا تُرسل أبداً
+                continue
             if not only_id and not _wa_eligible(row, now):
                 continue
             claimed = _wa_claim(row, now)
@@ -1343,6 +1367,8 @@ def whatsapp_status():
     try:
         rows = supabase.table('reports').select('report_id, tech_indicators, status').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or []
         for row in rows:
+            if not _is_queued(row):
+                continue
             if int(_wa_info(row).get('attempts') or 0) >= WA_MAX_ATTEMPTS:
                 out['failed'] += 1
             else:
@@ -1370,7 +1396,10 @@ def whatsapp_send_now(report_id):
         info = _wa_info(row)
         info.update({'attempts': 0, 'state': 'retry'})
         info.pop('next_retry_at', None)
-        _wa_save(row, _tech_of(row), info, STATUS_APPROVED, STATUS_APPROVED)
+        tech = dict(_tech_of(row))
+        tech['wa_queue'] = True     # الأدمن اختار إرساله يدوياً
+        _wa_save(row, tech, info, STATUS_APPROVED, STATUS_APPROVED)
+        row = {**row, 'tech_indicators': {**tech, 'whatsapp': info}}
         result = process_whatsapp_queue(limit=1, only_id=rid, delay=0)
     except Exception:
         log.exception("خطأ في الإرسال اليدوي")
