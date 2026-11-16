@@ -406,7 +406,10 @@
                     <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.25); border: 1px solid var(--cyber-cyan); box-shadow: 0 0 15px rgba(0,242,254,0.2);">البلاغات الجديدة وقيد المراجعة</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">البلاغات الموافق عليها</button>
+                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">موافق عليها ولم تُرسل بعد</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold text-white" id="tab-sent" onclick="switchTab('تمت الموافقة وتم إرسالها')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);"><i class="fab fa-whatsapp me-1"></i> موافق عليها وتم إرسالها</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link fw-bold text-white" id="tab-rejected" onclick="switchTab('مرفوض')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">الحالات المرفوضة</button>
@@ -818,7 +821,8 @@
 
         function tabOf(status) {
             const s = status || 'قيد المراجعة';
-            return APPROVED_STATES.includes(s) ? 'تمت الموافقة' : s;
+            if (s === 'جاري الإرسال') return 'تمت الموافقة';   // قيد الإرسال = لم تُرسل بعد
+            return s;
         }
 
         function statusBadge(r) {
@@ -858,6 +862,7 @@
             currentTabStatus = status;
             document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
+            document.getElementById('tab-sent').style.background = status === 'تمت الموافقة وتم إرسالها' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             const rejTab = document.getElementById('tab-rejected');
             if (rejTab) rejTab.style.background = status === 'مرفوض' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             renderRecordsList(allGlobalRecords);
