@@ -1264,14 +1264,14 @@ def _wa_reclaim_stale(now):
             log.exception("تعذر إعادة البلاغ العالق %s للطابور", row.get('report_id'))
 
 
-def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0):
+def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0, ignore_window=False):
     """يرسل البلاغات الموافق عليها غير المرسلة (الأقدم أولاً) داخل وقت الإرسال فقط."""
     cfg = wa.load_config()
     out = {'enabled': cfg['enabled'], 'in_window': False, 'sent': 0, 'failed': 0, 'busy': False}
     if not cfg['enabled']:
         return out
     out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
-    if not out['in_window']:
+    if not out['in_window'] and not ignore_window:     # الإرسال اليدوي العاجل لا يتقيد بوقت الدوام
         return out
     if not _wa_lock.acquire(blocking=False):
         out['busy'] = True
@@ -1287,7 +1287,7 @@ def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0):
             if handled >= limit:
                 break
             now = wa.now_iraq()
-            if not wa.in_send_window(cfg, now):      # انتهى الوقت أثناء الدورة
+            if not ignore_window and not wa.in_send_window(cfg, now):      # انتهى الوقت أثناء الدورة
                 out['in_window'] = False
                 break
             if not _is_queued(row):      # بلاغات قديمة موافق عليها قبل تفعيل الإرسال: لا تُرسل أبداً
@@ -1386,8 +1386,6 @@ def whatsapp_send_now(report_id):
     cfg = wa.load_config()
     if not cfg['enabled']:
         return jsonify({'success': False, 'message': 'الإرسال على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.'}), 400
-    if not wa.in_send_window(cfg, wa.now_iraq()):
-        return jsonify({'success': False, 'message': f'خارج وقت الإرسال المسموح ({wa.window_label(cfg)} بتوقيت بغداد). سيُرسل تلقائياً عند بدء الوقت.'}), 409
     try:
         rows = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
         if not rows or rows[0].get('status') != STATUS_APPROVED:
@@ -1400,7 +1398,7 @@ def whatsapp_send_now(report_id):
         tech['wa_queue'] = True     # الأدمن اختار إرساله يدوياً
         _wa_save(row, tech, info, STATUS_APPROVED, STATUS_APPROVED)
         row = {**row, 'tech_indicators': {**tech, 'whatsapp': info}}
-        result = process_whatsapp_queue(limit=1, only_id=rid, delay=0)
+        result = process_whatsapp_queue(limit=1, only_id=rid, delay=0, ignore_window=True)
     except Exception:
         log.exception("خطأ في الإرسال اليدوي")
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
