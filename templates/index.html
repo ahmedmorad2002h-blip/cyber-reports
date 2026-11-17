@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        /* شبكة أمان للموبايل: بعض المتصفحات تعرض الصفحة بعرض 980px (كأنها شاشة كمبيوتر) فتصغر الخطوط ولا تعمل تنسيقات الموبايل.
+           إذا كانت الشاشة الفعلية صغيرة والعرض أكبر منها، نثبّت عرض الصفحة على عرض الشاشة. */
+        (function () {
+            try {
+                var sw = Math.min(screen.width, screen.height);
+                if (sw && sw <= 820 && window.innerWidth > 900) {
+                    var m = document.querySelector('meta[name="viewport"]');
+                    if (m) m.setAttribute('content', 'width=' + sw + ', initial-scale=1');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#010409">
     <meta name="mobile-web-app-capable" content="yes">
