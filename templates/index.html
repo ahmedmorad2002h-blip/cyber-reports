@@ -157,7 +157,7 @@
 
         /* ====== الهاتف: خطوط أكبر وأزرار بحجم لمس مريح وتخطيط مرتب ====== */
         @media (max-width: 768px) {
-            html { font-size: 15px; }
+            html { font-size: clamp(14px, 4vw, 16px); }
             body { background-size: 100% 100%, 22px 22px, 22px 22px; }
             .app-nav { padding: 8px 10px !important; gap: 6px; flex-wrap: nowrap; position: sticky; top: 0; z-index: 1040; }
             .app-nav .navbar-brand { font-size: 0.95rem !important; line-height: 1.3; white-space: normal; margin-left: 0; }
@@ -175,7 +175,7 @@
             .stat-card .small { font-size: 0.72rem !important; line-height: 1.3; }
             .stat-card h3, .stat-card h4 { font-size: 1.25rem !important; }
             .row.g-3 { --bs-gutter-x: 8px; --bs-gutter-y: 8px; }
-            #globe-container { height: 270px; margin: 12px 0; border-radius: 14px; }
+            #globe-container { height: clamp(210px, 68vw, 340px); margin: 12px 0; border-radius: 14px; }
             .globe-legend { top: 6px; right: 6px; padding: 5px 8px; font-size: 0.6rem; line-height: 1.7; }
             .threat-ticker { left: 6px; right: 6px; bottom: 6px; padding: 5px 8px; font-size: 0.64rem; }
             /* الحقول: 16px تمنع تكبير الصفحة تلقائياً في الموبايل */
@@ -183,12 +183,17 @@
             textarea { min-height: 96px; }
             .tech-grid { grid-template-columns: 1fr; gap: 10px; }
             .form-label { font-size: 0.95rem; }
-            .sidebar { width: 88vw; max-width: 380px; right: -92vw; padding: 20px 16px; }
+            .sidebar { width: 88vw; max-width: 380px; right: -100vw; height: 100vh; height: 100dvh; padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); }
+            .sidebar.active { right: 0; }
             .sidebar a { padding: 14px !important; font-size: 1rem; }
             /* التبويبات: صف أفقي قابل للتمرير */
-            #recordsTabs { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-            #recordsTabs::-webkit-scrollbar { display: none; }
-            #recordsTabs .nav-link { white-space: nowrap; font-size: 0.9rem; padding: 10px 14px; border-radius: 12px; }
+            #recordsTabs { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; }
+            #recordsTabs .nav-item { width: 100%; }
+            #recordsTabs .nav-link { width: 100%; min-height: 52px; white-space: normal; text-align: center; font-size: 0.88rem; line-height: 1.35; padding: 8px 6px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+            .bulk-bar { flex-direction: column; }
+            .bulk-bar .btn { width: 100%; margin: 0 !important; white-space: normal; }
+            .records-scroll { max-height: none !important; overflow: visible !important; }
+            .card .d-flex.justify-content-between.align-items-center.mb-3 { flex-wrap: wrap; gap: 8px; }
             /* سطر البلاغ: العنوان فوق والأزرار تلتف تحته */
             .rec-head { flex-direction: column; align-items: stretch !important; gap: 10px; }
             .rec-actions { flex-wrap: wrap; gap: 8px !important; }
@@ -201,6 +206,10 @@
             .modal .btn { min-height: 46px; }
             .table-responsive { -webkit-overflow-scrolling: touch; }
             #pwa-install { bottom: 12px !important; left: 12px !important; padding: 12px 18px !important; }
+        }
+        @media (max-width: 768px) and (max-height: 560px) {
+            #globe-container { height: 200px; }
+            .app-nav { position: static; }
         }
         @media (max-width: 400px) {
             html { font-size: 14px; }
@@ -487,7 +496,7 @@
             </ul>
 
             {% if ROLE_ADMIN %}
-            <div class="d-flex gap-2 mb-3 p-2 rounded" style="background: rgba(2,6,23,0.95); border: 1px solid rgba(0,242,254,0.4);" id="bulk-actions-bar">
+            <div class="d-flex gap-2 mb-3 p-2 rounded bulk-bar" style="background: rgba(2,6,23,0.95); border: 1px solid rgba(0,242,254,0.4);" id="bulk-actions-bar">
                 <button class="btn btn-sm btn-success fw-bold" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
                 <button class="btn btn-sm btn-outline-danger fw-bold ms-auto" onclick="deleteAllApproved()"><i class="fas fa-trash-alt me-1"></i> حذف كافة البلاغات الموافق عليها بضغطة زر</button>
             </div>
@@ -499,7 +508,7 @@
                 <input type="text" id="record-search" class="form-control" placeholder="بحث سريع برقم البلاغ، المنصة، أو الرابط..." onkeyup="filterRecords()">
             </div>
 
-            <div id="records-container" style="max-height: 500px; overflow-y: auto;"></div>
+            <div id="records-container" class="records-scroll" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
         {% if CAN_VIEW_ALL %}
