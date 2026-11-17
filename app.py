@@ -856,8 +856,8 @@ def _decide_report(report_id, new_status, extra_tech=None):
 @app.route('/approve-report/<report_id>', methods=['POST'])
 @admin_required_json
 def approve_report(report_id):
-    """الموافقة = إرسال: داخل وقت الدوام يُرسل البلاغ على واتساب فوراً ضمن نفس الضغطة،
-    وخارجه ينتظر وقت الدوام (أو زر "إرسال الآن" للحالات العاجلة)."""
+    """الموافقة وحدها لا ترسل داخل الطلب: البلاغ يُوسَم لطابور الإرسال فيرسله النظام تلقائياً
+    خلال ثوانٍ إن كنا داخل وقت الدوام، وإلا ينتظر بدايته. زر "إرسال الآن" منفصل وللضرورة (بأي وقت)."""
     resp = _decide_report(report_id, STATUS_APPROVED)
     body, code = (resp if isinstance(resp, tuple) else (resp, 200))
     data = body.get_json() or {}
@@ -866,23 +866,12 @@ def approve_report(report_id):
     cfg = wa.load_config()
     if not cfg['enabled']:
         return resp
-    rid = clean(report_id, 100)
-    if not wa.in_send_window(cfg, wa.now_iraq()):
+    if wa.in_send_window(cfg, wa.now_iraq()):
+        trigger_whatsapp_async()
+    else:
         data.update({'wa_waiting': True, 'wa_window': wa.window_label(cfg)})
         return jsonify(data), code
-    try:
-        result = process_whatsapp_queue(limit=1, only_id=rid, delay=0)
-        if result.get('busy'):
-            trigger_whatsapp_async()          # عملية إرسال أخرى جارية: الطابور يكمل
-        elif result.get('sent'):
-            data['wa_sent'] = True
-        else:
-            rows = supabase.table('reports').select('tech_indicators').eq('report_id', rid).limit(1).execute().data or []
-            data['wa_error'] = (_wa_info(rows[0]).get('last_error') if rows else '') or 'سبب غير معروف'
-    except Exception:
-        log.exception("خطأ أثناء الإرسال بعد الموافقة")
-        data['wa_error'] = 'حدث خطأ أثناء الإرسال'
-    return jsonify(data), code
+    return resp
 
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
