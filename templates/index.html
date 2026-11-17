@@ -976,7 +976,11 @@
         }
 
         function approveReport(id) {
-            postJson(`/approve-report/${encodeURIComponent(id)}`).then(data => handleResult(data, loadRecords)).catch(networkError);
+            postJson(`/approve-report/${encodeURIComponent(id)}`).then(data => handleResult(data, () => {
+                if (data.wa_error) alert('تمت الموافقة لكن فشل الإرسال على واتساب:\n' + data.wa_error + '\nيمكنك الضغط على "إعادة المحاولة" بعد معالجة السبب.');
+                else if (data.wa_waiting) alert('تمت الموافقة. الإرسال التلقائي يعمل ' + data.wa_window + ' بتوقيت بغداد، وسيُرسل البلاغ عند بدء الدوام. للحالات العاجلة اضغط "إرسال الآن".');
+                loadRecords();
+            })).catch(networkError);
         }
 
         let rejectingId = null;
