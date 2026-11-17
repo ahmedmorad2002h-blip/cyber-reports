@@ -7,7 +7,7 @@
   WHATSAPP_TO                رقم المستلم بصيغة دولية (مثال: 9647XXXXXXXXX)
   WHATSAPP_TEMPLATE_NAME     اسم القالب المعتمد (مطلوب عملياً، انظر README)
   WHATSAPP_TEMPLATE_LANG     لغة القالب (الافتراضي ar)
-  WHATSAPP_HOURS             ساعات الإرسال بتوقيت بغداد، الافتراضي 7-16
+  WHATSAPP_HOURS             ساعات الإرسال بتوقيت بغداد، الافتراضي 7-19
   WHATSAPP_API_VERSION       الافتراضي v23.0
   WHATSAPP_API_BASE          الافتراضي https://graph.facebook.com
   WHATSAPP_ENABLED           ضع 0 لإيقاف الإرسال مؤقتاً
@@ -22,7 +22,7 @@ from urllib import request as urlrequest
 # بغداد UTC+3 ثابت (العراق بلا توقيت صيفي)
 IRAQ_TZ = timezone(timedelta(hours=3))
 
-DEFAULT_HOURS = (7, 16)
+DEFAULT_HOURS = (7, 19)
 
 
 class WhatsAppError(Exception):
@@ -53,7 +53,7 @@ def load_config():
     token = _env('WHATSAPP_TOKEN')
     phone_id = re.sub(r'\D', '', _env('WHATSAPP_PHONE_NUMBER_ID'))
     to = re.sub(r'\D', '', _env('WHATSAPP_TO'))
-    start, end = parse_hours(_env('WHATSAPP_HOURS', '7-16'))
+    start, end = parse_hours(_env('WHATSAPP_HOURS', '7-19'))
     switched_off = _env('WHATSAPP_ENABLED', '1').lower() in ('0', 'false', 'no', 'off')
     return {
         'enabled': bool(token and phone_id and 8 <= len(to) <= 15) and not switched_off,
@@ -70,7 +70,7 @@ def load_config():
 
 
 def in_send_window(cfg, now=None):
-    """من بداية ساعة البدء (07:00:00) حتى قبل ساعة الانتهاء (16:00:00) بتوقيت بغداد."""
+    """من بداية ساعة البدء (07:00:00) حتى قبل ساعة الانتهاء (19:00:00) بتوقيت بغداد."""
     now = (now or now_iraq()).astimezone(IRAQ_TZ)
     return cfg['start_hour'] <= now.hour < cfg['end_hour']
 
