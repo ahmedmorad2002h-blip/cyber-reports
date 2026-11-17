@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import hmac
 import time
@@ -10,7 +11,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlsplit, parse_qsl, unquote
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client, Client
@@ -567,6 +568,49 @@ def _register_failure(key):
 # ---------------------------------------------------------------------------
 # المسارات
 # ---------------------------------------------------------------------------
+@app.route('/manifest.webmanifest')
+def pwa_manifest():
+    """ملف تعريف التطبيق: يجعل الموقع قابلاً للتثبيت على الأندرويد كتطبيق."""
+    manifest = {
+        'name': 'مديرية أمن وسلامة الوزارة - منصة الرصد السيبراني',
+        'short_name': 'الرصد السيبراني',
+        'description': 'منصة الرصد والتحقيقات السيبرانية',
+        'lang': 'ar', 'dir': 'rtl',
+        'start_url': '/', 'scope': '/', 'id': '/',
+        'display': 'standalone',
+        'orientation': 'any',
+        'background_color': '#010409', 'theme_color': '#010409',
+        'icons': [
+            {'src': '/static/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/icons/icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
+        ],
+    }
+    return Response(json.dumps(manifest, ensure_ascii=False), mimetype='application/manifest+json')
+
+
+_SERVICE_WORKER = """// خدمة بسيطة: لا نخزّن أي صفحة أو بيانات (حفاظاً على الخصوصية)، فقط رسالة عند انقطاع الإنترنت.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+const OFFLINE = '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>لا يوجد اتصال</title>' +
+  '<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#010409;color:#e2e8f0;font-family:sans-serif;text-align:center">' +
+  '<div><h2 style="color:#00f2fe">لا يوجد اتصال بالإنترنت</h2><p>تحقق من الشبكة ثم أعد المحاولة.</p>' +
+  '<button onclick="location.reload()" style="padding:10px 24px;border:0;border-radius:8px;background:#00f2fe;font-weight:bold">إعادة المحاولة</button></div></body></html>';
+self.addEventListener('fetch', e => {
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request).catch(() => new Response(OFFLINE, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
+  }
+});
+"""
+
+
+@app.route('/sw.js')
+def pwa_service_worker():
+    resp = Response(_SERVICE_WORKER, mimetype='application/javascript')
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
+
+
 @app.route('/healthz')
 def healthz():
     """بدون تسجيل دخول وبدون قاعدة بيانات: لخدمات المراقبة (UptimeRobot) حتى لا ينام الموقع."""
