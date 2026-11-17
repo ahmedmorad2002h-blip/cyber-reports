@@ -154,6 +154,65 @@
 
         .hidden { display: none !important; }
 
+
+        /* ====== الهاتف: خطوط أكبر وأزرار بحجم لمس مريح وتخطيط مرتب ====== */
+        @media (max-width: 768px) {
+            html { font-size: 15px; }
+            body { background-size: 100% 100%, 22px 22px, 22px 22px; }
+            .app-nav { padding: 8px 10px !important; gap: 6px; flex-wrap: nowrap; position: sticky; top: 0; z-index: 1040; }
+            .app-nav .navbar-brand { font-size: 0.95rem !important; line-height: 1.3; white-space: normal; margin-left: 0; }
+            .app-nav .fa-2x { font-size: 1.4rem; margin-left: 8px !important; }
+            .app-nav .brand-ver, .app-nav .btn-label { display: none; }
+            .app-nav .btn { padding: 0 !important; width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 1.05rem; }
+            .app-nav .btn i { margin: 0 !important; }
+            .app-container { margin-top: 12px !important; margin-bottom: 90px !important; padding-left: 10px; padding-right: 10px; }
+            .card { padding: 16px 14px; border-radius: 18px; border-width: 1.5px; box-shadow: 0 0 20px rgba(0,242,254,0.25), 0 12px 30px rgba(0,0,0,0.9); }
+            .card h2 { font-size: 1.15rem; line-height: 1.5; }
+            .card h3 { font-size: 1.05rem !important; line-height: 1.5; }
+            .card .btn { min-height: 46px; font-size: 1rem; }
+            .stat-card { padding: 10px 6px; border-radius: 12px; }
+            .stat-card:hover { transform: none; }
+            .stat-card .small { font-size: 0.72rem !important; line-height: 1.3; }
+            .stat-card h3, .stat-card h4 { font-size: 1.25rem !important; }
+            .row.g-3 { --bs-gutter-x: 8px; --bs-gutter-y: 8px; }
+            #globe-container { height: 270px; margin: 12px 0; border-radius: 14px; }
+            .globe-legend { top: 6px; right: 6px; padding: 5px 8px; font-size: 0.6rem; line-height: 1.7; }
+            .threat-ticker { left: 6px; right: 6px; bottom: 6px; padding: 5px 8px; font-size: 0.64rem; }
+            /* الحقول: 16px تمنع تكبير الصفحة تلقائياً في الموبايل */
+            input, select, textarea, .form-control, .form-select { font-size: 16px !important; padding: 12px 14px !important; min-height: 48px; }
+            textarea { min-height: 96px; }
+            .tech-grid { grid-template-columns: 1fr; gap: 10px; }
+            .form-label { font-size: 0.95rem; }
+            .sidebar { width: 88vw; max-width: 380px; right: -92vw; padding: 20px 16px; }
+            .sidebar a { padding: 14px !important; font-size: 1rem; }
+            /* التبويبات: صف أفقي قابل للتمرير */
+            #recordsTabs { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+            #recordsTabs::-webkit-scrollbar { display: none; }
+            #recordsTabs .nav-link { white-space: nowrap; font-size: 0.9rem; padding: 10px 14px; border-radius: 12px; }
+            /* سطر البلاغ: العنوان فوق والأزرار تلتف تحته */
+            .rec-head { flex-direction: column; align-items: stretch !important; gap: 10px; }
+            .rec-actions { flex-wrap: wrap; gap: 8px !important; }
+            .rec-actions .btn { padding: 9px 14px !important; font-size: 0.92rem; min-height: 42px; }
+            #records-list .fs-6 { font-size: 0.95rem !important; }
+            .month-table th, .month-table td { font-size: 0.78rem; padding: 6px 8px; }
+            .modal-dialog { margin: 8px; }
+            .modal-content { border-radius: 16px; }
+            .modal-body { padding: 14px; }
+            .modal .btn { min-height: 46px; }
+            .table-responsive { -webkit-overflow-scrolling: touch; }
+            #pwa-install { bottom: 12px !important; left: 12px !important; padding: 12px 18px !important; }
+        }
+        @media (max-width: 400px) {
+            html { font-size: 14px; }
+            #globe-container { height: 230px; }
+            .app-nav .navbar-brand { font-size: 0.85rem !important; }
+        }
+        /* لمس مريح لكل الأجهزة التي تعمل باللمس */
+        @media (pointer: coarse) {
+            .btn, .nav-link, .close-btn { touch-action: manipulation; }
+            .report-checkbox, .form-check-input { width: 1.4em; height: 1.4em; }
+        }
+
         @media print {
             body * { visibility: hidden !important; }
             #printable-report-area, #printable-report-area * { visibility: visible !important; color: #000000 !important; background: #ffffff !important; }
@@ -163,16 +222,16 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg" style="border-color: rgba(0, 242, 254, 0.5) !important; background: rgba(2,4,10,0.95) !important;">
+    <nav class="navbar navbar-dark bg-black px-4 border-bottom shadow-lg app-nav" style="border-color: rgba(0, 242, 254, 0.5) !important; background: rgba(2,4,10,0.95) !important;">
         <div class="d-flex align-items-center">
             <i class="fa-solid fa-shield-halved fa-2x me-3" style="color: var(--cyber-cyan); filter: drop-shadow(0 0 10px var(--cyber-cyan));"></i>
-            <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.25rem;">مديرية أمن وسلامة الوزارة <span style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-SYSTEM v3.5]</span></span>
+            <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.25rem;">مديرية أمن وسلامة الوزارة <span class="brand-ver" style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-SYSTEM v3.5]</span></span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();"><i class="fas fa-sync-alt me-1"></i> تحديث</button>
+            <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();"><i class="fas fa-sync-alt me-1"></i><span class="btn-label">تحديث</span></button>
             <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5); box-shadow: 0 0 15px rgba(0,242,254,0.2);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
-            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i> الرئيسية</button>
-            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i> لوحة التحكم</button>
+            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i><span class="btn-label">الرئيسية</span></button>
+            <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i><span class="btn-label">لوحة التحكم</span></button>
         </div>
     </nav>
 
@@ -220,7 +279,7 @@
         </div>
     </div>
 
-    <div class="container my-5" style="max-width: 940px;">
+    <div class="container my-5 app-container" style="max-width: 940px;">
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -944,12 +1003,12 @@
 
             container.innerHTML = filteredByTab.map(r => `
                 <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 15px rgba(0,242,254,0.1);">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 rec-head">
                         <div class="d-flex align-items-center gap-2">
                             ${IS_ADMIN && currentTabStatus === 'قيد المراجعة' ? `<input type="checkbox" class="form-check-input report-checkbox" value="${esc(r.report_id)}">` : ''}
                             <span class="fw-bold fs-6" style="color: var(--cyber-cyan); text-shadow: 0 0 8px var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${esc(r.report_id)}</span>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 rec-actions">
                             ${statusBadge(r)}
                             <button class="btn btn-sm btn-outline-cyber py-0 px-2 fw-bold" data-id="${esc(r.report_id)}" onclick="openReportById(this.dataset.id)"><i class="fas fa-eye me-1"></i> تفاصيل</button>
                             <button class="btn btn-sm btn-success py-0 px-2 fw-bold" data-id="${esc(r.report_id)}" onclick="shareById(this.dataset.id)" title="مشاركة واتساب"><i class="fab fa-whatsapp"></i></button>
