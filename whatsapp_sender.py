@@ -7,6 +7,7 @@
   WHATSAPP_TO                رقم المستلم بصيغة دولية (مثال: 9647XXXXXXXXX)
   WHATSAPP_TEMPLATE_NAME     اسم القالب المعتمد (مطلوب عملياً، انظر README)
   WHATSAPP_TEMPLATE_LANG     لغة القالب (الافتراضي ar)
+  WHATSAPP_TEMPLATE_VARS     عدد متغيرات القالب: 1 (الافتراضي، كل النص بمتغير واحد) أو 12 (متغير لكل حقل، يحفظ الترتيب والأسطر)
   WHATSAPP_HOURS             ساعات الإرسال بتوقيت بغداد، الافتراضي 7-19
   WHATSAPP_API_VERSION       الافتراضي v23.0
   WHATSAPP_API_BASE          الافتراضي https://graph.facebook.com
@@ -64,6 +65,7 @@ def load_config():
         'api_version': _env('WHATSAPP_API_VERSION', 'v23.0'),
         'template': _env('WHATSAPP_TEMPLATE_NAME'),
         'template_lang': _env('WHATSAPP_TEMPLATE_LANG', 'ar'),
+        'template_vars': 12 if _env('WHATSAPP_TEMPLATE_VARS', '1') == '12' else 1,
         'start_hour': start,
         'end_hour': end,
     }
@@ -125,6 +127,39 @@ def build_message(row, max_len=None):
     return text
 
 
+LRM = '\u200e'
+
+
+def _param(value, default, max_len=200):
+    """قيمة متغير في القالب: بلا أسطر جديدة ولا فراغات كثيرة ولا قيمة فارغة (ميتا ترفضها)."""
+    text = str(value).strip() if value not in (None, '') else ''
+    text = re.sub(r'[\r\n\t]+', ' ', text)
+    text = re.sub(r' {2,}', ' ', text).strip()
+    if len(text) > max_len:
+        text = text[: max_len - 1].rstrip() + '…'
+    return text or default
+
+
+def field_values(row):
+    """12 قيمة بنفس ترتيب متغيرات القالب {{1}}..{{12}} (انظر README)."""
+    tech = row.get('tech_indicators') if isinstance(row.get('tech_indicators'), dict) else {}
+    when = _param(row.get('datetime') or row.get('timestamp'), 'غير محدد', 40).replace('T', ' ')
+    return [
+        _param(row.get('platform'), 'غير محدد', 60),
+        _param(row.get('url'), 'غير محدد', 300),
+        _param(row.get('account_name'), 'غير محدد', 100),
+        LRM + when + LRM if when != 'غير محدد' else when,   # LRM يمنع قلب ترتيب الأرقام داخل النص العربي
+        _param(row.get('threat_type'), 'غير محدد', 80),
+        _param(row.get('severity'), 'غير محدد', 40),
+        _param(row.get('description'), 'لا يوجد وصف', 450),
+        _param(tech.get('ip'), 'غير متوفر', 100),
+        _param(tech.get('domain'), 'غير متوفر', 100),
+        _param(tech.get('email'), 'غير متوفر', 100),
+        _param(tech.get('hash'), 'غير متوفر', 130),
+        _param(tech.get('ioc'), 'غير متوفر', 100),
+    ]
+
+
 def flatten_for_template(text, max_len=1000):
     """متغيرات القالب في واتساب لا تقبل أسطراً جديدة ولا أكثر من 4 مسافات متتالية."""
     flat = re.sub(r'[\r\t]+', ' ', text or '')
@@ -169,9 +204,20 @@ def _error_detail(http_error):
     return f"{text} {('— ' + hint) if hint else ''}".strip()
 
 
-def send_message(cfg, text, timeout=20):
+def send_message(cfg, text, timeout=20, fields=None):
     """يرسل الرسالة ويرجع معرّف الرسالة. يرفع WhatsAppError عند الفشل (مع retryable)."""
-    if cfg.get('template'):
+    if cfg.get('template') and cfg.get('template_vars') == 12 and fields:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": cfg['to'],
+            "type": "template",
+            "template": {
+                "name": cfg['template'],
+                "language": {"code": cfg['template_lang']},
+                "components": [{"type": "body", "parameters": [{"type": "text", "text": v} for v in fields]}],
+            },
+        }
+    elif cfg.get('template'):
         payload = {
             "messaging_product": "whatsapp",
             "to": cfg['to'],
