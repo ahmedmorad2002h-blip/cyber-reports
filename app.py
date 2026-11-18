@@ -856,8 +856,8 @@ def _decide_report(report_id, new_status, extra_tech=None):
 @app.route('/approve-report/<report_id>', methods=['POST'])
 @admin_required_json
 def approve_report(report_id):
-    """الموافقة وحدها لا ترسل داخل الطلب: البلاغ يُوسَم لطابور الإرسال فيرسله النظام تلقائياً
-    خلال ثوانٍ إن كنا داخل وقت الدوام، وإلا ينتظر بدايته. زر "إرسال الآن" منفصل وللضرورة (بأي وقت)."""
+    """الموافقة = إرسال: داخل وقت الدوام يُرسل البلاغ على واتساب فوراً ضمن نفس الضغطة،
+    وخارجه ينتظر وقت الدوام (أو زر "إرسال الآن" للحالات العاجلة)."""
     resp = _decide_report(report_id, STATUS_APPROVED)
     body, code = (resp if isinstance(resp, tuple) else (resp, 200))
     data = body.get_json() or {}
@@ -866,12 +866,23 @@ def approve_report(report_id):
     cfg = wa.load_config()
     if not cfg['enabled']:
         return resp
-    if wa.in_send_window(cfg, wa.now_iraq()):
-        trigger_whatsapp_async()
-    else:
+    rid = clean(report_id, 100)
+    if not wa.in_send_window(cfg, wa.now_iraq()):
         data.update({'wa_waiting': True, 'wa_window': wa.window_label(cfg)})
         return jsonify(data), code
-    return resp
+    try:
+        result = process_whatsapp_queue(limit=1, only_id=rid, delay=0)
+        if result.get('busy'):
+            trigger_whatsapp_async()          # عملية إرسال أخرى جارية: الطابور يكمل
+        elif result.get('sent'):
+            data['wa_sent'] = True
+        else:
+            rows = supabase.table('reports').select('tech_indicators').eq('report_id', rid).limit(1).execute().data or []
+            data['wa_error'] = (_wa_info(rows[0]).get('last_error') if rows else '') or 'سبب غير معروف'
+    except Exception:
+        log.exception("خطأ أثناء الإرسال بعد الموافقة")
+        data['wa_error'] = 'حدث خطأ أثناء الإرسال'
+    return jsonify(data), code
 
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
@@ -1320,6 +1331,24 @@ def _wa_reclaim_stale(now):
             log.exception("تعذر إعادة البلاغ العالق %s للطابور", row.get('report_id'))
 
 
+def _queued_rows(only_id=None, limit=50):
+    """البلاغات الموافق عليها المعلَّمة لطابور الإرسال، الأقدم أولاً.
+    مهم: الفلترة تتم في قاعدة البيانات؛ لأن بلاغات قديمة كثيرة موافق عليها (بلا علامة طابور) كانت تملأ أول 50 صفاً
+    فلا تصل الدورة أبداً إلى البلاغ الجديد."""
+    base = supabase.table('reports').select('*').eq('status', STATUS_APPROVED)
+    if only_id:
+        return base.eq('report_id', only_id).limit(1).execute().data or []
+    try:
+        return base.filter('tech_indicators->>wa_queue', 'eq', 'true').order('report_id').limit(limit).execute().data or []
+    except Exception:
+        log.warning("تعذر فلترة الطابور في قاعدة البيانات، سيتم الفحص يدوياً.", exc_info=True)
+        light = fetch_all(lambda: supabase.table('reports').select('report_id, tech_indicators').eq('status', STATUS_APPROVED))
+        ids = sorted(r['report_id'] for r in light if _is_queued(r))[:limit]
+        if not ids:
+            return []
+        return supabase.table('reports').select('*').in_('report_id', ids).order('report_id').execute().data or []
+
+
 def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0, ignore_window=False):
     """يرسل البلاغات الموافق عليها غير المرسلة (الأقدم أولاً) داخل وقت الإرسال فقط."""
     cfg = wa.load_config()
@@ -1334,10 +1363,7 @@ def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0, ignore
         return out
     try:
         _wa_reclaim_stale(wa.now_iraq())
-        query = supabase.table('reports').select('*').eq('status', STATUS_APPROVED)
-        if only_id:
-            query = query.eq('report_id', only_id)
-        rows = query.order('report_id').limit(50).execute().data or []
+        rows = _queued_rows(only_id)
         handled = 0
         for row in rows:
             if handled >= limit:
@@ -1356,7 +1382,7 @@ def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0, ignore
             tech, info = claimed
             handled += 1
             try:
-                message_id = wa.send_message(cfg, wa.build_message(row, max_len=900 if cfg['template'] else None))
+                message_id = wa.send_message(cfg, wa.build_message(row, max_len=900 if cfg['template'] else None), fields=wa.field_values(row))
             except wa.WhatsAppError as e:
                 log.warning("فشل إرسال البلاغ %s: %s", row.get('report_id'), e)
                 _wa_mark_failed(row, tech, info, e, e.retryable, wa.now_iraq())
@@ -1421,7 +1447,7 @@ def whatsapp_status():
         return jsonify(out)
     out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
     try:
-        rows = supabase.table('reports').select('report_id, tech_indicators, status').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or []
+        rows = fetch_all(lambda: supabase.table('reports').select('report_id, tech_indicators, status').in_('status', [STATUS_APPROVED, STATUS_SENDING]))
         for row in rows:
             if not _is_queued(row):
                 continue
