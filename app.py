@@ -1283,7 +1283,7 @@ def _wa_claim(row, now):
 
 
 def _wa_mark_sent(row, tech, info, message_id, cfg, now):
-    info.update({'state': 'sent', 'sent_at': _fmt_local(now), 'message_id': message_id, 'to': wa.mask_number(cfg['to'])})
+    info.update({'state': 'sent', 'sent_at': _fmt_local(now), 'message_id': message_id, 'to': '، '.join(wa.mask_number(x) for x in cfg['recipients']), 'recipients_count': len(cfg['recipients'])})
     info.pop('last_error', None)
     info.pop('next_retry_at', None)
     for attempt in range(3):
@@ -1381,19 +1381,39 @@ def process_whatsapp_queue(limit=WA_BATCH_LIMIT, only_id=None, delay=1.0, ignore
                 continue
             tech, info = claimed
             handled += 1
-            try:
-                message_id = wa.send_message(cfg, wa.build_message(row, max_len=900 if cfg['template'] else None), fields=wa.field_values(row))
-            except wa.WhatsAppError as e:
-                log.warning("فشل إرسال البلاغ %s: %s", row.get('report_id'), e)
-                _wa_mark_failed(row, tech, info, e, e.retryable, wa.now_iraq())
+            text = wa.build_message(row, max_len=900 if cfg['template'] else None)
+            fields = wa.field_values(row)
+            sent_to = dict(info.get('sent_to') or {})      # من وصله البلاغ سابقاً (عند إعادة المحاولة لا نكرر له)
+            errors, flags, first_id = [], [], None
+            for number in cfg['recipients']:
+                key = wa.recipient_key(number)
+                if key in sent_to:
+                    first_id = first_id or sent_to[key]
+                    continue
+                try:
+                    mid = wa.send_message(cfg, text, fields=fields, to=number)
+                except wa.WhatsAppError as e:
+                    log.warning("فشل إرسال البلاغ %s إلى %s: %s", row.get('report_id'), wa.mask_number(number), e)
+                    errors.append(f"{wa.mask_number(number)}: {e}" if len(cfg['recipients']) > 1 else str(e))
+                    flags.append(e.retryable)
+                    continue
+                except Exception as e:
+                    log.exception("خطأ غير متوقع أثناء إرسال البلاغ %s", row.get('report_id'))
+                    errors.append(f"{wa.mask_number(number)}: {type(e).__name__}")
+                    flags.append(True)
+                    continue
+                sent_to[key] = mid
+                first_id = first_id or mid
+                info['sent_to'] = sent_to
+                try:
+                    _wa_save(row, tech, info, STATUS_SENDING, STATUS_SENDING)    # نحفظ التقدم حتى لا يتكرر الإرسال لمن وصله
+                except Exception:
+                    log.exception("تعذر حفظ تقدم الإرسال للبلاغ %s", row.get('report_id'))
+            if errors:
+                _wa_mark_failed(row, tech, info, '؛ '.join(errors), any(flags), wa.now_iraq())
                 out['failed'] += 1
                 continue
-            except Exception as e:
-                log.exception("خطأ غير متوقع أثناء إرسال البلاغ %s", row.get('report_id'))
-                _wa_mark_failed(row, tech, info, f"{type(e).__name__}", True, wa.now_iraq())
-                out['failed'] += 1
-                continue
-            _wa_mark_sent(row, tech, info, message_id, cfg, wa.now_iraq())
+            _wa_mark_sent(row, tech, info, first_id, cfg, wa.now_iraq())
             out['sent'] += 1
             if delay and handled < limit:
                 time.sleep(delay)
@@ -1442,7 +1462,7 @@ def whatsapp_status():
         return jsonify({'success': False, 'message': 'غير مسموح'}), 403
     cfg = wa.load_config()
     out = {'success': True, 'enabled': cfg['enabled'], 'window': wa.window_label(cfg), 'in_window': False,
-           'pending': 0, 'failed': 0, 'to': wa.mask_number(cfg['to']) if cfg['enabled'] else ''}
+           'pending': 0, 'failed': 0, 'to': '، '.join(wa.mask_number(x) for x in cfg['recipients']) if cfg['enabled'] else ''}
     if not cfg['enabled']:
         return jsonify(out)
     out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
