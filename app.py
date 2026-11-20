@@ -508,6 +508,8 @@ def refresh_role():
 def csrf_protect():
     if request.method in ('GET', 'HEAD', 'OPTIONS'):
         return None
+    if request.path == '/whatsapp-webhook':      # ميتا لا تملك رمز CSRF؛ يُتحقق من توقيعها بدلاً من ذلك
+        return None
     expected = str(session.get('_csrf', ''))
     sent = str(request.form.get('csrf_token') or request.headers.get('X-CSRF-Token', ''))
     if expected and sent and hmac.compare_digest(expected.encode(), sent.encode()):
@@ -1454,6 +1456,98 @@ def start_whatsapp_worker():
         return
     threading.Thread(target=_wa_worker_loop, name='wa-worker', daemon=True).start()
     log.info("بدأ عامل الإرسال التلقائي على واتساب.")
+
+
+# ---------------------------------------------------------------------------
+# الوارد: رسائل واتساب التي تصل إلى رقم المُرسِل (Webhook من Meta) تُحفظ وتُعرض للأدمن
+# ---------------------------------------------------------------------------
+INBOX_TABLE = 'wa_inbox'
+
+
+def _webhook_signature_ok(raw_body, header):
+    secret = os.environ.get('WHATSAPP_APP_SECRET', '').strip()
+    if not secret or not header.startswith('sha256='):
+        return False
+    expected = hmac.new(secret.encode(), raw_body, 'sha256').hexdigest()
+    return hmac.compare_digest(expected, header[7:].strip())
+
+
+def _describe_message(msg):
+    """نص مختصر لأي نوع رسالة (الوسائط لا تُنزَّل، فقط يُذكر نوعها)."""
+    kind = msg.get('type') or 'unknown'
+    if kind == 'text':
+        return kind, (msg.get('text') or {}).get('body', '')
+    labels = {'image': 'صورة', 'video': 'فيديو', 'audio': 'رسالة صوتية', 'document': 'ملف', 'sticker': 'ملصق',
+              'location': 'موقع', 'contacts': 'جهة اتصال', 'reaction': 'تفاعل', 'button': 'ضغط زر', 'interactive': 'رد تفاعلي'}
+    media = msg.get(kind) if isinstance(msg.get(kind), dict) else {}
+    extra = media.get('caption') or media.get('filename') or media.get('emoji') or media.get('text') or ''
+    if kind == 'button':
+        extra = media.get('text', '')
+    if kind == 'interactive':
+        reply = media.get('button_reply') or media.get('list_reply') or {}
+        extra = reply.get('title', '')
+    label = '[' + labels.get(kind, kind) + ']'
+    return kind, (label + (' ' + str(extra) if extra else ''))
+
+
+@app.route('/whatsapp-webhook', methods=['GET', 'POST'])
+def whatsapp_webhook():
+    if request.method == 'GET':
+        # تحقق ميتا عند حفظ الـ Callback URL
+        token = os.environ.get('WHATSAPP_VERIFY_TOKEN', '').strip()
+        sent = request.args.get('hub.verify_token', '')
+        if token and request.args.get('hub.mode') == 'subscribe' and hmac.compare_digest(token.encode(), sent.encode()):
+            return Response(request.args.get('hub.challenge', ''), mimetype='text/plain')
+        return 'forbidden', 403
+    raw = request.get_data(cache=False)
+    if len(raw) > 1_000_000 or not _webhook_signature_ok(raw, request.headers.get('X-Hub-Signature-256', '')):
+        return 'forbidden', 403
+    try:
+        payload = json.loads(raw.decode('utf-8'))
+    except ValueError:
+        return 'bad request', 400
+    rows = []
+    for entry in (payload.get('entry') or []) if isinstance(payload, dict) else []:
+        for change in (entry.get('changes') or []):
+            value = change.get('value') or {}
+            names = {c.get('wa_id'): (c.get('profile') or {}).get('name', '') for c in (value.get('contacts') or []) if isinstance(c, dict)}
+            for msg in (value.get('messages') or []):
+                if not isinstance(msg, dict) or not msg.get('id'):
+                    continue
+                kind, body = _describe_message(msg)
+                sender = re.sub(r'\D', '', str(msg.get('from') or ''))
+                try:
+                    sent_at = datetime.fromtimestamp(int(msg.get('timestamp')), wa.IRAQ_TZ).strftime('%Y-%m-%d %H:%M:%S')
+                except (TypeError, ValueError, OSError):
+                    sent_at = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
+                rows.append({'id': str(msg['id'])[:200], 'from_number': sender[:20], 'profile_name': str(names.get(sender, ''))[:100],
+                             'msg_type': kind[:30], 'body': str(body)[:4000], 'received_at': sent_at})
+    if rows:
+        try:
+            supabase.table(INBOX_TABLE).upsert(rows, on_conflict='id').execute()
+        except Exception:
+            log.exception("تعذر حفظ رسائل واتساب الواردة (هل أُنشئ الجدول %s؟)", INBOX_TABLE)
+            return 'error', 500       # ميتا تعيد المحاولة لاحقاً
+    return 'ok', 200
+
+
+@app.route('/whatsapp-inbox')
+def whatsapp_inbox():
+    if not is_admin_session():
+        return jsonify({'success': False, 'message': 'غير مسموح'}), 403
+    try:
+        rows = (supabase.table(INBOX_TABLE).select('*').order('received_at', desc=True).limit(200).execute().data or [])
+    except Exception:
+        log.exception("تعذر قراءة الوارد")
+        return jsonify({'success': False, 'message': 'جدول الوارد غير موجود بعد. شغّل أمر SQL الموجود في README ثم أعد المحاولة.'})
+    return jsonify({'success': True, 'messages': rows,
+                    'configured': bool(os.environ.get('WHATSAPP_VERIFY_TOKEN') and os.environ.get('WHATSAPP_APP_SECRET'))})
+
+
+@app.route('/privacy')
+def privacy():
+    """صفحة سياسة الخصوصية العامة (تطلبها ميتا عند تحويل التطبيق إلى Live)."""
+    return render_template('privacy.html')
 
 
 @app.route('/whatsapp-status')

@@ -21,6 +21,8 @@
 | `WHATSAPP_TEMPLATE_LANG` | اختياري | لغة القالب، الافتراضي `ar` |
 | `WHATSAPP_TEMPLATE_VARS` | اختياري | `12` لتفعيل القالب المنظّم (متغير لكل حقل، يحفظ الأسطر والترتيب)، الافتراضي `1` |
 | `WHATSAPP_HOURS` | اختياري | ساعات الإرسال بتوقيت بغداد، الافتراضي `7-19` |
+| `WHATSAPP_VERIFY_TOKEN` | لاستقبال الرسائل | نص سري تختاره أنت؛ يُكتب نفسه في Verify token بإعداد Webhook في Meta |
+| `WHATSAPP_APP_SECRET` | لاستقبال الرسائل | App secret من Meta (App settings > Basic)؛ يُتحقق به من توقيع كل رسالة واردة |
 | `WHATSAPP_ENABLED` | اختياري | ضع `0` لإيقاف الإرسال مؤقتاً |
 
 لتوليد `SECRET_KEY`:
@@ -104,3 +106,26 @@ alter table users add column if not exists is_supervisor boolean default false;
 ```
 
 ثم ضع في Render: `WHATSAPP_TEMPLATE_NAME=cyber_report_v2` و`WHATSAPP_TEMPLATE_VARS=12`.
+
+## الوارد (استقبال رسائل واتساب)
+
+الرقم المسجّل في Cloud API لا يظهر في تطبيق واتساب العادي، لذلك تُحفظ الرسائل التي تصل إليه وتُعرض للأدمن فقط: القائمة الجانبية > "الوارد (رسائل واتساب)".
+
+1. في Supabase > SQL Editor:
+
+```sql
+create table if not exists wa_inbox (
+  id text primary key,
+  from_number text,
+  profile_name text,
+  msg_type text,
+  body text,
+  received_at text
+);
+create index if not exists wa_inbox_received_idx on wa_inbox (received_at desc);
+```
+
+2. في Render أضف `WHATSAPP_VERIFY_TOKEN` (نص عشوائي طويل) و`WHATSAPP_APP_SECRET`.
+3. في Meta > WhatsApp > Configuration > Webhook: Callback URL = `https://<موقعك>/whatsapp-webhook` و Verify token = نفس القيمة، ثم Verify and save، ثم Manage واشترك في الحقل `messages`.
+4. الرسائل الحقيقية لا تصل إلا إذا كان التطبيق في وضع **Live** (يطلب رابط سياسة الخصوصية: `https://<موقعك>/privacy`).
+5. الوسائط (صور/ملفات) تظهر بنوعها وتعليقها فقط، ولا تُنزَّل.
