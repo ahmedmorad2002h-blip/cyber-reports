@@ -1483,23 +1483,36 @@ def whatsapp_status():
 @app.route('/whatsapp-send-now/<report_id>', methods=['POST'])
 @admin_required_json
 def whatsapp_send_now(report_id):
-    """إرسال/إعادة محاولة يدوية لبلاغ واحد (الأدمن فقط) وبنفس قيد وقت الإرسال."""
+    """إرسال/إعادة إرسال يدوية لبلاغ واحد (الأدمن فقط) في أي وقت، حتى لو أُرسل سابقاً."""
     rid = clean(report_id, 100)
     cfg = wa.load_config()
     if not cfg['enabled']:
         return jsonify({'success': False, 'message': 'الإرسال على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.'}), 400
     try:
         rows = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
-        if not rows or rows[0].get('status') != STATUS_APPROVED:
-            return jsonify({'success': False, 'message': 'البلاغ غير موجود أو ليس بانتظار الإرسال.'}), 409
+        if not rows:
+            return jsonify({'success': False, 'message': 'البلاغ غير موجود.'}), 404
         row = rows[0]
+        status = row.get('status')
         info = _wa_info(row)
+        if status == STATUS_SENDING:
+            claimed = _parse_local(info.get('claimed_at'))
+            if claimed and (wa.now_iraq() - claimed).total_seconds() < 120:
+                return jsonify({'success': False, 'message': 'البلاغ قيد الإرسال الآن، انتظر لحظات.'}), 409
+        elif status not in (STATUS_APPROVED, STATUS_SENT):
+            return jsonify({'success': False, 'message': 'البلاغ ليس موافقاً عليه.'}), 409
+        resend = status == STATUS_SENT     # إعادة إرسال بلاغ أُرسل سابقاً: يُرسل لكل المستلمين من جديد
         info.update({'attempts': 0, 'state': 'retry'})
         info.pop('next_retry_at', None)
+        info.pop('claimed_at', None)
+        info.pop('message_id', None)
+        if status != STATUS_APPROVED or resend:
+            info.pop('sent_to', None)
         tech = dict(_tech_of(row))
         tech['wa_queue'] = True     # الأدمن اختار إرساله يدوياً
-        _wa_save(row, tech, info, STATUS_APPROVED, STATUS_APPROVED)
-        row = {**row, 'tech_indicators': {**tech, 'whatsapp': info}}
+        if not _wa_save(row, tech, info, STATUS_APPROVED, status).data:
+            return jsonify({'success': False, 'message': 'تغيرت حالة البلاغ للتو، أعد المحاولة.'}), 409
+        row = {**row, 'status': STATUS_APPROVED, 'tech_indicators': {**tech, 'whatsapp': info}}
         result = process_whatsapp_queue(limit=1, only_id=rid, delay=0, ignore_window=True)
     except Exception:
         log.exception("خطأ في الإرسال اليدوي")
