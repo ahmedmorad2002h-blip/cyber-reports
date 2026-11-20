@@ -4,7 +4,7 @@
 
   WHATSAPP_TOKEN             رمز الوصول الدائم (System User Token) من Meta
   WHATSAPP_PHONE_NUMBER_ID   معرّف رقم المُرسِل في Meta (ليس الرقم نفسه)
-  WHATSAPP_TO                رقم المستلم بصيغة دولية (مثال: 9647XXXXXXXXX)
+  WHATSAPP_TO                رقم المستلم بصيغة دولية (مثال: 9647XXXXXXXXX). لعدة مستلمين افصل بينهم بفاصلة: 9647A,9647B
   WHATSAPP_TEMPLATE_NAME     اسم القالب المعتمد (مطلوب عملياً، انظر README)
   WHATSAPP_TEMPLATE_LANG     لغة القالب (الافتراضي ar)
   WHATSAPP_TEMPLATE_VARS     عدد متغيرات القالب: 1 (الافتراضي، كل النص بمتغير واحد) أو 12 (متغير لكل حقل، يحفظ الترتيب والأسطر)
@@ -13,6 +13,7 @@
   WHATSAPP_API_BASE          الافتراضي https://graph.facebook.com
   WHATSAPP_ENABLED           ضع 0 لإيقاف الإرسال مؤقتاً
 """
+import hashlib
 import json
 import os
 import re
@@ -49,18 +50,34 @@ def parse_hours(value):
     return DEFAULT_HOURS
 
 
+def parse_recipients(value):
+    """أرقام المستلمين من WHATSAPP_TO: تفصل بينها فاصلة أو فاصلة منقوطة أو سطر جديد (المسافات داخل الرقم مسموحة)؛ بلا تكرار ولا أرقام غير صالحة."""
+    numbers = []
+    for part in re.split(r'[,;\n]+', value or ''):
+        digits = re.sub(r'\D', '', part)
+        if 8 <= len(digits) <= 15 and digits not in numbers:
+            numbers.append(digits)
+    return numbers
+
+
+def recipient_key(number):
+    """مفتاح مختصر للمستلم لتسجيل من وصله البلاغ دون تخزين رقمه."""
+    return hashlib.sha1(re.sub(r'\D', '', number or '').encode()).hexdigest()[:10]
+
+
 def load_config():
     """تُقرأ في كل مرة (وليس عند الاستيراد) حتى تُطبَّق تغييرات Render بدون تعديل الكود."""
     token = _env('WHATSAPP_TOKEN')
     phone_id = re.sub(r'\D', '', _env('WHATSAPP_PHONE_NUMBER_ID'))
-    to = re.sub(r'\D', '', _env('WHATSAPP_TO'))
+    recipients = parse_recipients(_env('WHATSAPP_TO'))
     start, end = parse_hours(_env('WHATSAPP_HOURS', '7-19'))
     switched_off = _env('WHATSAPP_ENABLED', '1').lower() in ('0', 'false', 'no', 'off')
     return {
-        'enabled': bool(token and phone_id and 8 <= len(to) <= 15) and not switched_off,
+        'enabled': bool(token and phone_id and recipients) and not switched_off,
         'token': token,
         'phone_id': phone_id,
-        'to': to,
+        'to': recipients[0] if recipients else '',
+        'recipients': recipients,
         'api_base': _env('WHATSAPP_API_BASE', 'https://graph.facebook.com').rstrip('/'),
         'api_version': _env('WHATSAPP_API_VERSION', 'v23.0'),
         'template': _env('WHATSAPP_TEMPLATE_NAME'),
@@ -204,12 +221,13 @@ def _error_detail(http_error):
     return f"{text} {('— ' + hint) if hint else ''}".strip()
 
 
-def send_message(cfg, text, timeout=20, fields=None):
-    """يرسل الرسالة ويرجع معرّف الرسالة. يرفع WhatsAppError عند الفشل (مع retryable)."""
+def send_message(cfg, text, timeout=20, fields=None, to=None):
+    """يرسل الرسالة إلى مستلم واحد (to أو أول مستلم) ويرجع معرّف الرسالة. يرفع WhatsAppError عند الفشل (مع retryable)."""
+    target = re.sub(r'\D', '', to or cfg['to'])
     if cfg.get('template') and cfg.get('template_vars') == 12 and fields:
         payload = {
             "messaging_product": "whatsapp",
-            "to": cfg['to'],
+            "to": target,
             "type": "template",
             "template": {
                 "name": cfg['template'],
@@ -220,7 +238,7 @@ def send_message(cfg, text, timeout=20, fields=None):
     elif cfg.get('template'):
         payload = {
             "messaging_product": "whatsapp",
-            "to": cfg['to'],
+            "to": target,
             "type": "template",
             "template": {
                 "name": cfg['template'],
@@ -232,7 +250,7 @@ def send_message(cfg, text, timeout=20, fields=None):
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
-            "to": cfg['to'],
+            "to": target,
             "type": "text",
             "text": {"preview_url": False, "body": (text or '')[:4000]},
         }
