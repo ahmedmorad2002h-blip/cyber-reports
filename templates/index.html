@@ -166,6 +166,18 @@
         }
 
         .hidden { display: none !important; }
+        html { scroll-behavior: smooth; }
+        .wa-alert { display: none; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 8px 44px 8px 14px; position: relative; background: linear-gradient(90deg, rgba(127,29,29,0.97), rgba(153,27,27,0.97)); border-bottom: 2px solid #ef4444; color: #fff; font-weight: 700; font-size: 0.9rem; text-align: center; }
+        .wa-alert.show { display: flex; }
+        .wa-alert-text { flex: 0 1 auto; line-height: 1.5; }
+        .wa-alert-close { position: absolute; top: 50%; inset-inline-end: 10px; transform: translateY(-50%); background: transparent; border: 0; color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; opacity: .8; padding: 0 6px; }
+        .wa-alert-close:hover { opacity: 1; }
+        .btn, .nav-link { transition: background .15s ease, transform .1s ease, box-shadow .15s ease; }
+        .btn:active { transform: scale(.97); }
+        .loading-box { text-align: center; padding: 32px 0; color: #fff; font-weight: 700; }
+        .loading-box .spinner-border { width: 1.6rem; height: 1.6rem; margin-inline-end: 8px; vertical-align: -4px; }
+        @media (max-width: 768px) { .wa-alert { font-size: 0.82rem; padding: 8px 38px 8px 10px; } .wa-alert .btn { width: auto; } }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 
 
         /* ====== الهاتف: خطوط أكبر وأزرار بحجم لمس مريح وتخطيط مرتب ====== */
@@ -258,9 +270,11 @@
         </div>
     </nav>
 
-    <div id="wa-alert" style="display:none; background: rgba(127,29,29,0.96); border-bottom: 2px solid #ef4444;" class="px-3 py-2 text-white fw-bold small d-flex flex-wrap align-items-center gap-2 justify-content-center">
-        <span id="wa-alert-text"></span>
-        <button class="btn btn-sm btn-light fw-bold py-0" id="wa-alert-btn" onclick="showFailedReports()">عرض وإعادة الإرسال</button>
+    <div id="wa-alert" class="wa-alert" role="alert">
+        <i class="fas fa-triangle-exclamation"></i>
+        <span id="wa-alert-text" class="wa-alert-text"></span>
+        <button class="btn btn-sm btn-light fw-bold py-0 px-3" id="wa-alert-btn" onclick="showFailedReports()">عرض وإعادة الإرسال</button>
+        <button class="wa-alert-close" onclick="dismissWaAlert()" aria-label="إخفاء">&times;</button>
     </div>
     <div id="notif-panel" style="display:none; position: fixed; top: 64px; left: 12px; right: 12px; max-width: 380px; z-index: 2000; background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan); border-radius: 12px; max-height: 70vh; overflow-y: auto; box-shadow: 0 0 25px rgba(0,242,254,0.3);"></div>
 
@@ -1058,10 +1072,14 @@
             if (officersSec) officersSec.classList.add('hidden');
 
             document.getElementById(sectionId).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function loadRecords() {
             showSection('records-section');
+            if (!allGlobalRecords.length) {
+                document.getElementById('records-container').innerHTML = '<div class="loading-box"><span class="spinner-border"></span>جاري تحميل البلاغات...</div>';
+            }
             return fetch('/get-records').then(res => res.json()).then(data => {
                 allGlobalRecords = data.records || [];
                 fillFilterOptions();
@@ -1113,7 +1131,7 @@
             const filteredByTab = matched.slice(0, recLimit);
 
             container.innerHTML = filteredByTab.map(r => `
-                <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 15px rgba(0,242,254,0.1);">
+                <div class="p-3 rounded mb-3 shadow-sm rec-card" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 15px rgba(0,242,254,0.1);">
                     <div class="d-flex justify-content-between align-items-center mb-2 rec-head">
                         <div class="d-flex align-items-center gap-2">
                             ${canBulkApprove || canBulkSend ? `<input type="checkbox" class="form-check-input report-checkbox" value="${esc(r.report_id)}">` : ''}
@@ -1234,14 +1252,26 @@
                 if (!box || !d || !d.success) return;
                 const text = document.getElementById('wa-alert-text');
                 const btn = document.getElementById('wa-alert-btn');
+                let sig = '';
                 if (d.enabled && d.token_error) {
-                    text.textContent = '⚠️ رمز واتساب (WHATSAPP_TOKEN) منتهٍ أو غير صحيح: الإرسال متوقف. أنشئ رمزاً دائماً جديداً من Meta وضعه في Render.';
-                    btn.style.display = 'none'; box.style.display = 'flex';
+                    sig = 'token';
+                    text.textContent = 'رمز واتساب (WHATSAPP_TOKEN) منتهٍ أو غير صحيح، والإرسال متوقف. أنشئ رمزاً دائماً جديداً من Meta وضعه في Render.';
+                    btn.style.display = 'none';
                 } else if (d.enabled && d.failed > 0) {
-                    text.textContent = `⚠️ ${d.failed} بلاغ فشل إرساله على واتساب.`;
-                    btn.style.display = ''; box.style.display = 'flex';
-                } else { box.style.display = 'none'; }
+                    sig = 'failed:' + d.failed;
+                    text.textContent = `فشل إرسال ${d.failed} بلاغ على واتساب.`;
+                    btn.style.display = '';
+                }
+                let dismissed = '';
+                try { dismissed = sessionStorage.getItem('wa_alert_dismissed') || ''; } catch (e) {}
+                box.classList.toggle('show', !!sig && sig !== dismissed);
+                box.dataset.sig = sig;
             }).catch(() => {});
+        }
+        function dismissWaAlert() {
+            const box = document.getElementById('wa-alert');
+            try { sessionStorage.setItem('wa_alert_dismissed', box.dataset.sig || ''); } catch (e) {}
+            box.classList.remove('show');
         }
         function showFailedReports() { switchTab('تمت الموافقة'); loadRecords(); }
 
