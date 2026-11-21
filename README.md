@@ -117,7 +117,7 @@ create table if not exists audit_log (
   target text,
   details text
 );
-alter table audit_log enable row level security;
+alter table audit_log disable row level security;   -- مثل جدولي reports و users
 ```
 
 ## إضافات النظام
