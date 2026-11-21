@@ -7,6 +7,9 @@ import calendar
 import secrets
 import logging
 import threading
+import csv
+import io
+from collections import Counter
 from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlsplit, parse_qsl, unquote
@@ -397,7 +400,12 @@ def _reports_query(columns='*'):
 
 
 def load_report_stats():
-    """إحصائيات الصفحة الرئيسية: تجلب 3 أعمدة فقط بدل كل بيانات البلاغات."""
+    """إحصائيات الصفحة الرئيسية، مخزّنة ثواني قليلة (تُفرَّغ مع كل عملية كتابة) لتخفيف الضغط على قاعدة البيانات."""
+    scope = 'all' if can_view_all() else 'u:' + str(session.get('fullname', '')).strip().lower()
+    return dict(cached(('stats', scope), 10, _load_report_stats))
+
+
+def _load_report_stats():
     stats = {'total': 0, 'critical': 0, 'monthly': 0, 'approved': 0, 'rejected': 0, 'pending': 0}
     try:
         query = _reports_query('severity, timestamp, status')
@@ -642,6 +650,7 @@ def login():
                 session.permanent = True
                 session['user'] = username
                 _apply_user_to_session(user_record, username)
+                audit('login', username)
                 return redirect(url_for('index'))
 
             _register_failure(key)
@@ -812,6 +821,7 @@ def edit_report(report_id):
         return jsonify({'success': False, 'message': 'حدث خطأ أثناء حفظ التعديل.'}), 500
     if not res.data:
         return jsonify({'success': False, 'message': 'تمت معالجة البلاغ (موافقة أو رفض) قبل حفظ تعديلك، فلا يمكن تعديله.'}), 409
+    audit('edit_report', rid)
     return jsonify({'success': True})
 
 
@@ -847,6 +857,7 @@ def _decide_report(report_id, new_status, extra_tech=None):
                .eq('report_id', rid).eq('status', STATUS_PENDING).execute())
         if not res.data:
             return jsonify({'success': False, 'message': 'تم البتّ في هذا البلاغ للتو من مستخدم آخر.'}), 409
+        audit('approve' if new_status == STATUS_APPROVED else 'reject', rid, (extra_tech or {}).get('rejection_reason', ''))
         return jsonify({'success': True})
     except Exception:
         log.exception("خطأ في تحديث حالة البلاغ")
@@ -917,6 +928,7 @@ def bulk_approve():
             res = (supabase.table('reports').update({'status': STATUS_APPROVED, 'tech_indicators': tech})
                    .eq('report_id', row['report_id']).eq('status', STATUS_PENDING).execute())
             approved += len(res.data or [])
+        audit('bulk_approve', '', f'{approved} بلاغ')
         trigger_whatsapp_async()
         return jsonify({'success': True, 'approved': approved})
     except Exception:
@@ -929,6 +941,7 @@ def bulk_approve():
 def delete_report(report_id):
     try:
         supabase.table('reports').delete().eq('report_id', clean(report_id, 100)).execute()
+        audit('delete_report', clean(report_id, 100))
         return jsonify({'success': True})
     except Exception:
         log.exception("خطأ في حذف البلاغ")
@@ -966,6 +979,7 @@ def delete_approved_bulk():
     try:
         ids = [r['report_id'] for r in _deletable_rows()]
         _delete_ids(ids)
+        audit('delete_approved_bulk', '', f'{len(ids)} بلاغ')
         return jsonify({'success': True, 'deleted': len(ids), 'kept_unsent': _kept_unsent_count()})
     except Exception:
         log.exception("خطأ في حذف البلاغات الموافق عليها")
@@ -979,6 +993,7 @@ def delete_monthly_approved():
         current_month = wa.now_iraq().strftime('%Y-%m')
         ids = [r['report_id'] for r in _deletable_rows() if str(r.get('timestamp', '')).startswith(current_month)]
         _delete_ids(ids)
+        audit('delete_monthly_approved', '', f'{len(ids)} بلاغ')
         return jsonify({'success': True, 'deleted': len(ids), 'kept_unsent': _kept_unsent_count()})
     except Exception:
         log.exception("خطأ في تصفية بلاغات الشهر")
@@ -1020,8 +1035,8 @@ def monthly_log():
 @require(can_view_all, _deny_json(officers=[]))
 def get_officers_activity():
     try:
-        rows = fetch_all(lambda: supabase.table('reports')
-                         .select('report_id, officer, platform, url, status, timestamp').order('report_id'))
+        rows = cached(('officers_rows',), 15, lambda: fetch_all(lambda: supabase.table('reports')
+                      .select('report_id, officer, platform, url, status, timestamp').order('report_id')))
         officers_dict = {}
         for r in rows:
             off = (r.get('officer') or '').strip() or 'غير محدد'
@@ -1101,6 +1116,7 @@ def change_password():
     if valid:
         try:
             supabase.table('users').update({'password': generate_password_hash(new_pass)}).eq('username', username).execute()
+            audit('change_password', username)
             flash('تم تغيير كلمة المرور بنجاح.', 'success')
         except Exception:
             log.exception("خطأ في تغيير كلمة المرور")
@@ -1143,6 +1159,7 @@ def add_user():
             "fullname": fullname,
             "rank": rank
         }).execute()
+        audit('add_user', username)
         flash(f'تم إضافة المستخدم {username} بنجاح.', 'success')
     except Exception:
         log.exception("خطأ أثناء إضافة المستخدم")
@@ -1182,6 +1199,7 @@ def update_user(username):
 
     try:
         supabase.table('users').update(update_data).eq('username', username).execute()
+        audit('update_user', username, 'تغيير كلمة السر' if new_pass else '')
         flash(f'تم تحديث بيانات المستخدم {username} بنجاح.', 'success')
     except Exception:
         log.exception("خطأ أثناء تحديث المستخدم")
@@ -1203,6 +1221,7 @@ def set_supervisor(username):
         return redirect(url_for('index'))
     try:
         supabase.table('users').update({'is_supervisor': make}).eq('username', username).execute()
+        audit('set_supervisor' if make else 'unset_supervisor', username)
         flash(f'تم تعيين {username} مشرفاً.' if make else f'تم سحب صلاحية الإشراف من {username}.', 'success')
     except Exception as e:
         log.exception("خطأ أثناء تغيير دور المستخدم")
@@ -1224,6 +1243,7 @@ def delete_user(username):
         return redirect(url_for('index'))
     try:
         supabase.table('users').delete().eq('username', username).execute()
+        audit('delete_user', username)
         flash(f'تم حذف المستخدم {username} بنجاح.', 'success')
     except Exception:
         log.exception("خطأ أثناء حذف المستخدم")
@@ -1456,13 +1476,249 @@ def start_whatsapp_worker():
     log.info("بدأ عامل الإرسال التلقائي على واتساب.")
 
 
+# ---------------------------------------------------------------------------
+# كاش قصير + سجل النشاط + الإشعارات + التصدير والتقارير والنسخ الاحتياطي
+# ---------------------------------------------------------------------------
+_cache = {}
+_cache_version = 0
+
+
+def cached(key, ttl, builder):
+    """يخزّن نتيجة ثقيلة ثواني قليلة. أي طلب POST ناجح يبطل الكاش كله فلا يرى المستخدم بيانات قديمة بعد تعديله."""
+    now = time.time()
+    hit = _cache.get(key)
+    if hit and hit[0] == _cache_version and now - hit[1] < ttl:
+        return hit[2]
+    value = builder()
+    if len(_cache) > 200:
+        _cache.clear()
+    _cache[key] = (_cache_version, now, value)
+    return value
+
+
+@app.after_request
+def _bust_cache(resp):
+    global _cache_version
+    if request.method == 'POST' and resp.status_code < 400:
+        _cache_version += 1
+    return resp
+
+
+AUDIT_TABLE = 'audit_log'
+AUDIT_LABELS = {
+    'login': 'تسجيل دخول', 'approve': 'موافقة على بلاغ', 'reject': 'رفض بلاغ', 'bulk_approve': 'موافقة جماعية',
+    'delete_report': 'حذف بلاغ', 'delete_approved_bulk': 'حذف البلاغات الموافق عليها', 'delete_monthly_approved': 'تصفية بلاغات الشهر',
+    'edit_report': 'تعديل بلاغ', 'whatsapp_send': 'إرسال واتساب يدوي', 'whatsapp_resend': 'إعادة إرسال واتساب',
+    'add_user': 'إضافة مستخدم', 'update_user': 'تعديل مستخدم', 'delete_user': 'حذف مستخدم', 'set_supervisor': 'تعيين مشرف',
+    'unset_supervisor': 'سحب الإشراف', 'change_password': 'تغيير كلمة السر', 'backup': 'تنزيل نسخة احتياطية', 'export': 'تصدير بلاغات',
+}
+_audit_warned = False
+
+
+def audit(action, target='', details=''):
+    """يسجّل من فعل ماذا ومتى. لا يُفشل العملية الأصلية أبداً (إن لم يُنشأ الجدول بعد يُتجاهل مع تحذير واحد في السجل)."""
+    global _audit_warned
+    try:
+        supabase.table(AUDIT_TABLE).insert({
+            'at': wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S'),
+            'actor': str(session.get('user') or '')[:100],
+            'action': action,
+            'target': str(target or '')[:200],
+            'details': str(details or '')[:500],
+        }).execute()
+    except Exception:
+        if not _audit_warned:
+            _audit_warned = True
+            log.warning("تعذر تسجيل سجل النشاط (هل أنشأت جدول audit_log؟ راجع README).")
+
+
+@app.route('/audit-log')
+@admin_required_json
+def audit_log_view():
+    try:
+        rows = supabase.table(AUDIT_TABLE).select('*').order('id', desc=True).limit(200).execute().data or []
+    except Exception:
+        return jsonify({'success': False, 'configured': False, 'message': 'جدول audit_log غير موجود في Supabase. شغّل أمر SQL المذكور في README مرة واحدة.', 'entries': []})
+    entries = [{'at': r.get('at'), 'actor': r.get('actor'), 'action': AUDIT_LABELS.get(r.get('action'), r.get('action')),
+                'target': r.get('target'), 'details': r.get('details')} for r in rows]
+    return jsonify({'success': True, 'configured': True, 'entries': entries})
+
+
+@app.route('/notifications')
+@require(is_logged_in, _deny_json())
+def notifications():
+    """الأدمن/المشرف: عدد البلاغات الجديدة بانتظار المراجعة. المستخدم العادي: قرارات الأسبوع الأخير على بلاغاته."""
+    out = {'success': True, 'role': role_name(), 'pending': 0, 'items': []}
+    try:
+        if can_view_all():
+            rows = (supabase.table('reports').select('report_id, officer, timestamp').eq('status', STATUS_PENDING)
+                    .order('timestamp', desc=True).limit(100).execute().data or [])
+            out['pending'] = len(rows)
+            out['items'] = [{'id': r.get('report_id'), 'kind': 'pending', 'officer': r.get('officer') or '', 'at': r.get('timestamp') or ''} for r in rows[:10]]
+        else:
+            query = _reports_query('report_id, status, tech_indicators, officer, timestamp')
+            if query is not None:
+                rows = query.order('timestamp', desc=True).limit(60).execute().data or []
+                cutoff = wa.now_iraq() - timedelta(days=7)
+                for r in rows:
+                    if r.get('status') == STATUS_PENDING or not _is_owner(r):
+                        continue
+                    tech = _tech_of(r)
+                    at = _parse_local(tech.get('decided_at'))
+                    if not at or at < cutoff:
+                        continue
+                    out['items'].append({
+                        'id': r.get('report_id'), 'kind': 'approved' if r.get('status') in APPROVED_STATES else 'rejected',
+                        'reason': tech.get('rejection_reason') or '', 'at': tech.get('decided_at') or '',
+                    })
+    except Exception:
+        log.exception("خطأ في الإشعارات")
+        return jsonify({'success': False, 'pending': 0, 'items': []})
+    return jsonify(out)
+
+
+EXPORT_FIELDS = [
+    ('report_id', 'رقم البلاغ'), ('timestamp', 'تاريخ الرفع'), ('officer', 'القائم بالرصد'), ('platform', 'المنصة'),
+    ('url', 'الرابط'), ('accountName', 'اسم الحساب'), ('threatType', 'نوع التهديد'), ('severity', 'الخطورة'),
+    ('status', 'الحالة'), ('_reason', 'سبب الرفض'), ('description', 'الوصف'), ('recommendation', 'التوصية'),
+]
+
+
+def _status_group(r):
+    """يصنّف البلاغ كما تفعل تبويبات الصفحة: pending / unsent / sent / legacy / rejected."""
+    status = r.get('status') or STATUS_PENDING
+    if status == STATUS_REJECTED:
+        return 'rejected'
+    if status == STATUS_PENDING:
+        return 'pending'
+    if status == STATUS_SENT:
+        return 'sent'
+    return 'unsent' if _tech_of(r).get('wa_queue') else 'legacy'
+
+
+def filtered_reports(args):
+    """البلاغات التي يحق للمستخدم رؤيتها بعد تطبيق فلاتر الطلب: status, from, to, officer, platform, q."""
+    group = clean(args.get('status'), 20)
+    date_from, date_to = clean(args.get('from'), 10), clean(args.get('to'), 10)
+    officer, platform, text = (clean(args.get(k), 200).lower() for k in ('officer', 'platform', 'q'))
+    out = []
+    for r in load_reports():
+        day = str(r.get('timestamp') or '')[:10]
+        if group and group != 'all' and _status_group(r) != group:
+            continue
+        if date_from and day < date_from or date_to and day > date_to:
+            continue
+        if officer and officer not in str(r.get('officer') or '').lower():
+            continue
+        if platform and platform not in str(r.get('platform') or '').lower():
+            continue
+        if text and text not in ' '.join(str(r.get(k) or '') for k in ('report_id', 'officer', 'platform', 'url', 'description')).lower():
+            continue
+        out.append(r)
+    return out
+
+
+def _csv_cell(value):
+    text = str(value if value is not None else '')
+    # منع حقن الصيغ عند فتح الملف في Excel
+    return "'" + text if text[:1] in ('=', '+', '-', '@', '\t', '\r') else text
+
+
+@app.route('/export/reports.csv')
+@require(is_logged_in, _deny_json())
+def export_csv():
+    rows = filtered_reports(request.args)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([label for _, label in EXPORT_FIELDS])
+    for r in rows:
+        writer.writerow([_csv_cell(_tech_of(r).get('rejection_reason') if key == '_reason' else r.get(key)) for key, _ in EXPORT_FIELDS])
+    audit('export', 'csv', f'{len(rows)} بلاغ')
+    name = 'reports-' + wa.now_iraq().strftime('%Y%m%d-%H%M') + '.csv'
+    return Response('﻿' + buf.getvalue(), mimetype='text/csv; charset=utf-8',
+                    headers={'Content-Disposition': f'attachment; filename="{name}"'})
+
+
+def build_summary(days):
+    days = max(1, min(int(days), 366))
+    today = wa.now_iraq()
+    start = (today - timedelta(days=days - 1)).strftime('%Y-%m-%d')
+    rows = [r for r in load_reports() if str(r.get('timestamp') or '')[:10] >= start]
+    groups = Counter(_status_group(r) for r in rows)
+    platforms = Counter((r.get('platform') or 'غير محدد') for r in rows).most_common(5)
+    officers = Counter((r.get('officer') or 'غير محدد') for r in rows).most_common(5) if can_view_all() else []
+    critical = sum(1 for r in rows if 'حرج' in str(r.get('severity') or ''))
+    summary = {
+        'days': days, 'from': start, 'to': today.strftime('%Y-%m-%d'), 'total': len(rows), 'critical': critical,
+        'approved': groups['sent'] + groups['unsent'] + groups['legacy'], 'sent': groups['sent'], 'rejected': groups['rejected'],
+        'pending': groups['pending'], 'platforms': [{'name': n, 'count': c} for n, c in platforms],
+        'officers': [{'name': n, 'count': c} for n, c in officers],
+    }
+    lines = [f"📊 تقرير الرصد السيبراني ({summary['from']} → {summary['to']})",
+             f"• إجمالي البلاغات: {summary['total']}",
+             f"• الموافق عليها: {summary['approved']} (المرسلة: {summary['sent']})",
+             f"• المرفوضة: {summary['rejected']}",
+             f"• قيد المراجعة: {summary['pending']}",
+             f"• الحالات الحرجة: {summary['critical']}"]
+    if platforms:
+        lines.append('• أكثر المنصات: ' + '، '.join(f"{n} ({c})" for n, c in platforms[:3]))
+    if officers:
+        lines.append('• أنشط الأفراد: ' + '، '.join(f"{n} ({c})" for n, c in officers[:3]))
+    summary['text'] = '\n'.join(lines)
+    return summary
+
+
+@app.route('/weekly-report')
+@require(is_logged_in, _deny_json())
+def weekly_report():
+    try:
+        days = int(request.args.get('days', 7))
+    except ValueError:
+        days = 7
+    return jsonify({'success': True, **build_summary(days)})
+
+
+@app.route('/report-print')
+@login_required_page
+def report_print():
+    """صفحة مرتبة للطباعة أو "حفظ كـ PDF" من المتصفح (ملخص + جدول البلاغات حسب الفلاتر)."""
+    rows = filtered_reports(request.args)
+    summary = None
+    if request.args.get('days'):
+        try:
+            summary = build_summary(int(request.args.get('days')))
+        except ValueError:
+            summary = build_summary(7)
+        rows = [r for r in rows if str(r.get('timestamp') or '')[:10] >= summary['from']]
+    audit('export', 'print', f'{len(rows)} بلاغ')
+    return render_template('print_report.html', rows=rows[:2000], total=len(rows), summary=summary,
+                           now=wa.now_iraq().strftime('%Y-%m-%d %H:%M'), who=session.get('fullname') or session.get('user'),
+                           group_label=clean(request.args.get('status'), 20))
+
+
+@app.route('/backup/download')
+@admin_required_json
+def backup_download():
+    """نسخة احتياطية كاملة (بلاغات + مستخدمون بدون كلمات السر) كملف JSON يحفظه الأدمن عنده."""
+    try:
+        reports = fetch_all(lambda: supabase.table('reports').select('*').order('report_id'))
+        users = [{k: v for k, v in u.items() if k != 'password'} for u in fetch_all(lambda: supabase.table('users').select('*').order('username'))]
+    except Exception:
+        log.exception("خطأ في النسخة الاحتياطية")
+        return jsonify({'success': False, 'message': 'تعذر إنشاء النسخة الاحتياطية.'}), 500
+    audit('backup', '', f'{len(reports)} بلاغ، {len(users)} مستخدم')
+    payload = json.dumps({'created_at': wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S'), 'reports': reports, 'users': users}, ensure_ascii=False, indent=1, default=str)
+    name = 'backup-' + wa.now_iraq().strftime('%Y%m%d-%H%M') + '.json'
+    return Response(payload, mimetype='application/json; charset=utf-8', headers={'Content-Disposition': f'attachment; filename="{name}"'})
+
+
 @app.route('/whatsapp-status')
 def whatsapp_status():
     if not can_view_all():
         return jsonify({'success': False, 'message': 'غير مسموح'}), 403
     cfg = wa.load_config()
     out = {'success': True, 'enabled': cfg['enabled'], 'window': wa.window_label(cfg), 'in_window': False,
-           'pending': 0, 'failed': 0, 'to': '، '.join(wa.mask_number(x) for x in cfg['recipients']) if cfg['enabled'] else ''}
+           'pending': 0, 'failed': 0, 'failed_ids': [], 'token_error': False, 'to': '، '.join(wa.mask_number(x) for x in cfg['recipients']) if cfg['enabled'] else ''}
     if not cfg['enabled']:
         return jsonify(out)
     out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
@@ -1471,8 +1727,12 @@ def whatsapp_status():
         for row in rows:
             if not _is_queued(row):
                 continue
-            if int(_wa_info(row).get('attempts') or 0) >= WA_MAX_ATTEMPTS:
+            info = _wa_info(row)
+            if 'WHATSAPP_TOKEN' in str(info.get('last_error') or ''):
+                out['token_error'] = True      # رمز ميتا منتهٍ: كل الإرسال متوقف حتى يُجدَّد
+            if int(info.get('attempts') or 0) >= WA_MAX_ATTEMPTS:
                 out['failed'] += 1
+                out['failed_ids'].append(row.get('report_id'))
             else:
                 out['pending'] += 1
     except Exception:
@@ -1520,6 +1780,7 @@ def whatsapp_send_now(report_id):
     if result.get('busy'):
         return jsonify({'success': False, 'message': 'عملية إرسال أخرى جارية الآن، حاول بعد لحظات.'}), 409
     if result['sent']:
+        audit('whatsapp_resend' if resend else 'whatsapp_send', rid)
         return jsonify({'success': True})
     fresh = supabase.table('reports').select('*').eq('report_id', rid).limit(1).execute().data or []
     error = _wa_info(fresh[0]).get('last_error') if fresh else ''
