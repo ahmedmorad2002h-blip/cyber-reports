@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>تقرير البلاغات - مديرية أمن وسلامة الوزارة</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Tahoma, Arial, sans-serif; margin: 0; padding: 24px; color: #111; background: #fff; font-size: 14px; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+        .toolbar { margin-bottom: 16px; }
+        .toolbar button { padding: 8px 16px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .cards { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+        .card { border: 1px solid #bbb; border-radius: 6px; padding: 8px 14px; min-width: 120px; }
+        .card b { display: block; font-size: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #999; padding: 6px 8px; text-align: right; vertical-align: top; font-size: 12px; word-break: break-word; }
+        th { background: #e5e7eb; }
+        tr { page-break-inside: avoid; }
+        .two { display: flex; gap: 24px; flex-wrap: wrap; }
+        .two > div { flex: 1; min-width: 220px; }
+        .note { color: #b45309; font-size: 12px; margin-top: 8px; }
+        @media print { .toolbar { display: none; } body { padding: 0; } }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="window.print()">طباعة / حفظ كـ PDF</button>
+        <button onclick="window.close()">إغلاق</button>
+    </div>
+    <h1>مديرية أمن وسلامة الوزارة - شعبة الأمن السيبراني</h1>
+    <div class="meta">{% if summary %}تقرير الفترة من {{ summary.from }} إلى {{ summary.to }} • {% endif %}أُعدّ بتاريخ {{ now }} بواسطة {{ who }}</div>
+
+    {% if summary %}
+    <div class="cards">
+        <div class="card">إجمالي البلاغات<b>{{ summary.total }}</b></div>
+        <div class="card">الموافق عليها<b>{{ summary.approved }}</b></div>
+        <div class="card">المرسلة على واتساب<b>{{ summary.sent }}</b></div>
+        <div class="card">المرفوضة<b>{{ summary.rejected }}</b></div>
+        <div class="card">قيد المراجعة<b>{{ summary.pending }}</b></div>
+        <div class="card">الحالات الحرجة<b>{{ summary.critical }}</b></div>
+    </div>
+    <div class="two">
+        <div>
+            <strong>أكثر المنصات</strong>
+            <table><tr><th>المنصة</th><th>العدد</th></tr>
+            {% for p in summary.platforms %}<tr><td>{{ p.name }}</td><td>{{ p.count }}</td></tr>{% else %}<tr><td colspan="2">لا بيانات</td></tr>{% endfor %}
+            </table>
+        </div>
+        {% if summary.officers %}
+        <div>
+            <strong>ترتيب الأفراد</strong>
+            <table><tr><th>#</th><th>الاسم</th><th>العدد</th></tr>
+            {% for o in summary.officers %}<tr><td>{{ loop.index }}</td><td>{{ o.name }}</td><td>{{ o.count }}</td></tr>{% endfor %}
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    <br>
+    {% endif %}
+
+    <strong>البلاغات ({{ total }})</strong>
+    <table>
+        <tr><th>رقم البلاغ</th><th>التاريخ</th><th>القائم بالرصد</th><th>المنصة</th><th>الرابط</th><th>الخطورة</th><th>الحالة</th></tr>
+        {% for r in rows %}
+        <tr>
+            <td>{{ r.report_id }}</td><td>{{ (r.timestamp or '')[:16] }}</td><td>{{ r.officer }}</td><td>{{ r.platform }}</td>
+            <td dir="ltr" style="text-align:left">{{ r.url }}</td><td>{{ r.severity }}</td><td>{{ r.status }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center">لا توجد بلاغات ضمن هذه الفلاتر.</td></tr>
+        {% endfor %}
+    </table>
+    {% if total > rows|length %}<div class="note">عُرض أول {{ rows|length }} بلاغ فقط من {{ total }}. استخدم تصدير Excel للقائمة الكاملة.</div>{% endif %}
+</body>
+</html>

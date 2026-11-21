@@ -250,12 +250,19 @@
             <span class="navbar-brand mb-0 h1 fw-black" style="font-size: 1.25rem;">مديرية أمن وسلامة الوزارة <span class="brand-ver" style="color: var(--cyber-cyan); font-size: 0.9rem;">[CYBER-SYSTEM v3.5]</span></span>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-cyber btn-sm px-3 py-2 position-relative" id="notif-btn" onclick="toggleNotifPanel()" title="الإشعارات"><i class="fas fa-bell"></i><span id="notif-count" class="badge bg-danger position-absolute top-0 start-0 translate-middle" style="display:none;">0</span></button>
             <button class="btn btn-cyber btn-sm px-3 py-2 fw-bold" onclick="window.location.reload();"><i class="fas fa-sync-alt me-1"></i><span class="btn-label">تحديث</span></button>
             <span class="text-white fw-bold small me-2 d-none d-md-inline px-3 py-1 rounded" style="background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.5); box-shadow: 0 0 15px rgba(0,242,254,0.2);"><i class="fas fa-user-shield text-info me-1"></i> {{ session.get('fullname') }}</span>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="showSection('menu-section')"><i class="fas fa-home me-1"></i><span class="btn-label">الرئيسية</span></button>
             <button class="btn btn-outline-cyber btn-sm px-3 py-2" onclick="toggleSidebar()"><i class="fas fa-bars me-1"></i><span class="btn-label">لوحة التحكم</span></button>
         </div>
     </nav>
+
+    <div id="wa-alert" style="display:none; background: rgba(127,29,29,0.96); border-bottom: 2px solid #ef4444;" class="px-3 py-2 text-white fw-bold small d-flex flex-wrap align-items-center gap-2 justify-content-center">
+        <span id="wa-alert-text"></span>
+        <button class="btn btn-sm btn-light fw-bold py-0" id="wa-alert-btn" onclick="showFailedReports()">عرض وإعادة الإرسال</button>
+    </div>
+    <div id="notif-panel" style="display:none; position: fixed; top: 64px; left: 12px; right: 12px; max-width: 380px; z-index: 2000; background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan); border-radius: 12px; max-height: 70vh; overflow-y: auto; box-shadow: 0 0 25px rgba(0,242,254,0.3);"></div>
 
     <div id="options-sidebar" class="sidebar">
         <div class="sidebar-header">
@@ -289,6 +296,23 @@
                 <li class="mb-3">
                     <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(0,242,254,0.8);" onclick="loadOfficersActivity(); toggleSidebar();">
                         <i class="fas fa-id-badge text-info me-2"></i> نشاط الأفراد (جميع الأفراد)
+                    </a>
+                </li>
+                {% endif %}
+                <li class="mb-3">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(34,197,94,0.6);" onclick="openWeekly(); toggleSidebar();">
+                        <i class="fas fa-chart-line text-success me-2"></i> التقرير الأسبوعي / الشهري
+                    </a>
+                </li>
+                {% if ROLE_ADMIN %}
+                <li class="mb-3">
+                    <a href="#" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(168,85,247,0.6);" onclick="openAudit(); toggleSidebar();">
+                        <i class="fas fa-clipboard-list me-2" style="color:#a855f7;"></i> سجل النشاط (من فعل ماذا)
+                    </a>
+                </li>
+                <li class="mb-3">
+                    <a href="/backup/download" class="text-decoration-none text-white fw-bold d-block p-3 rounded" style="background: rgba(15,23,42,0.95); border: 2px solid rgba(250,204,21,0.6);">
+                        <i class="fas fa-download text-warning me-2"></i> تنزيل نسخة احتياطية (JSON)
                     </a>
                 </li>
                 {% endif %}
@@ -380,6 +404,9 @@
                 </button>
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadRecords()">
                     <i class="fa-solid fa-database me-2"></i> السجلات والتحكم بالبلاغات (الجديدة والموافق عليها)
+                </button>
+                <button class="btn btn-outline-cyber py-3 fw-bold" onclick="openWeekly()">
+                    <i class="fa-solid fa-chart-line me-2"></i> التقرير الأسبوعي والإحصائيات
                 </button>
                 {% if CAN_VIEW_ALL %}
                 <button class="btn btn-outline-cyber py-3 fw-bold" onclick="loadMonthlyLog()">
@@ -509,16 +536,30 @@
             </ul>
 
             {% if ROLE_ADMIN %}
-            <div class="d-flex gap-2 mb-3 p-2 rounded bulk-bar" style="background: rgba(2,6,23,0.95); border: 1px solid rgba(0,242,254,0.4);" id="bulk-actions-bar">
-                <button class="btn btn-sm btn-success fw-bold" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
+            <div class="d-flex flex-wrap gap-2 mb-3 p-2 rounded bulk-bar" style="background: rgba(2,6,23,0.95); border: 1px solid rgba(0,242,254,0.4);" id="bulk-actions-bar">
+                <button class="btn btn-sm btn-outline-info fw-bold" id="bulk-all-btn" onclick="toggleSelectAll()"><i class="fas fa-check-square me-1"></i> تحديد الكل / إلغاء</button>
+                <button class="btn btn-sm btn-success fw-bold" id="bulk-approve-btn" onclick="bulkApproveSelected()"><i class="fas fa-check-double me-1"></i> موافقة على المحددة دفعة واحدة</button>
+                <button class="btn btn-sm fw-bold text-white" id="bulk-send-btn" style="background:#0d9488; display:none;" onclick="bulkSendSelected()"><i class="fab fa-whatsapp me-1"></i> إرسال المحدد الآن</button>
                 <button class="btn btn-sm btn-outline-danger fw-bold ms-auto" onclick="deleteAllApproved()"><i class="fas fa-trash-alt me-1"></i> حذف كافة البلاغات الموافق عليها بضغطة زر</button>
             </div>
             {% endif %}
 
             <div id="wa-status" class="small fw-bold mb-2" style="display:none;"></div>
 
-            <div class="mb-3">
-                <input type="text" id="record-search" class="form-control" placeholder="بحث سريع برقم البلاغ، المنصة، أو الرابط..." onkeyup="filterRecords()">
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <input type="text" id="record-search" class="form-control" placeholder="بحث سريع برقم البلاغ، المنصة، الفرد، أو الرابط..." oninput="filterRecords()">
+                </div>
+                <div class="col-6 col-md-3"><select id="f-platform" class="form-select form-select-sm" onchange="filterRecords()"><option value="">كل المنصات</option></select></div>
+                {% if CAN_VIEW_ALL %}<div class="col-6 col-md-3"><select id="f-officer" class="form-select form-select-sm" onchange="filterRecords()"><option value="">كل الأفراد</option></select></div>{% endif %}
+                <div class="col-6 col-md-3"><input type="date" id="f-from" class="form-control form-control-sm" title="من تاريخ" onchange="filterRecords()"></div>
+                <div class="col-6 col-md-3"><input type="date" id="f-to" class="form-control form-control-sm" title="إلى تاريخ" onchange="filterRecords()"></div>
+                <div class="col-12 d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-secondary text-white fw-bold" onclick="clearFilters()"><i class="fas fa-eraser me-1"></i> مسح الفلاتر</button>
+                    <button class="btn btn-sm btn-outline-success fw-bold" onclick="exportCsv(false)"><i class="fas fa-file-excel me-1"></i> تصدير هذه الخانة (Excel)</button>
+                    <button class="btn btn-sm btn-outline-success fw-bold" onclick="exportCsv(true)"><i class="fas fa-file-excel me-1"></i> تصدير الكل</button>
+                    <button class="btn btn-sm btn-outline-info fw-bold" onclick="printReport()"><i class="fas fa-file-pdf me-1"></i> طباعة / PDF</button>
+                </div>
             </div>
 
             <div id="records-container" class="records-scroll" style="max-height: 500px; overflow-y: auto;"></div>
@@ -733,6 +774,42 @@
         </div>
     </div>
 
+    <div class="modal fade" id="weeklyModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-chart-line me-2 text-success"></i> التقرير الإحصائي</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex gap-2 mb-3">
+                        <select id="weekly-days" class="form-select form-select-sm w-auto" onchange="loadWeekly()">
+                            <option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوماً</option><option value="90">آخر 90 يوماً</option>
+                        </select>
+                    </div>
+                    <div id="weekly-body" class="text-center py-3">جاري التحميل...</div>
+                </div>
+                <div class="modal-footer border-secondary d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-success fw-bold" onclick="shareWeekly()"><i class="fab fa-whatsapp me-1"></i> مشاركة على واتساب</button>
+                    <button class="btn btn-sm btn-outline-info fw-bold" onclick="copyWeekly()"><i class="fas fa-copy me-1"></i> نسخ النص</button>
+                    <button class="btn btn-sm btn-outline-info fw-bold" onclick="printWeekly()"><i class="fas fa-file-pdf me-1"></i> طباعة / PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="auditModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-clipboard-list me-2" style="color:#a855f7;"></i> سجل النشاط (آخر 200 عملية)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="audit-body">جاري التحميل...</div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important;">
@@ -904,6 +981,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            checkWaAlert(); pollNotifications();
+            setInterval(checkWaAlert, 120000); setInterval(pollNotifications, 60000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkWaAlert(); pollNotifications(); } });
             attachUrlCheck('new-url', 'new-url-msg');
             attachUrlCheck('e_url', 'e_url_msg', () => editingReportId);
         });
@@ -958,6 +1038,7 @@
 
         function switchTab(status) {
             currentTabStatus = status;
+            recLimit = REC_PAGE;
             document.getElementById('tab-new').style.background = status === 'قيد المراجعة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             document.getElementById('tab-approved').style.background = status === 'تمت الموافقة' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
             document.getElementById('tab-sent').style.background = status === 'تمت الموافقة وتم إرسالها' ? 'rgba(0,242,254,0.25)' : 'rgba(15,23,42,0.8)';
@@ -981,8 +1062,9 @@
 
         function loadRecords() {
             showSection('records-section');
-            fetch('/get-records').then(res => res.json()).then(data => {
+            return fetch('/get-records').then(res => res.json()).then(data => {
                 allGlobalRecords = data.records || [];
+                fillFilterOptions();
                 renderRecordsList(allGlobalRecords);
                 loadWaStatus();
             }).catch(networkError);
@@ -1016,18 +1098,25 @@
             const container = document.getElementById('records-container');
             const legacyLi = document.getElementById('tab-legacy-li');
             if (legacyLi) legacyLi.style.display = records.some(isLegacyApproved) ? '' : 'none';
-            const filteredByTab = records.filter(r => tabOf(r) === currentTabStatus);
+            const inTab = records.filter(r => tabOf(r) === currentTabStatus);
+            const matched = inTab.filter(recMatches);
+            const canBulkSend = IS_ADMIN && WA_ENABLED && currentTabStatus === 'تمت الموافقة';
+            const canBulkApprove = IS_ADMIN && currentTabStatus === 'قيد المراجعة';
+            const setShow = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+            setShow('bulk-approve-btn', canBulkApprove); setShow('bulk-send-btn', canBulkSend); setShow('bulk-all-btn', canBulkApprove || canBulkSend);
 
-            if(filteredByTab.length === 0) {
-                container.innerHTML = `<p class="text-center text-white py-4 fw-bold">لا توجد سجلات ضمن خانة [${esc(currentTabStatus)}].</p>`;
+            if(matched.length === 0) {
+                const filtered = inTab.length > 0;
+                container.innerHTML = `<p class="text-center text-white py-4 fw-bold">${filtered ? 'لا توجد نتائج تطابق البحث أو الفلاتر.' : 'لا توجد سجلات ضمن خانة [' + esc(currentTabStatus) + '].'}</p>`;
                 return;
             }
+            const filteredByTab = matched.slice(0, recLimit);
 
             container.innerHTML = filteredByTab.map(r => `
                 <div class="p-3 rounded mb-3 shadow-sm" style="background: rgba(2,6,23,0.95); border: 2px solid rgba(0,242,254,0.4); box-shadow: 0 0 15px rgba(0,242,254,0.1);">
                     <div class="d-flex justify-content-between align-items-center mb-2 rec-head">
                         <div class="d-flex align-items-center gap-2">
-                            ${IS_ADMIN && currentTabStatus === 'قيد المراجعة' ? `<input type="checkbox" class="form-check-input report-checkbox" value="${esc(r.report_id)}">` : ''}
+                            ${canBulkApprove || canBulkSend ? `<input type="checkbox" class="form-check-input report-checkbox" value="${esc(r.report_id)}">` : ''}
                             <span class="fw-bold fs-6" style="color: var(--cyber-cyan); text-shadow: 0 0 8px var(--cyber-cyan);"><i class="fas fa-hashtag me-1"></i> ${esc(r.report_id)}</span>
                         </div>
                         <div class="d-flex align-items-center gap-2 rec-actions">
@@ -1050,18 +1139,216 @@
                     ${r.description ? `<div class="text-white small p-2 rounded mt-1 fw-bold" style="background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.2);"><strong>الوصف:</strong> ${esc(r.description)}</div>` : ''}
                     ${extraInfoHtml(r)}
                 </div>
-            `).join('');
+            `).join('') + (matched.length > recLimit ? `<div class="text-center mb-3"><button class="btn btn-outline-cyber fw-bold" onclick="showMoreRecords()">عرض المزيد (${matched.length - recLimit} متبقي)</button></div>` : '');
+        }
+
+        // ---- الفلاتر والتحميل التدريجي ----
+        const REC_PAGE = 30;
+        let recLimit = REC_PAGE;
+        const TAB_GROUP = { 'قيد المراجعة': 'pending', 'تمت الموافقة': 'unsent', 'تمت الموافقة وتم إرسالها': 'sent', 'legacy': 'legacy', 'مرفوض': 'rejected' };
+
+        function filterValues() {
+            const v = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+            return { q: v('record-search').toLowerCase(), platform: v('f-platform'), officer: v('f-officer'), from: v('f-from'), to: v('f-to') };
+        }
+
+        function recMatches(r) {
+            const f = filterValues();
+            const day = String(r.timestamp || '').slice(0, 10);
+            if (f.platform && (r.platform || '') !== f.platform) return false;
+            if (f.officer && (r.officer || '') !== f.officer) return false;
+            if (f.from && day < f.from) return false;
+            if (f.to && day > f.to) return false;
+            if (f.q) {
+                const hay = [r.report_id, r.officer, r.platform, r.url, r.description].map(x => String(x || '').toLowerCase()).join(' ');
+                if (!hay.includes(f.q)) return false;
+            }
+            return true;
+        }
+
+        function fillFilterOptions() {
+            const fill = (id, values, allLabel) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const keep = el.value;
+                const uniq = Array.from(new Set(values.filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), 'ar'));
+                el.innerHTML = '<option value="">' + allLabel + '</option>' + uniq.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+                if (uniq.includes(keep)) el.value = keep;
+            };
+            fill('f-platform', allGlobalRecords.map(r => r.platform), 'كل المنصات');
+            fill('f-officer', allGlobalRecords.map(r => r.officer), 'كل الأفراد');
+        }
+
+        function showMoreRecords() { recLimit += REC_PAGE; renderRecordsList(allGlobalRecords); }
+
+        function clearFilters() {
+            ['record-search', 'f-platform', 'f-officer', 'f-from', 'f-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            filterRecords();
+        }
+
+        function exportParams(all) {
+            const f = filterValues();
+            const p = new URLSearchParams();
+            if (!all) p.set('status', TAB_GROUP[currentTabStatus] || '');
+            if (f.q) p.set('q', f.q);
+            if (f.platform) p.set('platform', f.platform);
+            if (f.officer) p.set('officer', f.officer);
+            if (f.from) p.set('from', f.from);
+            if (f.to) p.set('to', f.to);
+            return p.toString();
+        }
+        function exportCsv(all) { window.location.href = '/export/reports.csv?' + exportParams(all); }
+        function printReport() { window.open('/report-print?' + exportParams(false), '_blank'); }
+
+        function toggleSelectAll() {
+            const boxes = Array.from(document.querySelectorAll('.report-checkbox'));
+            const allOn = boxes.length > 0 && boxes.every(b => b.checked);
+            boxes.forEach(b => { b.checked = !allOn; });
+        }
+
+        async function bulkSendSelected() {
+            const ids = Array.from(document.querySelectorAll('.report-checkbox:checked')).map(cb => cb.value).slice(0, 50);
+            if (ids.length === 0) { alert('يرجى تحديد بلاغ واحد على الأقل.'); return; }
+            if (!confirm(`إرسال (${ids.length}) بلاغ على واتساب الآن؟`)) return;
+            const btn = document.getElementById('bulk-send-btn');
+            const label = btn.innerHTML;
+            btn.disabled = true;
+            let ok = 0; const errors = [];
+            for (let i = 0; i < ids.length; i++) {
+                btn.textContent = `جاري الإرسال ${i + 1}/${ids.length}...`;
+                try {
+                    const d = await postJson('/whatsapp-send-now/' + encodeURIComponent(ids[i]));
+                    if (d && d.success) ok++; else errors.push(ids[i] + ': ' + ((d && d.message) || 'فشل'));
+                } catch (e) { errors.push(ids[i] + ': انقطع الاتصال'); }
+            }
+            btn.disabled = false; btn.innerHTML = label;
+            alert(`تم إرسال ${ok} من ${ids.length} بلاغ.` + (errors.length ? '\n\nفشل:\n' + errors.slice(0, 8).join('\n') : ''));
+            loadRecords(); checkWaAlert();
+        }
+
+        // ---- تنبيه فشل الإرسال / انتهاء رمز ميتا ----
+        function checkWaAlert() {
+            if (!CAN_VIEW_ALL || document.hidden) return;
+            fetch('/whatsapp-status').then(r => r.json()).then(d => {
+                const box = document.getElementById('wa-alert');
+                if (!box || !d || !d.success) return;
+                const text = document.getElementById('wa-alert-text');
+                const btn = document.getElementById('wa-alert-btn');
+                if (d.enabled && d.token_error) {
+                    text.textContent = '⚠️ رمز واتساب (WHATSAPP_TOKEN) منتهٍ أو غير صحيح: الإرسال متوقف. أنشئ رمزاً دائماً جديداً من Meta وضعه في Render.';
+                    btn.style.display = 'none'; box.style.display = 'flex';
+                } else if (d.enabled && d.failed > 0) {
+                    text.textContent = `⚠️ ${d.failed} بلاغ فشل إرساله على واتساب.`;
+                    btn.style.display = ''; box.style.display = 'flex';
+                } else { box.style.display = 'none'; }
+            }).catch(() => {});
+        }
+        function showFailedReports() { switchTab('تمت الموافقة'); loadRecords(); }
+
+        // ---- الإشعارات داخل الموقع ----
+        const NOTIF_KEY = 'notif_seen_v1';
+        let notifData = { role: '', pending: 0, items: [] };
+        let notifFirst = true, notifAlerted = new Set();
+        function seenSet() { try { return new Set(JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]')); } catch (e) { return new Set(); } }
+        function saveSeen(set) { try { localStorage.setItem(NOTIF_KEY, JSON.stringify(Array.from(set).slice(-200))); } catch (e) {} }
+        function notifyBrowser(msg) {
+            try { if ('Notification' in window && Notification.permission === 'granted') new Notification('منظومة الرصد السيبراني', { body: msg }); } catch (e) {}
+        }
+        function notifKey(i) { return i.id + '|' + i.kind; }
+        function notifBadge() {
+            const badge = document.getElementById('notif-count');
+            if (!badge) return;
+            const n = notifData.role === 'user' ? notifData.items.filter(i => !seenSet().has(notifKey(i))).length : notifData.pending;
+            badge.textContent = n > 99 ? '99+' : n;
+            badge.style.display = n > 0 ? '' : 'none';
+        }
+        function pollNotifications() {
+            if (document.hidden) return;
+            fetch('/notifications').then(r => r.json()).then(d => {
+                if (!d || !d.success) return;
+                const prevPending = notifData.pending;
+                notifData = d;
+                if (d.role === 'user') {
+                    const seen = seenSet();
+                    d.items.filter(i => !seen.has(notifKey(i)) && !notifAlerted.has(notifKey(i))).forEach(i => {
+                        notifAlerted.add(notifKey(i));
+                        if (!notifFirst) notifyBrowser(i.kind === 'approved' ? `تمت الموافقة على بلاغك ${i.id}` : `تم رفض بلاغك ${i.id}`);
+                    });
+                } else if (!notifFirst && d.pending > prevPending) {
+                    notifyBrowser(`بلاغ جديد بانتظار المراجعة (الإجمالي ${d.pending})`);
+                }
+                notifFirst = false;
+                notifBadge();
+            }).catch(() => {});
+        }
+        function toggleNotifPanel() {
+            const panel = document.getElementById('notif-panel');
+            if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+            try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+            const kindText = { pending: 'بلاغ جديد بانتظار المراجعة', approved: 'تمت الموافقة على بلاغك', rejected: 'تم رفض بلاغك' };
+            const kindColor = { pending: '#fbbf24', approved: '#4ade80', rejected: '#f87171' };
+            const items = notifData.items || [];
+            let html = '<div class="p-2 fw-bold text-white border-bottom border-secondary">الإشعارات' + (notifData.role !== 'user' ? ` (${notifData.pending} بانتظار المراجعة)` : '') + '</div>';
+            html += items.length ? items.map(i => `<div class="p-2 border-bottom border-secondary small" style="cursor:pointer;" data-id="${esc(i.id)}" onclick="openNotifItem(this.dataset.id)">
+                <span class="fw-bold" style="color:${kindColor[i.kind] || '#fff'}">${kindText[i.kind] || ''}</span> <span class="text-info">${esc(i.id)}</span>
+                ${i.officer ? `<div class="text-white">${esc(i.officer)}</div>` : ''}${i.reason ? `<div class="text-white">السبب: ${esc(i.reason)}</div>` : ''}
+                <div class="text-secondary">${esc(String(i.at || '').slice(0, 16))}</div></div>`).join('')
+                : '<div class="p-3 text-center text-white">لا توجد إشعارات.</div>';
+            panel.innerHTML = html;
+            panel.style.display = 'block';
+            if (notifData.role === 'user') { const seen = seenSet(); items.forEach(i => seen.add(notifKey(i))); saveSeen(seen); notifBadge(); }
+        }
+        function openNotifItem(id) {
+            document.getElementById('notif-panel').style.display = 'none';
+            clearFilters();
+            loadRecords().then(() => {
+                const r = findRecord(id);
+                if (r) switchTab(tabOf(r));
+                document.getElementById('record-search').value = id;
+                filterRecords();
+            });
+        }
+
+        // ---- التقرير الأسبوعي ----
+        let weeklyText = '';
+        function openWeekly() {
+            new bootstrap.Modal(document.getElementById('weeklyModal')).show();
+            loadWeekly();
+        }
+        function loadWeekly() {
+            const days = document.getElementById('weekly-days').value;
+            const body = document.getElementById('weekly-body');
+            body.textContent = 'جاري التحميل...';
+            fetch('/weekly-report?days=' + encodeURIComponent(days)).then(r => r.json()).then(d => {
+                if (!d || !d.success) { body.textContent = 'تعذر تحميل التقرير.'; return; }
+                weeklyText = d.text;
+                const card = (label, n, color) => `<div class="col-4 col-md-2"><div class="stat-card" style="border-color:${color};"><div class="small text-white">${label}</div><h4 class="m-0 fw-bold" style="color:${color};">${n}</h4></div></div>`;
+                const medals = ['🥇', '🥈', '🥉'];
+                body.innerHTML = `<div class="row g-2 mb-3">${card('الإجمالي', d.total, '#00f2fe')}${card('موافق عليها', d.approved, '#22c55e')}${card('مرسلة', d.sent, '#14b8a6')}${card('مرفوضة', d.rejected, '#ef4444')}${card('قيد المراجعة', d.pending, '#f59e0b')}${card('حرجة', d.critical, '#ef4444')}</div>
+                    <div class="row g-3 text-start"><div class="col-md-6"><div class="fw-bold mb-1">أكثر المنصات</div>${d.platforms.map(p => `<div class="d-flex justify-content-between border-bottom border-secondary py-1"><span>${esc(p.name)}</span><b>${p.count}</b></div>`).join('') || '<div class="text-secondary">لا بيانات</div>'}</div>
+                    ${d.officers.length ? `<div class="col-md-6"><div class="fw-bold mb-1">ترتيب الأفراد</div>${d.officers.map((o, i) => `<div class="d-flex justify-content-between border-bottom border-secondary py-1"><span>${medals[i] || (i + 1) + '.'} ${esc(o.name)}</span><b>${o.count}</b></div>`).join('')}</div>` : ''}</div>
+                    <div class="small text-secondary mt-3">الفترة: ${esc(d.from)} إلى ${esc(d.to)}</div>`;
+            }).catch(() => { body.textContent = 'تعذر الاتصال بالخادم.'; });
+        }
+        function shareWeekly() { if (weeklyText) window.open('https://wa.me/?text=' + encodeURIComponent(weeklyText), '_blank'); }
+        function copyWeekly() { if (weeklyText && navigator.clipboard) navigator.clipboard.writeText(weeklyText).then(() => alert('تم نسخ النص.')).catch(() => {}); }
+        function printWeekly() { window.open('/report-print?days=' + encodeURIComponent(document.getElementById('weekly-days').value), '_blank'); }
+
+        // ---- سجل النشاط ----
+        function openAudit() {
+            new bootstrap.Modal(document.getElementById('auditModal')).show();
+            const body = document.getElementById('audit-body');
+            body.textContent = 'جاري التحميل...';
+            fetch('/audit-log').then(r => r.json()).then(d => {
+                if (!d || !d.success) { body.innerHTML = `<div class="text-warning fw-bold">${esc((d && d.message) || 'تعذر التحميل.')}</div>`; return; }
+                body.innerHTML = d.entries.length ? `<table class="table table-dark table-sm align-middle"><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الهدف</th><th>تفاصيل</th></tr></thead><tbody>` +
+                    d.entries.map(e => `<tr><td class="text-nowrap">${esc(e.at)}</td><td>${esc(e.actor)}</td><td>${esc(e.action)}</td><td>${esc(e.target)}</td><td>${esc(e.details)}</td></tr>`).join('') + '</tbody></table>' : 'لا توجد عمليات مسجلة بعد.';
+            }).catch(() => { body.textContent = 'تعذر الاتصال بالخادم.'; });
         }
 
         function filterRecords() {
-            const query = document.getElementById('record-search').value.toLowerCase();
-            const filtered = allGlobalRecords.filter(r =>
-                (r.report_id && r.report_id.toLowerCase().includes(query)) ||
-                (r.officer && r.officer.toLowerCase().includes(query)) ||
-                (r.platform && r.platform.toLowerCase().includes(query)) ||
-                (r.url && r.url.toLowerCase().includes(query))
-            );
-            renderRecordsList(filtered);
+            recLimit = REC_PAGE;
+            renderRecordsList(allGlobalRecords);
         }
 
         function approveReport(id) {
