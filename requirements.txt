@@ -2,3 +2,4 @@ Flask==3.0.2
 Werkzeug
 gunicorn==21.2.0
 supabase
+openpyxl
