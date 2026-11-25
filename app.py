@@ -20,6 +20,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client, Client
 
 import whatsapp_sender as wa
+import excel_export
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("cyber-reports")
@@ -852,7 +853,7 @@ def _decide_report(report_id, new_status, extra_tech=None):
         tech['decided_at'] = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
         tech.update(extra_tech or {})
         if new_status == STATUS_APPROVED:
-            tech['wa_queue'] = True     # علامة: موافقة جديدة تدخل طابور الإرسال (القديمة بلا علامة ولا تُرسل أبداً)
+            tech['wa_queue'] = True     # علامة: موافقة جديدة بانتظار سحب Excel (الموافق عليها قبل هذا النظام بلا علامة وتبقى في خانة السابقة)
         res = (supabase.table('reports').update({'status': new_status, 'tech_indicators': tech})
                .eq('report_id', rid).eq('status', STATUS_PENDING).execute())
         if not res.data:
@@ -867,33 +868,9 @@ def _decide_report(report_id, new_status, extra_tech=None):
 @app.route('/approve-report/<report_id>', methods=['POST'])
 @admin_required_json
 def approve_report(report_id):
-    """الموافقة = إرسال: داخل وقت الدوام يُرسل البلاغ على واتساب فوراً ضمن نفس الضغطة،
-    وخارجه ينتظر وقت الدوام (أو زر "إرسال الآن" للحالات العاجلة)."""
-    resp = _decide_report(report_id, STATUS_APPROVED)
-    body, code = (resp if isinstance(resp, tuple) else (resp, 200))
-    data = body.get_json() or {}
-    if not data.get('success'):
-        return resp
-    cfg = wa.load_config()
-    if not cfg['enabled']:
-        return resp
-    rid = clean(report_id, 100)
-    if not wa.in_send_window(cfg, wa.now_iraq()):
-        data.update({'wa_waiting': True, 'wa_window': wa.window_label(cfg)})
-        return jsonify(data), code
-    try:
-        result = process_whatsapp_queue(limit=1, only_id=rid, delay=0)
-        if result.get('busy'):
-            trigger_whatsapp_async()          # عملية إرسال أخرى جارية: الطابور يكمل
-        elif result.get('sent'):
-            data['wa_sent'] = True
-        else:
-            rows = supabase.table('reports').select('tech_indicators').eq('report_id', rid).limit(1).execute().data or []
-            data['wa_error'] = (_wa_info(rows[0]).get('last_error') if rows else '') or 'سبب غير معروف'
-    except Exception:
-        log.exception("خطأ أثناء الإرسال بعد الموافقة")
-        data['wa_error'] = 'حدث خطأ أثناء الإرسال'
-    return jsonify(data), code
+    """الموافقة تنقل البلاغ إلى خانة "موافق عليها ولم يُسحب Excel بعد" فقط.
+    لا يُرسل شيء تلقائياً: يُسحب ملف Excel لكل بلاغات اليوم بضغطة واحدة ثم يُشارَك على واتساب (انظر /excel/pull)."""
+    return _decide_report(report_id, STATUS_APPROVED)
 
 
 @app.route('/reject-report/<report_id>', methods=['POST'])
@@ -929,7 +906,6 @@ def bulk_approve():
                    .eq('report_id', row['report_id']).eq('status', STATUS_PENDING).execute())
             approved += len(res.data or [])
         audit('bulk_approve', '', f'{approved} بلاغ')
-        trigger_whatsapp_async()
         return jsonify({'success': True, 'approved': approved})
     except Exception:
         log.exception("خطأ في الموافقة الجماعية")
@@ -953,17 +929,13 @@ def _is_queued(row):
 
 
 def _deletable_rows():
-    """عند تفعيل واتساب لا نحذف إلا ما أُرسل فعلاً، أو الموافق عليه القديم الذي لن يُرسل أبداً (بلا علامة طابور)."""
+    """لا نحذف إلا ما سُحب له Excel أو أُرسل فعلاً، أو الموافق عليه القديم (بلا علامة): الموافق عليه الذي لم يُسحب Excel له محمي دائماً."""
     rows = fetch_all(lambda: supabase.table('reports').select('report_id, timestamp, status, tech_indicators')
                      .in_('status', [STATUS_APPROVED, STATUS_SENT]).order('report_id'))
-    if not wa.load_config()['enabled']:
-        return rows
     return [r for r in rows if r.get('status') == STATUS_SENT or not _is_queued(r)]
 
 
 def _kept_unsent_count():
-    if not wa.load_config()['enabled']:
-        return 0
     rows = supabase.table('reports').select('report_id, tech_indicators').in_('status', [STATUS_APPROVED, STATUS_SENDING]).execute().data or []
     return len([r for r in rows if _is_queued(r)])
 
@@ -1352,18 +1324,19 @@ def _wa_reclaim_stale(now):
 
 
 def _queued_rows(only_id=None, limit=50):
-    """البلاغات الموافق عليها المعلَّمة لطابور الإرسال، الأقدم أولاً.
+    """البلاغات التي طلب الأدمن إرسالها يدوياً ("إرسال الآن") وبقيت بحاجة لإعادة محاولة، الأقدم أولاً.
+    الموافقة وحدها لا ترسل شيئاً (تنتظر سحب Excel).
     مهم: الفلترة تتم في قاعدة البيانات؛ لأن بلاغات قديمة كثيرة موافق عليها (بلا علامة طابور) كانت تملأ أول 50 صفاً
     فلا تصل الدورة أبداً إلى البلاغ الجديد."""
     base = supabase.table('reports').select('*').eq('status', STATUS_APPROVED)
     if only_id:
         return base.eq('report_id', only_id).limit(1).execute().data or []
     try:
-        return base.filter('tech_indicators->>wa_queue', 'eq', 'true').order('report_id').limit(limit).execute().data or []
+        return base.filter('tech_indicators->>wa_manual', 'eq', 'true').order('report_id').limit(limit).execute().data or []
     except Exception:
         log.warning("تعذر فلترة الطابور في قاعدة البيانات، سيتم الفحص يدوياً.", exc_info=True)
         light = fetch_all(lambda: supabase.table('reports').select('report_id, tech_indicators').eq('status', STATUS_APPROVED))
-        ids = sorted(r['report_id'] for r in light if _is_queued(r))[:limit]
+        ids = sorted(r['report_id'] for r in light if _tech_of(r).get('wa_manual'))[:limit]
         if not ids:
             return []
         return supabase.table('reports').select('*').in_('report_id', ids).order('report_id').execute().data or []
@@ -1510,7 +1483,7 @@ AUDIT_LABELS = {
     'delete_report': 'حذف بلاغ', 'delete_approved_bulk': 'حذف البلاغات الموافق عليها', 'delete_monthly_approved': 'تصفية بلاغات الشهر',
     'edit_report': 'تعديل بلاغ', 'whatsapp_send': 'إرسال واتساب يدوي', 'whatsapp_resend': 'إعادة إرسال واتساب',
     'add_user': 'إضافة مستخدم', 'update_user': 'تعديل مستخدم', 'delete_user': 'حذف مستخدم', 'set_supervisor': 'تعيين مشرف',
-    'unset_supervisor': 'سحب الإشراف', 'change_password': 'تغيير كلمة السر', 'backup': 'تنزيل نسخة احتياطية', 'export': 'تصدير بلاغات',
+    'unset_supervisor': 'سحب الإشراف', 'change_password': 'تغيير كلمة السر', 'backup': 'تنزيل نسخة احتياطية', 'export': 'تصدير بلاغات', 'excel_pull': 'سحب Excel', 'excel_send': 'إرسال Excel على واتساب',
 }
 _audit_warned = False
 
@@ -1579,7 +1552,7 @@ def notifications():
 
 EXPORT_FIELDS = [
     ('report_id', 'رقم البلاغ'), ('timestamp', 'تاريخ الرفع'), ('officer', 'القائم بالرصد'), ('platform', 'المنصة'),
-    ('url', 'الرابط'), ('accountName', 'اسم الحساب'), ('threatType', 'نوع التهديد'), ('severity', 'الخطورة'),
+    ('url', 'الرابط'), ('account_name', 'اسم الحساب'), ('threat_type', 'نوع التهديد'), ('severity', 'الخطورة'),
     ('status', 'الحالة'), ('_reason', 'سبب الرفض'), ('description', 'الوصف'), ('recommendation', 'التوصية'),
 ]
 
@@ -1712,13 +1685,211 @@ def backup_download():
     return Response(payload, mimetype='application/json; charset=utf-8', headers={'Content-Disposition': f'attachment; filename="{name}"'})
 
 
+# ---------------------------------------------------------------------------
+# سحب Excel لبلاغات اليوم الموافق عليها ثم مشاركة الملف على واتساب
+# ---------------------------------------------------------------------------
+EXCEL_TABLE = 'excel_batches'
+
+
+def _excel_pending_rows():
+    """البلاغات الموافق عليها التي لم يُسحب لها Excel بعد (خانة "ولم يُسحب Excel")، الأقدم موافقة أولاً."""
+    try:
+        rows = fetch_all(lambda: supabase.table('reports').select('*').eq('status', STATUS_APPROVED)
+                         .filter('tech_indicators->>wa_queue', 'eq', 'true').order('report_id'))
+    except Exception:
+        log.warning("تعذر فلترة بلاغات Excel في قاعدة البيانات، سيتم الفحص يدوياً.", exc_info=True)
+        light = fetch_all(lambda: supabase.table('reports').select('report_id, tech_indicators').eq('status', STATUS_APPROVED).order('report_id'))
+        ids = [r['report_id'] for r in light if _is_queued(r)]
+        rows = []
+        for i in range(0, len(ids), 100):
+            rows += supabase.table('reports').select('*').in_('report_id', ids[i:i + 100]).execute().data or []
+    rows = [r for r in rows if _is_queued(r)]
+    rows.sort(key=lambda r: (str(_tech_of(r).get('decided_at') or ''), str(r.get('report_id'))))
+    return rows
+
+
+def _get_batch(batch_id):
+    rows = supabase.table(EXCEL_TABLE).select('*').eq('id', clean(batch_id, 40)).limit(1).execute().data or []
+    return rows[0] if rows else None
+
+
+def _batch_rows(batch):
+    ids = list(batch.get('report_ids') or [])
+    rows = []
+    for i in range(0, len(ids), 100):
+        rows += supabase.table('reports').select('*').in_('report_id', ids[i:i + 100]).execute().data or []
+    order = {rid: n for n, rid in enumerate(ids)}
+    rows.sort(key=lambda r: order.get(r.get('report_id'), 0))
+    return rows
+
+
+def _batch_filename(batch):
+    return 'cyber-reports-' + re.sub(r'[^0-9A-Za-z-]', '', str(batch.get('id') or '')).replace('EX-', '', 1) + '.xlsx'
+
+
+def _excel_unavailable():
+    return jsonify({'success': False, 'configured': False,
+                    'message': 'جدول excel_batches غير موجود في Supabase. شغّل أمر SQL المذكور في README مرة واحدة.'}), 500
+
+
+@app.route('/excel/pull', methods=['POST'])
+@admin_required_json
+def excel_pull():
+    """يسحب Excel لكل البلاغات الموافق عليها التي لم تُسحب بعد، وينقلها كلها إلى خانة "تم إرسالها وسحب الإكسل"."""
+    try:
+        rows = _excel_pending_rows()
+    except Exception:
+        log.exception("خطأ في قراءة بلاغات Excel")
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
+    if not rows:
+        return jsonify({'success': False, 'message': 'لا توجد بلاغات موافق عليها بانتظار سحب Excel.'}), 400
+    now = wa.now_iraq()
+    batch_id = 'EX-' + now.strftime('%Y%m%d-%H%M%S')
+    stamp = now.strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        supabase.table(EXCEL_TABLE).insert({
+            'id': batch_id, 'created_at': stamp, 'created_by': str(session.get('user') or ''),
+            'report_ids': [r['report_id'] for r in rows], 'report_count': len(rows), 'sent_to': {},
+        }).execute()
+    except Exception:
+        log.exception("تعذر إنشاء دفعة Excel")
+        return _excel_unavailable()
+
+    claimed = []
+    try:
+        for row in rows:
+            tech = dict(_tech_of(row))
+            tech.update({'excel_batch': batch_id, 'excel_at': stamp, 'excel_by': str(session.get('user') or '')})
+            res = (supabase.table('reports').update({'status': STATUS_SENT, 'tech_indicators': tech})
+                   .eq('report_id', row['report_id']).eq('status', STATUS_APPROVED).execute())
+            if res.data:
+                claimed.append(row)
+        if not claimed:
+            supabase.table(EXCEL_TABLE).delete().eq('id', batch_id).execute()
+            return jsonify({'success': False, 'message': 'تغيّرت حالة البلاغات للتو، أعد المحاولة.'}), 409
+        excel_export.build_workbook(claimed)      # فحص أن الملف يُبنى قبل أن نثبّت الدفعة (يُبنى ثانية عند التنزيل)
+        if len(claimed) != len(rows):
+            supabase.table(EXCEL_TABLE).update({'report_ids': [r['report_id'] for r in claimed], 'report_count': len(claimed)}).eq('id', batch_id).execute()
+    except Exception:
+        log.exception("فشل سحب Excel، سيتم إرجاع البلاغات")
+        for row in claimed:
+            try:
+                supabase.table('reports').update({'status': STATUS_APPROVED, 'tech_indicators': row.get('tech_indicators')}) \
+                    .eq('report_id', row['report_id']).eq('status', STATUS_SENT).execute()
+            except Exception:
+                log.exception("تعذر إرجاع البلاغ %s بعد فشل السحب", row.get('report_id'))
+        try:
+            supabase.table(EXCEL_TABLE).delete().eq('id', batch_id).execute()
+        except Exception:
+            pass
+        return jsonify({'success': False, 'message': 'تعذر إنشاء ملف Excel، أُعيدت البلاغات إلى الخانة ولم يتغيّر شيء.'}), 500
+    audit('excel_pull', batch_id, f'{len(claimed)} بلاغ')
+    return jsonify({'success': True, 'batch': batch_id, 'count': len(claimed), 'skipped': len(rows) - len(claimed)})
+
+
+@app.route('/excel/<batch_id>/download')
+@require(can_view_all, _deny_json())
+def excel_download(batch_id):
+    try:
+        batch = _get_batch(batch_id)
+    except Exception:
+        return _excel_unavailable()
+    if not batch:
+        return jsonify({'success': False, 'message': 'الملف غير موجود.'}), 404
+    data = excel_export.build_workbook(_batch_rows(batch))
+    return Response(data, mimetype=excel_export.XLSX_MIME,
+                    headers={'Content-Disposition': f'attachment; filename="{_batch_filename(batch)}"'})
+
+
+@app.route('/excel/batches')
+@require(can_view_all, _deny_json())
+def excel_batches():
+    cfg = wa.load_config()
+    try:
+        rows = supabase.table(EXCEL_TABLE).select('*').order('id', desc=True).limit(30).execute().data or []
+    except Exception:
+        return _excel_unavailable()
+    keys = {wa.recipient_key(n): wa.mask_number(n) for n in cfg['recipients']}
+    out = []
+    for b in rows:
+        sent_to = b.get('sent_to') if isinstance(b.get('sent_to'), dict) else {}
+        out.append({
+            'id': b.get('id'), 'created_at': b.get('created_at'), 'created_by': b.get('created_by'), 'count': b.get('report_count') or 0,
+            'sent_to': [v.get('to') for v in sent_to.values() if isinstance(v, dict)],
+            'remaining': len([k for k in keys if k not in sent_to]), 'last_error': b.get('last_error') or '', 'last_sent_at': b.get('last_sent_at') or '',
+        })
+    return jsonify({'success': True, 'wa_enabled': cfg['enabled'], 'recipients': list(keys.values()), 'batches': out})
+
+
+@app.route('/excel/<batch_id>/send', methods=['POST'])
+@admin_required_json
+def excel_send(batch_id):
+    """يرسل ملف Excel على واتساب لكل الأرقام المحددة (من لم يصله فقط، إلا إذا طُلب "للجميع من جديد")."""
+    cfg = wa.load_config()
+    if not cfg['enabled']:
+        return jsonify({'success': False, 'message': 'الإرسال على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.'}), 400
+    force = bool((request.get_json(silent=True) or {}).get('force'))
+    try:
+        batch = _get_batch(batch_id)
+    except Exception:
+        return _excel_unavailable()
+    if not batch:
+        return jsonify({'success': False, 'message': 'الملف غير موجود.'}), 404
+    if not _wa_lock.acquire(blocking=False):
+        return jsonify({'success': False, 'message': 'عملية إرسال أخرى جارية الآن، حاول بعد لحظات.'}), 409
+    try:
+        rows = _batch_rows(batch)
+        sent_to = dict(batch.get('sent_to') or {})
+        todo = [n for n in cfg['recipients'] if force or wa.recipient_key(n) not in sent_to]
+        if not todo:
+            return jsonify({'success': True, 'already': True, 'results': [], 'message': 'الملف أُرسل سابقاً لكل الأرقام.'})
+        filename = _batch_filename(batch)
+        day = str(batch.get('created_at') or '')[:10]
+        caption = f"📊 بلاغات الرصد السيبراني - مديرية أمن وسلامة الوزارة\n📅 {day}\n📋 عدد البلاغات: {len(rows)}"
+        stamp = wa.now_iraq().strftime('%Y-%m-%d %H:%M:%S')
+        results, errors = [], []
+        try:
+            media_id = wa.upload_media(cfg, excel_export.build_workbook(rows), filename, excel_export.XLSX_MIME)
+        except wa.WhatsAppError as e:
+            log.warning("فشل رفع ملف Excel %s: %s", batch.get('id'), e)
+            supabase.table(EXCEL_TABLE).update({'last_error': str(e)[:500]}).eq('id', batch['id']).execute()
+            return jsonify({'success': False, 'message': f'فشل رفع الملف إلى واتساب: {e}'}), 502
+        for number in todo:
+            masked = wa.mask_number(number)
+            try:
+                mid = wa.send_document(cfg, media_id, filename, caption, number, template_params=[day, str(len(rows))])
+                sent_to[wa.recipient_key(number)] = {'to': masked, 'at': stamp, 'id': mid}
+                results.append({'to': masked, 'ok': True})
+            except wa.WhatsAppError as e:
+                log.warning("فشل إرسال ملف Excel %s إلى %s: %s", batch.get('id'), masked, e)
+                errors.append(f"{masked}: {e}")
+                results.append({'to': masked, 'ok': False, 'error': str(e)})
+            except Exception as e:
+                log.exception("خطأ غير متوقع أثناء إرسال ملف Excel")
+                errors.append(f"{masked}: {type(e).__name__}")
+                results.append({'to': masked, 'ok': False, 'error': type(e).__name__})
+        update = {'sent_to': sent_to, 'last_error': '؛ '.join(errors)[:500]}
+        if any(r['ok'] for r in results):
+            update['last_sent_at'] = stamp
+        supabase.table(EXCEL_TABLE).update(update).eq('id', batch['id']).execute()
+    except Exception:
+        log.exception("خطأ في إرسال ملف Excel")
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
+    finally:
+        _wa_lock.release()
+    ok = sum(1 for r in results if r['ok'])
+    audit('excel_send', batch['id'], f'{ok} من {len(results)}')
+    return jsonify({'success': not errors, 'results': results,
+                    'message': '' if not errors else 'تعذر الإرسال لبعض الأرقام: ' + '؛ '.join(errors)})
+
+
 @app.route('/whatsapp-status')
 def whatsapp_status():
     if not can_view_all():
         return jsonify({'success': False, 'message': 'غير مسموح'}), 403
     cfg = wa.load_config()
     out = {'success': True, 'enabled': cfg['enabled'], 'window': wa.window_label(cfg), 'in_window': False,
-           'pending': 0, 'failed': 0, 'failed_ids': [], 'token_error': False, 'to': '، '.join(wa.mask_number(x) for x in cfg['recipients']) if cfg['enabled'] else ''}
+           'pending': 0, 'failed': 0, 'failed_ids': [], 'token_error': False, 'excel_pending': 0, 'to': '، '.join(wa.mask_number(x) for x in cfg['recipients']) if cfg['enabled'] else ''}
     if not cfg['enabled']:
         return jsonify(out)
     out['in_window'] = wa.in_send_window(cfg, wa.now_iraq())
@@ -1727,6 +1898,10 @@ def whatsapp_status():
         for row in rows:
             if not _is_queued(row):
                 continue
+            if row.get('status') == STATUS_APPROVED:
+                out['excel_pending'] += 1
+            if not _tech_of(row).get('wa_manual'):
+                continue       # بانتظار سحب Excel فقط: ليست إرسالاً فاشلاً ولا معلّقاً
             info = _wa_info(row)
             if 'WHATSAPP_TOKEN' in str(info.get('last_error') or ''):
                 out['token_error'] = True      # رمز ميتا منتهٍ: كل الإرسال متوقف حتى يُجدَّد
@@ -1769,7 +1944,8 @@ def whatsapp_send_now(report_id):
         if status != STATUS_APPROVED or resend:
             info.pop('sent_to', None)
         tech = dict(_tech_of(row))
-        tech['wa_queue'] = True     # الأدمن اختار إرساله يدوياً
+        tech['wa_queue'] = True
+        tech['wa_manual'] = True    # الأدمن اختار إرساله يدوياً: يُعاد تلقائياً فقط إذا فشل
         if not _wa_save(row, tech, info, STATUS_APPROVED, status).data:
             return jsonify({'success': False, 'message': 'تغيرت حالة البلاغ للتو، أعد المحاولة.'}), 409
         row = {**row, 'status': STATUS_APPROVED, 'tech_indicators': {**tech, 'whatsapp': info}}

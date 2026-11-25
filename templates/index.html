@@ -536,13 +536,13 @@
                     <button class="nav-link active fw-bold text-white" id="tab-new" onclick="switchTab('قيد المراجعة')" style="background: rgba(0,242,254,0.25); border: 1px solid var(--cyber-cyan); box-shadow: 0 0 15px rgba(0,242,254,0.2);">البلاغات الجديدة وقيد المراجعة</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">موافق عليها ولم تُرسل بعد</button>
+                    <button class="nav-link fw-bold text-white" id="tab-approved" onclick="switchTab('تمت الموافقة')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);"><i class="fas fa-file-excel me-1"></i> موافق عليها ولم يُسحب Excel بعد</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-bold text-white" id="tab-sent" onclick="switchTab('تمت الموافقة وتم إرسالها')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);"><i class="fab fa-whatsapp me-1"></i> موافق عليها وتم إرسالها</button>
+                    <button class="nav-link fw-bold text-white" id="tab-sent" onclick="switchTab('تمت الموافقة وتم إرسالها')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);"><i class="fas fa-circle-check me-1"></i> تم إرسالها وسحب الإكسل</button>
                 </li>
                 <li class="nav-item" role="presentation" id="tab-legacy-li" style="display:none;">
-                    <button class="nav-link fw-bold text-white" id="tab-legacy" onclick="switchTab('legacy')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);" title="بلاغات وُوفق عليها قبل تفعيل الإرسال التلقائي، ولا تُرسل">موافق عليها سابقاً (لا تُرسل)</button>
+                    <button class="nav-link fw-bold text-white" id="tab-legacy" onclick="switchTab('legacy')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);" title="بلاغات وُوفق عليها قبل هذا النظام، ولا تدخل في ملفات Excel">موافق عليها سابقاً</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link fw-bold text-white" id="tab-rejected" onclick="switchTab('مرفوض')" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.2);">الحالات المرفوضة</button>
@@ -576,6 +576,13 @@
                 </div>
             </div>
 
+            <div id="excel-bar" style="display:none; background: rgba(2,6,23,0.95); border: 1px solid rgba(34,197,94,0.6);" class="p-3 rounded mb-3 text-white">
+                <div class="fw-bold mb-2" id="excel-bar-text"></div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-success fw-bold" id="excel-pull-btn" onclick="pullExcel()"><i class="fas fa-file-excel me-1"></i> <span id="excel-pull-label">سحب Excel</span></button>
+                    <button class="btn btn-outline-info fw-bold" onclick="openExcelModal()"><i class="fas fa-folder-open me-1"></i> ملفات Excel السابقة</button>
+                </div>
+            </div>
             <div id="records-container" class="records-scroll" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
 
@@ -784,6 +791,18 @@
                     <button type="button" class="btn btn-danger fw-bold" id="reject-confirm-btn" onclick="confirmReject()"><i class="fas fa-ban me-1"></i> تأكيد الرفض</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="excelModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content text-light border shadow-lg" style="background: rgba(8,14,28,0.99); border: 2px solid var(--cyber-cyan) !important;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-file-excel me-2 text-success"></i> ملفات Excel للبلاغات</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="excel-body">جاري التحميل...</div>
             </div>
         </div>
     </div>
@@ -1019,12 +1038,14 @@
         function statusBadge(r) {
             const wa = (r.tech_indicators || {}).whatsapp || {};
             switch (r.status) {
-                case 'تمت الموافقة وتم إرسالها': return '<span class="badge shadow" style="background:#0d9488;"><i class="fab fa-whatsapp me-1"></i> تمت الموافقة وتم إرسالها</span>';
+                case 'تمت الموافقة وتم إرسالها':
+                    if ((r.tech_indicators || {}).excel_batch) return '<span class="badge shadow" style="background:#15803d;"><i class="fas fa-file-excel me-1"></i> تم سحب الإكسل وإرسالها</span>';
+                    return '<span class="badge shadow" style="background:#0d9488;"><i class="fab fa-whatsapp me-1"></i> تمت الموافقة وتم إرسالها</span>';
                 case 'جاري الإرسال': return '<span class="badge bg-info text-dark shadow">جاري الإرسال...</span>';
                 case 'تمت الموافقة':
                     if (isLegacyApproved(r)) return '<span class="badge bg-success shadow">تمت الموافقة</span>';
                     if (wa.state === 'failed') return '<span class="badge bg-danger shadow">تمت الموافقة • فشل الإرسال</span>';
-                    return WA_ENABLED ? '<span class="badge bg-success shadow">تمت الموافقة • بانتظار الإرسال</span>' : '<span class="badge bg-success shadow">تمت الموافقة</span>';
+                    return '<span class="badge bg-success shadow"><i class="fas fa-file-excel me-1"></i> تمت الموافقة • بانتظار سحب Excel</span>';
                 case 'مرفوض': return '<span class="badge bg-danger shadow">مرفوض</span>';
                 default: return '<span class="badge bg-warning text-dark shadow">قيد المراجعة</span>';
             }
@@ -1036,6 +1057,9 @@
             let html = '';
             if (r.status === 'مرفوض' && t.rejection_reason) {
                 html += `<div class="small p-2 rounded mt-2 fw-bold text-white" style="background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.6);"><i class="fas fa-ban me-1 text-danger"></i> <strong>سبب الرفض:</strong> ${esc(t.rejection_reason)}</div>`;
+            }
+            if (r.status === 'تمت الموافقة وتم إرسالها' && t.excel_batch) {
+                html += `<div class="small mt-2 fw-bold" style="color:#86efac;"><i class="fas fa-file-excel me-1"></i> سُحب في ملف Excel ${esc(t.excel_batch)} • ${esc(t.excel_at || '')}</div>`;
             }
             if (r.status === 'تمت الموافقة وتم إرسالها' && wa.sent_at) {
                 html += `<div class="small mt-2 fw-bold" style="color:#5eead4;"><i class="fab fa-whatsapp me-1"></i> أُرسل على واتساب: ${esc(wa.sent_at)}</div>`;
@@ -1098,10 +1122,10 @@
                 el.style.display = 'block';
                 if (!d.enabled) {
                     el.style.color = '#fbbf24';
-                    el.textContent = 'الإرسال التلقائي على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.';
+                    el.textContent = 'واتساب غير مفعّل (لم تُضبط متغيرات WHATSAPP_* في Render): يمكنك سحب Excel لكن لا يمكن إرساله.';
                 } else {
-                    el.style.color = d.in_window ? '#5eead4' : '#fbbf24';
-                    el.textContent = `واتساب: مفعّل (${d.window} بتوقيت بغداد) • ${d.in_window ? 'داخل وقت الإرسال' : 'خارج وقت الإرسال، تنتظر البلاغات'} • بانتظار الإرسال: ${d.pending} • فشل: ${d.failed}`;
+                    el.style.color = '#5eead4';
+                    el.textContent = `واتساب: مفعّل • المستلمون: ${d.to} • بانتظار سحب Excel: ${d.excel_pending}` + (d.failed ? ` • فشل إرسال فردي: ${d.failed}` : '');
                 }
                 if (changed) renderRecordsList(allGlobalRecords);
             }).catch(() => {});
@@ -1121,6 +1145,7 @@
             const canBulkSend = IS_ADMIN && WA_ENABLED && currentTabStatus === 'تمت الموافقة';
             const canBulkApprove = IS_ADMIN && currentTabStatus === 'قيد المراجعة';
             const setShow = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+            updateExcelBar(inTab.length);
             setShow('bulk-approve-btn', canBulkApprove); setShow('bulk-send-btn', canBulkSend); setShow('bulk-all-btn', canBulkApprove || canBulkSend);
 
             if(matched.length === 0) {
@@ -1148,7 +1173,7 @@
                                 <button data-id="${esc(r.report_id)}" onclick="rejectReport(this.dataset.id)" class="btn btn-sm btn-danger py-0 px-2 fw-bold">رفض</button>
                             ` : ''}
 
-                            ${IS_ADMIN && WA_ENABLED && ['تمت الموافقة', 'جاري الإرسال', 'تمت الموافقة وتم إرسالها'].includes(r.status) && !isLegacyApproved(r) ? `<button data-id="${esc(r.report_id)}" data-sent="${r.status === 'تمت الموافقة وتم إرسالها' ? '1' : ''}" onclick="sendNow(this.dataset.id, !!this.dataset.sent)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال فوري (حتى خارج وقت الدوام)"><i class="fab fa-whatsapp me-1"></i> ${r.status === 'تمت الموافقة وتم إرسالها' ? 'إرسال مرة أخرى' : (((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال الآن')}</button>` : ''}
+                            ${IS_ADMIN && WA_ENABLED && ['تمت الموافقة', 'جاري الإرسال', 'تمت الموافقة وتم إرسالها'].includes(r.status) && !isLegacyApproved(r) && !(r.tech_indicators || {}).excel_batch ? `<button data-id="${esc(r.report_id)}" data-sent="${r.status === 'تمت الموافقة وتم إرسالها' ? '1' : ''}" onclick="sendNow(this.dataset.id, !!this.dataset.sent)" class="btn btn-sm py-0 px-2 fw-bold text-white" style="background:#0d9488;" title="إرسال هذا البلاغ وحده فوراً على واتساب (للحالات العاجلة)"><i class="fab fa-whatsapp me-1"></i> ${r.status === 'تمت الموافقة وتم إرسالها' ? 'إرسال مرة أخرى' : (((r.tech_indicators || {}).whatsapp || {}).state === 'failed' ? 'إعادة المحاولة' : 'إرسال عاجل الآن')}</button>` : ''}
                             ${IS_ADMIN ? `<button data-id="${esc(r.report_id)}" onclick="deleteReport(this.dataset.id)" class="btn btn-sm btn-outline-danger py-0 px-1" title="حذف"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </div>
                     </div>
@@ -1158,6 +1183,91 @@
                     ${extraInfoHtml(r)}
                 </div>
             `).join('') + (matched.length > recLimit ? `<div class="text-center mb-3"><button class="btn btn-outline-cyber fw-bold" onclick="showMoreRecords()">عرض المزيد (${matched.length - recLimit} متبقي)</button></div>` : '');
+        }
+
+        // ---- سحب Excel ومشاركته على واتساب ----
+        function updateExcelBar(count) {
+            const bar = document.getElementById('excel-bar');
+            if (!bar) return;
+            const pullBtn = document.getElementById('excel-pull-btn');
+            if (currentTabStatus === 'تمت الموافقة' && IS_ADMIN) {
+                bar.style.display = '';
+                pullBtn.style.display = '';
+                pullBtn.disabled = count === 0;
+                document.getElementById('excel-pull-label').textContent = `سحب Excel لكل البلاغات (${count})`;
+                document.getElementById('excel-bar-text').textContent = count
+                    ? `في هذه الخانة ${count} بلاغ موافق عليه. اضغط السحب لتنزيل ملف Excel بكل معلوماتها (نفس معلومات رسالة واتساب)، وتنتقل كلها بعدها إلى خانة "تم إرسالها وسحب الإكسل"، ثم تشاركه على واتساب.`
+                    : 'لا توجد بلاغات موافق عليها بانتظار السحب.';
+            } else if (currentTabStatus === 'تمت الموافقة وتم إرسالها' && CAN_VIEW_ALL) {
+                bar.style.display = '';
+                pullBtn.style.display = 'none';
+                document.getElementById('excel-bar-text').textContent = 'ملفات Excel التي سُحبت سابقاً: يمكنك تنزيلها أو إرسالها على واتساب من جديد.';
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
+        function pullExcel() {
+            const n = allGlobalRecords.filter(r => tabOf(r) === 'تمت الموافقة').length;
+            if (!n) return;
+            if (!confirm(`سحب ملف Excel لكل البلاغات الموافق عليها (${n} بلاغ)؟\nستنتقل كلها إلى خانة "تم إرسالها وسحب الإكسل".`)) return;
+            const btn = document.getElementById('excel-pull-btn');
+            btn.disabled = true;
+            postJson('/excel/pull').then(d => {
+                btn.disabled = false;
+                if (!d || !d.success) { alert((d && d.message) || 'تعذر سحب الملف.'); loadRecords(); return; }
+                window.location.href = '/excel/' + encodeURIComponent(d.batch) + '/download';
+                loadRecords().then(() => openExcelModal(d.batch));
+            }).catch(err => { btn.disabled = false; networkError(err); });
+        }
+
+        let excelHighlight = '';
+        function openExcelModal(highlight) {
+            excelHighlight = typeof highlight === 'string' ? highlight : '';
+            const el = document.getElementById('excelModal');
+            bootstrap.Modal.getOrCreateInstance(el).show();
+            loadExcelBatches();
+        }
+
+        function loadExcelBatches() {
+            const body = document.getElementById('excel-body');
+            body.textContent = 'جاري التحميل...';
+            fetch('/excel/batches').then(r => r.json()).then(d => {
+                if (!d || !d.success) { body.innerHTML = `<div class="text-warning fw-bold">${esc((d && d.message) || 'تعذر التحميل.')}</div>`; return; }
+                if (!d.batches.length) { body.textContent = 'لم يُسحب أي ملف بعد.'; return; }
+                body.innerHTML = (d.wa_enabled ? `<div class="small text-info mb-3">يُرسل الملف إلى: ${esc(d.recipients.join('، '))}</div>` : '<div class="small text-warning mb-3">واتساب غير مفعّل، يمكنك التنزيل فقط.</div>')
+                    + d.batches.map(b => {
+                        const sent = b.sent_to.length ? `<div class="small" style="color:#5eead4;"><i class="fab fa-whatsapp me-1"></i> أُرسل إلى: ${esc(b.sent_to.join('، '))} ${b.last_sent_at ? '• ' + esc(b.last_sent_at) : ''}</div>` : '<div class="small text-warning">لم يُرسل على واتساب بعد</div>';
+                        const err = b.last_error ? `<div class="small p-2 rounded mt-1 fw-bold" style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.6);">آخر خطأ: ${esc(b.last_error)}</div>` : '';
+                        const canSend = IS_ADMIN && d.wa_enabled;
+                        const sendLabel = b.remaining > 0 ? `إرسال على واتساب${b.sent_to.length ? ' (للباقين)' : ''}` : 'إرسال مرة أخرى للجميع';
+                        const hl = b.id === excelHighlight ? 'border: 2px solid #22c55e;' : 'border: 1px solid rgba(255,255,255,0.2);';
+                        return `<div class="p-3 rounded mb-3" style="background: rgba(15,23,42,0.9); ${hl}">
+                            <div class="fw-bold">${esc(b.id)} <span class="badge bg-secondary">${esc(b.count)} بلاغ</span></div>
+                            <div class="small text-secondary mb-1">${esc(b.created_at)} • بواسطة ${esc(b.created_by)}</div>
+                            ${sent}${err}
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <a class="btn btn-sm btn-outline-success fw-bold" href="/excel/${encodeURIComponent(b.id)}/download"><i class="fas fa-download me-1"></i> تنزيل الملف</a>
+                                ${canSend ? `<button class="btn btn-sm fw-bold text-white" style="background:#0d9488;" data-id="${esc(b.id)}" data-force="${b.remaining > 0 ? '' : '1'}" onclick="shareExcel(this)"><i class="fab fa-whatsapp me-1"></i> ${sendLabel}</button>` : ''}
+                            </div>
+                        </div>`;
+                    }).join('');
+            }).catch(() => { body.textContent = 'تعذر الاتصال بالخادم.'; });
+        }
+
+        function shareExcel(btn) {
+            const id = btn.dataset.id, force = !!btn.dataset.force;
+            if (force && !confirm('هذا الملف أُرسل لكل الأرقام سابقاً. إرساله مرة أخرى؟')) return;
+            btn.disabled = true;
+            const label = btn.innerHTML;
+            btn.textContent = 'جاري الرفع والإرسال...';
+            postJson('/excel/' + encodeURIComponent(id) + '/send', { force }).then(d => {
+                btn.disabled = false; btn.innerHTML = label;
+                const lines = ((d && d.results) || []).map(x => (x.ok ? '✅ ' : '❌ ') + x.to + (x.ok ? '' : ': ' + (x.error || '')));
+                if (d && d.success) alert(d.already ? d.message : 'تم إرسال الملف على واتساب:\n' + lines.join('\n'));
+                else alert(((d && d.message) || 'تعذر إرسال الملف.') + (lines.length ? '\n\n' + lines.join('\n') : ''));
+                loadExcelBatches();
+            }).catch(err => { btn.disabled = false; btn.innerHTML = label; networkError(err); });
         }
 
         // ---- الفلاتر والتحميل التدريجي ----
@@ -1382,11 +1492,7 @@
         }
 
         function approveReport(id) {
-            postJson(`/approve-report/${encodeURIComponent(id)}`).then(data => handleResult(data, () => {
-                if (data.wa_error) alert('تمت الموافقة لكن فشل الإرسال على واتساب:\n' + data.wa_error + '\nيمكنك الضغط على "إعادة المحاولة" بعد معالجة السبب.');
-                else if (data.wa_waiting) alert('تمت الموافقة. الإرسال التلقائي يعمل ' + data.wa_window + ' بتوقيت بغداد، وسيُرسل البلاغ عند بدء الدوام. للحالات العاجلة اضغط "إرسال الآن".');
-                loadRecords();
-            })).catch(networkError);
+            postJson(`/approve-report/${encodeURIComponent(id)}`).then(data => handleResult(data, loadRecords)).catch(networkError);
         }
 
         let rejectingId = null;

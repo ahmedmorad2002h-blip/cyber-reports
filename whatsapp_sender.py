@@ -8,6 +8,7 @@
   WHATSAPP_TEMPLATE_NAME     اسم القالب المعتمد (مطلوب عملياً، انظر README)
   WHATSAPP_TEMPLATE_LANG     لغة القالب (الافتراضي ar)
   WHATSAPP_TEMPLATE_VARS     عدد متغيرات القالب: 1 (الافتراضي، كل النص بمتغير واحد) أو 12 (متغير لكل حقل، يحفظ الترتيب والأسطر)
+  WHATSAPP_DOC_TEMPLATE      اسم قالب معتمد برأس "مستند" لإرسال ملف Excel خارج نافذة الـ 24 ساعة (متغيران في الجسم: {{1}} التاريخ {{2}} العدد)
   WHATSAPP_HOURS             ساعات الإرسال بتوقيت بغداد، الافتراضي 7-19
   WHATSAPP_API_VERSION       الافتراضي v23.0
   WHATSAPP_API_BASE          الافتراضي https://graph.facebook.com
@@ -83,6 +84,7 @@ def load_config():
         'template': _env('WHATSAPP_TEMPLATE_NAME'),
         'template_lang': _env('WHATSAPP_TEMPLATE_LANG', 'ar'),
         'template_vars': 12 if _env('WHATSAPP_TEMPLATE_VARS', '1') == '12' else 1,
+        'doc_template': _env('WHATSAPP_DOC_TEMPLATE'),
         'start_hour': start,
         'end_hour': end,
     }
@@ -200,7 +202,14 @@ _HINTS = {
 }
 
 
-def _error_detail(http_error):
+_DOC_HINTS = {
+    131047: 'إرسال ملف بدون قالب لا يُقبل إلا خلال 24 ساعة من آخر رسالة من المستلم: أرسل أي رسالة من رقم المستلم إلى رقم الحساب، أو أنشئ قالب مستند معتمداً وضع اسمه في WHATSAPP_DOC_TEMPLATE.',
+    132001: 'قالب المستند (WHATSAPP_DOC_TEMPLATE) غير موجود أو غير معتمد بهذه اللغة.',
+    132012: 'متغيرات قالب المستند لا تطابق القالب: يجب أن يكون في رأسه مستند وفي جسمه متغيران {{1}} و{{2}}.',
+}
+
+
+def _error_detail(http_error, hints=None):
     try:
         body = json.loads(http_error.read().decode('utf-8', 'replace') or '{}')
     except Exception:
@@ -210,7 +219,8 @@ def _error_detail(http_error):
         return ''
     code = err.get('code')
     sub = err.get('error_subcode')
-    hint = _HINTS.get(sub) or _HINTS.get(code)
+    merged = {**_HINTS, **(hints or {})}
+    hint = merged.get(sub) or merged.get(code)
     text = ''
     data = err.get('error_data')
     if isinstance(data, dict) and data.get('details'):
@@ -274,6 +284,85 @@ def send_message(cfg, text, timeout=20, fields=None, to=None):
     except ValueError:
         raise WhatsAppError("ردّ غير مفهوم من خادم واتساب", retryable=True)
 
+    messages = body.get('messages') if isinstance(body, dict) else None
+    if not messages or not isinstance(messages[0], dict) or not messages[0].get('id'):
+        raise WhatsAppError("لم يرجع خادم واتساب معرّف الرسالة", retryable=True)
+    return str(messages[0]['id'])
+
+
+# ---------------------------------------------------------------------------
+# إرسال ملف (Excel) : رفع الملف إلى ميتا مرة واحدة ثم إرسال معرّفه لكل مستلم
+# ---------------------------------------------------------------------------
+def _http_json(req, timeout, hints=None):
+    try:
+        with urlrequest.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode('utf-8', 'replace') or '{}')
+    except urlerror.HTTPError as e:
+        detail = _error_detail(e, hints)
+        raise WhatsAppError(f"HTTP {e.code}" + (f": {detail}" if detail else ''), retryable=(e.code >= 500 or e.code == 429))
+    except (urlerror.URLError, TimeoutError, OSError) as e:
+        raise WhatsAppError(f"تعذر الاتصال بخادم واتساب: {type(e).__name__}", retryable=True)
+    except ValueError:
+        raise WhatsAppError("ردّ غير مفهوم من خادم واتساب", retryable=True)
+
+
+def upload_media(cfg, content, filename, mime, timeout=60):
+    """يرفع الملف إلى ميتا ويرجع معرّفه (صالح 30 يوماً ويمكن إرساله لعدة مستلمين)."""
+    boundary = '----cyberreports' + hashlib.sha1(os.urandom(16)).hexdigest()
+    safe_name = re.sub(r'[^A-Za-z0-9._-]', '_', filename) or 'report.xlsx'
+    parts = [
+        f'--{boundary}\r\nContent-Disposition: form-data; name="messaging_product"\r\n\r\nwhatsapp\r\n'.encode(),
+        f'--{boundary}\r\nContent-Disposition: form-data; name="type"\r\n\r\n{mime}\r\n'.encode(),
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{safe_name}"\r\nContent-Type: {mime}\r\n\r\n'.encode(),
+        content,
+        f'\r\n--{boundary}--\r\n'.encode(),
+    ]
+    req = urlrequest.Request(
+        f"{cfg['api_base']}/{cfg['api_version']}/{cfg['phone_id']}/media",
+        data=b''.join(parts),
+        headers={'Authorization': f"Bearer {cfg['token']}", 'Content-Type': f'multipart/form-data; boundary={boundary}'},
+        method='POST',
+    )
+    body = _http_json(req, timeout, _DOC_HINTS)
+    media_id = body.get('id') if isinstance(body, dict) else None
+    if not media_id:
+        raise WhatsAppError("لم يرجع خادم واتساب معرّف الملف بعد الرفع", retryable=True)
+    return str(media_id)
+
+
+def send_document(cfg, media_id, filename, caption, to, template_params=None, timeout=30):
+    """يرسل ملفاً مرفوعاً إلى مستلم واحد ويرجع معرّف الرسالة.
+    مع WHATSAPP_DOC_TEMPLATE: رسالة قالب برأس مستند (تعمل في أي وقت). بدونه: مستند حر يعمل ضمن نافذة 24 ساعة فقط."""
+    target = re.sub(r'\D', '', to or cfg['to'])
+    if cfg.get('doc_template'):
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": target,
+            "type": "template",
+            "template": {
+                "name": cfg['doc_template'],
+                "language": {"code": cfg['template_lang']},
+                "components": [
+                    {"type": "header", "parameters": [{"type": "document", "document": {"id": media_id, "filename": filename}}]},
+                    {"type": "body", "parameters": [{"type": "text", "text": _param(v, '-', 100)} for v in (template_params or [])]},
+                ],
+            },
+        }
+    else:
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": target,
+            "type": "document",
+            "document": {"id": media_id, "filename": filename, "caption": (caption or '')[:1000]},
+        }
+    req = urlrequest.Request(
+        f"{cfg['api_base']}/{cfg['api_version']}/{cfg['phone_id']}/messages",
+        data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+        headers={'Authorization': f"Bearer {cfg['token']}", 'Content-Type': 'application/json'},
+        method='POST',
+    )
+    body = _http_json(req, timeout, _DOC_HINTS)
     messages = body.get('messages') if isinstance(body, dict) else None
     if not messages or not isinstance(messages[0], dict) or not messages[0].get('id'):
         raise WhatsAppError("لم يرجع خادم واتساب معرّف الرسالة", retryable=True)
