@@ -1784,7 +1784,16 @@ def excel_pull():
             pass
         return jsonify({'success': False, 'message': 'تعذر إنشاء ملف Excel، أُعيدت البلاغات إلى الخانة ولم يتغيّر شيء.'}), 500
     audit('excel_pull', batch_id, f'{len(claimed)} بلاغ')
-    return jsonify({'success': True, 'batch': batch_id, 'count': len(claimed), 'skipped': len(rows) - len(claimed)})
+    out = {'success': True, 'batch': batch_id, 'count': len(claimed), 'skipped': len(rows) - len(claimed), 'wa': None}
+    if wa.load_config()['enabled']:
+        # الإرسال التلقائي على واتساب لنفس الملف فور السحب (فشله لا يلغي السحب، ويمكن إعادته من "ملفات Excel السابقة")
+        try:
+            payload, _ = _send_excel_batch(batch_id)
+        except Exception:
+            log.exception("فشل الإرسال التلقائي لملف Excel")
+            payload = {'success': False, 'message': 'حدث خطأ أثناء الإرسال على واتساب.'}
+        out['wa'] = {'success': bool(payload.get('success')), 'message': payload.get('message', '')}
+    return jsonify(out)
 
 
 @app.route('/excel/<batch_id>/download')
@@ -1821,28 +1830,25 @@ def excel_batches():
     return jsonify({'success': True, 'wa_enabled': cfg['enabled'], 'recipients': list(keys.values()), 'batches': out})
 
 
-@app.route('/excel/<batch_id>/send', methods=['POST'])
-@admin_required_json
-def excel_send(batch_id):
-    """يرسل ملف Excel على واتساب لكل الأرقام المحددة (من لم يصله فقط، إلا إذا طُلب "للجميع من جديد")."""
+def _send_excel_batch(batch_id, force=False):
+    """يرسل ملف Excel على واتساب لكل الأرقام المحددة (من لم يصله فقط، إلا إذا طُلب "للجميع من جديد"). يرجع (dict, status)."""
     cfg = wa.load_config()
     if not cfg['enabled']:
-        return jsonify({'success': False, 'message': 'الإرسال على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.'}), 400
-    force = bool((request.get_json(silent=True) or {}).get('force'))
+        return {'success': False, 'message': 'الإرسال على واتساب غير مفعّل: لم تُضبط متغيرات WHATSAPP_* في Render.'}, 400
     try:
         batch = _get_batch(batch_id)
     except Exception:
-        return _excel_unavailable()
+        return {'success': False, 'message': 'تعذر الوصول لجدول ملفات Excel (excel_batches) في قاعدة البيانات.'}, 500
     if not batch:
-        return jsonify({'success': False, 'message': 'الملف غير موجود.'}), 404
+        return {'success': False, 'message': 'الملف غير موجود.'}, 404
     if not _wa_lock.acquire(blocking=False):
-        return jsonify({'success': False, 'message': 'عملية إرسال أخرى جارية الآن، حاول بعد لحظات.'}), 409
+        return {'success': False, 'message': 'عملية إرسال أخرى جارية الآن، حاول بعد لحظات.'}, 409
     try:
         rows = _batch_rows(batch)
         sent_to = dict(batch.get('sent_to') or {})
         todo = [n for n in cfg['recipients'] if force or wa.recipient_key(n) not in sent_to]
         if not todo:
-            return jsonify({'success': True, 'already': True, 'results': [], 'message': 'الملف أُرسل سابقاً لكل الأرقام.'})
+            return {'success': True, 'already': True, 'results': [], 'message': 'الملف أُرسل سابقاً لكل الأرقام.'}, 200
         filename = _batch_filename(batch)
         day = str(batch.get('created_at') or '')[:10]
         caption = f"📊 بلاغات الرصد السيبراني - مديرية أمن وسلامة الوزارة\n📅 {day}\n📋 عدد البلاغات: {len(rows)}"
@@ -1853,7 +1859,7 @@ def excel_send(batch_id):
         except wa.WhatsAppError as e:
             log.warning("فشل رفع ملف Excel %s: %s", batch.get('id'), e)
             supabase.table(EXCEL_TABLE).update({'last_error': str(e)[:500]}).eq('id', batch['id']).execute()
-            return jsonify({'success': False, 'message': f'فشل رفع الملف إلى واتساب: {e}'}), 502
+            return {'success': False, 'message': f'فشل رفع الملف إلى واتساب: {e}'}, 502
         for number in todo:
             masked = wa.mask_number(number)
             try:
@@ -1874,13 +1880,21 @@ def excel_send(batch_id):
         supabase.table(EXCEL_TABLE).update(update).eq('id', batch['id']).execute()
     except Exception:
         log.exception("خطأ في إرسال ملف Excel")
-        return jsonify({'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}), 500
+        return {'success': False, 'message': 'حدث خطأ أثناء تنفيذ العملية.'}, 500
     finally:
         _wa_lock.release()
     ok = sum(1 for r in results if r['ok'])
     audit('excel_send', batch['id'], f'{ok} من {len(results)}')
-    return jsonify({'success': not errors, 'results': results,
-                    'message': '' if not errors else 'تعذر الإرسال لبعض الأرقام: ' + '؛ '.join(errors)})
+    return {'success': not errors, 'results': results,
+            'message': '' if not errors else 'تعذر الإرسال لبعض الأرقام: ' + '؛ '.join(errors)}, 200
+
+
+@app.route('/excel/<batch_id>/send', methods=['POST'])
+@admin_required_json
+def excel_send(batch_id):
+    force = bool((request.get_json(silent=True) or {}).get('force'))
+    payload, status = _send_excel_batch(batch_id, force)
+    return jsonify(payload), status
 
 
 @app.route('/whatsapp-status')

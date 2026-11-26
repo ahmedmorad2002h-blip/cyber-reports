@@ -1210,13 +1210,14 @@
         function pullExcel() {
             const n = allGlobalRecords.filter(r => tabOf(r) === 'تمت الموافقة').length;
             if (!n) return;
-            if (!confirm(`سحب ملف Excel لكل البلاغات الموافق عليها (${n} بلاغ)؟\nستنتقل كلها إلى خانة "تم إرسالها وسحب الإكسل".`)) return;
+            if (!confirm(`سحب ملف Excel لكل البلاغات الموافق عليها (${n} بلاغ)؟\nستنتقل كلها إلى خانة "تم إرسالها وسحب الإكسل" ويُرسل الملف على واتساب تلقائياً.`)) return;
             const btn = document.getElementById('excel-pull-btn');
             btn.disabled = true;
             postJson('/excel/pull').then(d => {
                 btn.disabled = false;
                 if (!d || !d.success) { alert((d && d.message) || 'تعذر سحب الملف.'); loadRecords(); return; }
                 window.location.href = '/excel/' + encodeURIComponent(d.batch) + '/download';
+                if (d.wa) alert(d.wa.success ? `تم سحب الملف (${d.count} بلاغ) وإرساله على واتساب.` : `تم سحب الملف (${d.count} بلاغ) لكن تعذر إرساله على واتساب:\n${d.wa.message}\nيمكنك إعادة الإرسال من "ملفات Excel السابقة".`);
                 loadRecords().then(() => openExcelModal(d.batch));
             }).catch(err => { btn.disabled = false; networkError(err); });
         }
